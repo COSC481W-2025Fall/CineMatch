@@ -42,7 +42,7 @@ Hello, my name is Yousif Shkara, a senior at EMU, majoring in Computer Science C
 My name is Eric Eggleston. I am a computer science Bachelor of Arts major and I have experience with Java, C++, and Kotlin . The last project that I worked on was a mobile app using Kotlin in Android Studio that created a bucket list for locations around cities. Outside of school, I enjoy gaming and playing sports.
 
 ### Caleb Bujauskas: 
-[Short bio here]  
+Hello, I am Caleb. Currently enrolled in the Bachelor of Arts Computer Science program as a senior at EMU. I have experience with various programming languages such as java, python, and C. Most of my programming experience has been with backend-development, recently I have worked on an astroids game using pygame. Outside of school I work at DTW Metro Airport as a ramp agent where I load/offload luggage to and from aircraft. In my free time I enjoy playing mediocre guitar, gaming on Battlefield, and most importantly spending time with my beautiful Fiancée and our two bad but very cute cats.
 
 ### Andrew Higgin:   
 [Short bio here] 
