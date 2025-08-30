@@ -39,7 +39,7 @@ Hello, my name is Yousif Shkara, a senior at EMU, majoring in Computer Science C
 [Short bio here]  
 
 ### Eric Eggleston:
-[Short bio here]  
+My name is Eric Eggleston. I am a computer science Bachelor of Arts major and I have experience with Java, C++, and Kotlin . The last project that I worked on was a mobile app using Kotlin in Android Studio that created a bucket list for locations around cities. Outside of school, I enjoy gaming and playing sports.
 
 ### Caleb Bujauskas: 
 [Short bio here]  
