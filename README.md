@@ -1,7 +1,7 @@
 # CineMatch README
 
 ## Team Info
-- **Team Name:** [Your Team Name Here]  
+- **Team Name:** CineMatch
 - **Team Policy:**  
 
 **Absence Policy:**  
@@ -11,7 +11,7 @@ We are lenient towards work and school but will schedule meetings as needed. Whe
 Ensure all members understand the consequences of unethical actions.  
 
 **Language Policy:**  
-English.  
+We will use primarily English and we should keep it respectful.  
 
 **Code/Work Modification Guidelines:**  
 Ask for permission or let it be known if working on another member’s code or work.  
@@ -20,14 +20,12 @@ Ask for permission or let it be known if working on another member’s code or w
 B- or higher: Fulfill your role, show up, and communicate.  
 
 **Communication Standards:**  
-We will set up Discord, an email thread, Trello, and a group Google Drive for coordination.  
+We will set up Discord, an email thread, Trello, and a group Google Drive for coordination. Possibly a Scrum sheet as well. 
 
 ---
 
 ## Project Description
-[Write a brief overview of your project from Item 4. Example:  
-“This project is a task scheduler application that integrates with Google Calendar, allowing users to create, view, and manage tasks through a simple command-line interface. It supports event syncing, reminders, and team collaboration features.”]
-
+Takes a user's search input (actor, director, and genre) to find a suggested match closest to the user's selected option using a point system. Possible functionality include: using current logged in account to see what movies closely resemble to already watched movies, as well as using some kind of neural network or artifical intelligence to have further functionalities but that's optional by our standards.
 ---
 
 ## Team Member Bios
