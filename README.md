@@ -2,25 +2,26 @@
 
 ## Team Info
 - **Team Name:** CineMatch
-- **Team Policy:**  
+  
+**Team Policies:**  
 
-**Absence Policy:**  
-We are lenient towards work and school but will schedule meetings as needed. When we do have meetings, we will include meeting notes.  
+  *Absence Policy:* 
+    We are lenient towards work and school but will schedule meetings as needed. When we do have meetings, we will include meeting notes.  
 
-**Ethic Policy:**  
-Ensure all members understand the consequences of unethical actions.  
+  *Ethic Policy:*
+    Ensure all members understand the consequences of unethical actions.  
 
-**Language Policy:**  
-We will use primarily English and we should keep it respectful.  
+  *Language Policy:*  
+    We will use primarily English and we should keep it respectful.  
 
-**Code/Work Modification Guidelines:**  
-Ask for permission or let it be known if working on another member’s code or work.  
+  *Code/Work Modification Guidelines:*  
+    Ask for permission or let it be known if working on another member’s code or work.  
 
-**Performance Requirement:**  
-B- or higher: Fulfill your role, show up, and communicate.  
+  *Performance Requirement:*  
+    B- or higher: Fulfill your role, show up, and communicate.  
 
-**Communication Standards:**  
-We will set up Discord, an email thread, Trello, and a group Google Drive for coordination. Possibly a Scrum sheet as well. 
+  *Communication Standards:*  
+    We will set up Discord, an email thread, Trello, and a group Google Drive for coordination. Possibly a Scrum sheet as well. 
 
 ---
 
