@@ -6,22 +6,22 @@
 **Team Policies:**  
 
   *Absence Policy:* 
-    We are lenient towards work and school but will schedule meetings as needed. When we do have meetings, we will include meeting notes.  
+    We are following the regular class syllabus, so for every 3 unexcused absences, the grade level would be down by 1. Second, we would gather the reasoning behind the absence, and will catch the person up. For weekly meeting absences will be graded as 0 for those weeks unless there’s a valid reason.    
 
   *Ethic Policy:*
-    Ensure all members understand the consequences of unethical actions.  
+    Ensure all members understand the consequences of unethical actions. The consequences would lead to affecting the team and the overall project as a whole and as such, each team member is held to a higher standard, and would be held accountable for any mistakes such as deleting code or performing unethical actions.
 
   *Language Policy:*  
     We will use primarily English and we should keep it respectful.  
 
   *Code/Work Modification Guidelines:*  
-    Ask for permission or let it be known if working on another member’s code or work.  
+    Ask for permission or let it be known if working on another member’s code or work. If the owner of code does not respond within an hour or so, whoever is working on the code can create a new branch using the owner's existing code and add onto it. 
 
   *Performance Requirement:*  
-    B- or higher: Fulfill your role, show up, and communicate.  
+    B- or higher: Fulfill your role, show up, and communicate. Basically, commit regularly, finish your assigned tasks, if not, you would communicate it within a reasonable time frame to let the team know that you may need some assistance. Show up to meetings, as well as talk to team members about your progress and overall, do a fair share of the work that is required.
 
   *Communication Standards:*  
-    We will set up Discord, an email thread, Trello, and a group Google Drive for coordination. Possibly a Scrum sheet as well. 
+    We will set up Discord, an email thread, Trello, and a group Google Drive for coordination. Possibly a Scrum sheet as well. Expected timeline for reply is 24 hours
 
 ---
 
