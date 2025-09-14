@@ -43,7 +43,21 @@
       width:200px; background:#333; border-right:2px solid #555; padding:10px 8px;
     }
 
-    .search-filters { list-style:none; }
+    .search-filters {
+      list-style:none;
+      flex: 1;
+      overflow-y: auto
+    }
+
+    .sidebar-footer-credit {
+      /*margin-top: auto;*/
+      margin: 12px;
+      padding: 10px 12px;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .sidebar-footer-credit a:host{text-decoration: underline;}
 
     .filter-item {
       background:linear-gradient(45deg,#dd4444,#aa3333);
@@ -113,6 +127,12 @@
       <li class="filter-item"><div class="filter-link"><input id="qRating"   class="filter-input" placeholder="RATING ≥ ..."></div></li>
     </ul>
     <button class="go-btn" id="goBtn">SEARCH</button>
+
+
+    <footer class="sidebar-footer-credit">
+      <p>Source of data: <a href="https://www.themoviedb.org/">TMDB</a></p>
+    </footer>
+
   </aside>
 
   <main class="content-area">
@@ -188,6 +208,11 @@
     inp.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
   });
 
+  window.addEventListener('DOMContentLoaded', () => {
+    const status = document.getElementById('status');
+    status.textContent = 'Loading…';
+    doSearch();
+  });
 </script>
 </body>
 </html>
