@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>cineMatch</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tomorrow:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.cdnfonts.com/css/magz" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Magz:wght@400;700&display=swap');
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      background-color:#1a1a1a;
+      color:#fff;
+      font-family:'Tomorrow', sans-serif;
+    }
+
+    .navigation-top {
+      display:flex; align-items:center;
+      padding:10px 20px;
+      background-color:#2a2a2a;
+      border-bottom:2px solid #444;
+    }
+
+    .navigation-button {
+      background:linear-gradient(45deg,#ff4444,#cc3333);
+      border:none; color:#fff; padding:8px 16px; margin-right:10px;
+      font-weight:700; font-size:14px; text-transform:uppercase; letter-spacing:1px;
+      cursor:pointer; border-radius:3px; box-shadow:0 2px 4px rgba(0,0,0,.3);
+    }
+    .navigation-button.active { background:linear-gradient(45deg,#f7e135,#cc8800); }
+
+    .logo {
+      font-family:'Magz', cursive; font-size:30px; color:#f7e135; font-style:italic;
+      margin:0 auto; text-shadow:2px 2px 4px rgba(0,0,0,.5); transform:scaleX(1.5);
+    }
+
+    .main-container { display:flex; height:calc(100vh - 60px); }
+
+    .sidebar {
+      width:200px; background:#333; border-right:2px solid #555; padding:10px 8px;
+    }
+
+    .search-filters { list-style:none; }
+
+    .filter-item {
+      background:linear-gradient(45deg,#dd4444,#aa3333);
+      margin:8px 12px; border-radius:20px; overflow:hidden;
+      box-shadow:0 2px 4px rgba(0,0,0,.3);
+    }
+    .filter-link { padding:10px 12px; }
+    .filter-input {
+      width:100%; background:transparent; border:none; outline:none;
+      color:#fff; font-size:13px; font-weight:700; letter-spacing:1px;
+    }
+
+    .go-btn {
+      width:calc(100% - 24px);
+      margin:12px; padding:10px 12px;
+      background:linear-gradient(45deg,#f7e135,#cc8800);
+      border:none; color:#222; font-weight:800; cursor:pointer; border-radius:6px;
+    }
+
+    .content-area {
+      flex: 1;
+      background: #1a1a1a;
+      padding: 20px;
+      margin: 20px;
+      border-width: 0 !important;
+      border-style: none !important;
+      border-color: transparent !important;
+      outline: none !important;
+      box-shadow: none !important;  /* just in case it was a shadow, not a border */
+      border-radius: 8px;
+    }
+
+    .movie-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+      gap:20px; padding-top:10px;
+    }
+    .movie-card {
+      background:#222; border:1px solid #333; border-radius:10px; padding:12px;
+    }
+    .movie-card img {
+      width:100%; aspect-ratio:2/3; object-fit:cover; border-radius:8px; margin-bottom:10px;
+      background:#111;
+    }
+    .movie-title { font-size:16px; font-weight:800; }
+    .movie-sub  { font-size:13px; color:#bbb; margin-top:2px; }
+    .muted { color:#aaa; }
+  </style>
+</head>
+<body>
+<div class="navigation-top">
+  <button class="navigation-button active" id="searchTop">SEARCH</button>
+  <div class="logo">cineMatch</div>
+  <button class="navigation-button">FEED</button>
+  <button class="navigation-button">WATCH LIST</button>
+</div>
+
+<div class="main-container">
+
+  <aside class="sidebar">
+    <ul class="search-filters">
+      <li class="filter-item"><div class="filter-link"><input id="qActor"    class="filter-input" placeholder="ACTOR..."></div></li>
+      <li class="filter-item"><div class="filter-link"><input id="qDirector" class="filter-input" placeholder="DIRECTOR..."></div></li>
+      <li class="filter-item"><div class="filter-link"><input id="qGenre"    class="filter-input" placeholder="GENRE..."></div></li>
+      <li class="filter-item"><div class="filter-link"><input id="qTitle"    class="filter-input" placeholder="TITLE..."></div></li>
+      <li class="filter-item"><div class="filter-link"><input id="qYear"     class="filter-input" placeholder="YEAR..."></div></li>
+      <li class="filter-item"><div class="filter-link"><input id="qRating"   class="filter-input" placeholder="RATING ≥ ..."></div></li>
+    </ul>
+    <button class="go-btn" id="goBtn">SEARCH</button>
+  </aside>
+
+  <main class="content-area">
+    <div id="status" class="muted">No results yet. Try a search.</div>
+    <div id="results" class="movie-grid"></div>
+  </main>
+</div>
+
+<script>
+
+  const API_BASE = "";
+
+  function buildQuery(params) {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => { if (v) qs.append(k, v); });
+    const s = qs.toString();
+    return s ? (`/record?${s}`) : "/record";
+  }
+
+  async function fetchMovies(params = {}) {
+    const url = API_BASE + buildQuery(params);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  function renderMovies(movies) {
+    const grid = document.getElementById("results");
+    const status = document.getElementById("status");
+    if (!movies || movies.length === 0) {
+      grid.innerHTML = "";
+      status.textContent = "No results found.";
+      return;
+    }
+    status.textContent = "";
+    grid.innerHTML = movies.map(m => `
+        <article class="movie-card">
+          <img src="${m.posterUrl || 'https://placehold.co/300x450?text=No+Poster'}" alt="${m.title || ''}">
+          <div class="movie-title">${m.title ?? 'Untitled'}</div>
+          <div class="movie-sub">
+            ${m.year ?? '—'} • ${(Array.isArray(m.genre) ? m.genre.join(', ') : (m.genre || '—'))}
+          </div>
+          ${m.rating != null ? `<div class="movie-sub">⭐ ${m.rating}</div>` : ""}
+        </article>
+      `).join("");
+  }
+
+  async function doSearch() {
+    const params = {
+      actor:    document.getElementById("qActor").value.trim(),
+      director: document.getElementById("qDirector").value.trim(),
+      genre:    document.getElementById("qGenre").value.trim(),
+      title:    document.getElementById("qTitle").value.trim(),
+      year:     document.getElementById("qYear").value.trim(),
+      rating:   document.getElementById("qRating").value.trim(),
+    };
+    const status = document.getElementById("status");
+    status.textContent = "Loading…";
+    try {
+      const movies = await fetchMovies(params);
+      renderMovies(movies);
+    } catch (e) {
+      status.textContent = "Error loading results.";
+      console.error(e);
+    }
+  }
+
+
+  document.getElementById("goBtn").addEventListener("click", doSearch);
+  document.getElementById("searchTop").addEventListener("click", doSearch);
+
+  document.querySelectorAll(".filter-input").forEach(inp => {
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
+  });
+
+</script>
+</body>
+</html>
