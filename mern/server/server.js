@@ -1,3 +1,4 @@
+// THIS FILE IS ONLY FOR RUNNING LOCALLY, ANYONE DEPLOYING THIS WILL HAVE TO CHANGE THIS TO MAKE IT WORK FOR AWS AS OUTLINED BY THE GUIDE IN PROJECT GOOGLE DRIVE.
 import express from "express";
 import cors from "cors";
 import records from "./routes/record.js";
@@ -7,7 +8,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use("/record", records); // ← keep /record OR update your frontend to /movie
+app.use("/record", records); 
 
 
 import db from "./db/connection.js";
