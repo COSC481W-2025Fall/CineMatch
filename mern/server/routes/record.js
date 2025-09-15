@@ -1,10 +1,11 @@
+// TODO: This entire script needs to be redone at some point.
 // routes/record.js
 import { Router } from "express";
 import db from "../db/connection.js";
 import { ObjectId } from "mongodb";
 
 const router = Router();
-
+// NOT IMPLEMENTED: ACTOR, DIRECTOR, AND GENRE
 // GET /record?name=&year=&desc=
 // routes/record.js
 router.get("/", async (req, res) => {
@@ -21,11 +22,11 @@ router.get("/", async (req, res) => {
 
     const docs = await col.aggregate([
       { $match: filter },
-      { $limit: 50 },
+      { $limit: 50 }, // will only show 50 movies at a time for now
       {
         $project: {
-          title: "$name",        // alias
-          year: "$date",         // alias
+          title: "$name",
+          year: "$date",
           rating: 1,
           posterUrl: 1,
           genre: 1,
@@ -41,7 +42,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-
+// we are probably not going to use by ID but it's here.
 // GET /record/:id
 router.get("/:id", async (req, res) => {
   try {

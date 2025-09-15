@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>cineMatch</title>
+  <!-- We really liked the fonts Tomorrow and magz so we imported them in here -->
   <link href="https://fonts.googleapis.com/css2?family=Tomorrow:wght@400;700&display=swap" rel="stylesheet">
   <link href="https://fonts.cdnfonts.com/css/magz" rel="stylesheet">
   <style>
@@ -82,11 +83,12 @@
       background: #1a1a1a;
       padding: 20px;
       margin: 20px;
-      border-width: 0 !important;
+      /* Changes weren't being implemented for the movie box area, these important tags are left over */
+      border-width: 0 !important; <!-- -->
       border-style: none !important;
       border-color: transparent !important;
       outline: none !important;
-      box-shadow: none !important;  /* just in case it was a shadow, not a border */
+      box-shadow: none !important;
       border-radius: 8px;
     }
 
@@ -109,15 +111,16 @@
 </head>
 <body>
 <div class="navigation-top">
-  <button class="navigation-button active" id="searchTop">SEARCH</button>
+  <button class="navigation-button active" id="searchTop">SEARCH</button> <!-- Temporary till we add in Feed and Watch List, for now this just does the same as search -->
   <div class="logo">cineMatch</div>
-  <button class="navigation-button">FEED</button>
-  <button class="navigation-button">WATCH LIST</button>
+  <button class="navigation-button">FEED</button> <!-- Goes nowhere right now -->
+  <button class="navigation-button">WATCH LIST</button> <!-- Goes nowhere right now -->
 </div>
 
 <div class="main-container">
 
   <aside class="sidebar">
+    <!-- Simple text boxes that we will take as input -->
     <ul class="search-filters">
       <li class="filter-item"><div class="filter-link"><input id="qActor"    class="filter-input" placeholder="ACTOR..."></div></li>
       <li class="filter-item"><div class="filter-link"><input id="qDirector" class="filter-input" placeholder="DIRECTOR..."></div></li>
@@ -126,10 +129,10 @@
       <li class="filter-item"><div class="filter-link"><input id="qYear"     class="filter-input" placeholder="YEAR..."></div></li>
       <li class="filter-item"><div class="filter-link"><input id="qRating"   class="filter-input" placeholder="RATING ≥ ..."></div></li>
     </ul>
-    <button class="go-btn" id="goBtn">SEARCH</button>
+    <button class="go-btn" id="goBtn">SEARCH</button> <!-- The button to actually search, this one is permanent -->
 
 
-
+    <!--We need this to abide by the TOS -->
     <footer class="sidebar-footer-credit">
       <p>Source of data: <a href="https://www.themoviedb.org/">TMDB <img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg" style="height:10px; width:auto; vertical-align:middle; margin-left:6px;"></a></p>
       <p>This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.</p>
@@ -148,36 +151,40 @@
   const API_BASE = "";
 
   function buildQuery(params) {
-    const qs = new URLSearchParams();
-    Object.entries(params).forEach(([k, v]) => { if (v) qs.append(k, v); });
-    const s = qs.toString();
-    return s ? (`/record?${s}`) : "/record";
+    const qs = new URLSearchParams(); // Query builder
+    Object.entries(params).forEach(([k, v]) => { if (v) qs.append(k, v); }); // for each key value pair
+    const s = qs.toString(); // return the query builder as a string
+    return s ? (`/record?${s}`) : "/record"; // if it's empty it will return /record which is the default page, nothing searched, if it has more then it will return /record<MORE STUFF> like a movie name, rating, etc
   }
 
   async function fetchMovies(params = {}) {
-    const url = API_BASE + buildQuery(params);
+    const url = API_BASE + buildQuery(params); // The continuation of search
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+    return res.json(); // returns a parsed json for the movies
   }
 
   function renderMovies(movies) {
-    const grid = document.getElementById("results");
-    const status = document.getElementById("status");
+    const grid = document.getElementById("results"); // refreneced by div in the content area to make the box
+    const status = document.getElementById("status"); // some text to use when the search is invalid
     if (!movies || movies.length === 0) {
       grid.innerHTML = "";
       status.textContent = "No results found.";
       return;
     }
     status.textContent = "";
+    // For each movie, then we join them together with a gap
     grid.innerHTML = movies.map(m => `
         <article class="movie-card">
+          <!-- Using a placeholder for poster, especially right now when we can't import any pictures due to 1. size of posters, 2. licensing issues -->
           <img src="${m.posterUrl || 'https://placehold.co/300x450?text=No+Poster'}" alt="${m.title || ''}">
-          <div class="movie-title">${m.title ?? 'Untitled'}</div>
+          <div class="movie-title">${m.title ?? 'Untitled'}</div> <!-- If movie doesn't have a title, we will just call it well, untitled haha -->
           <div class="movie-sub">
-            ${m.year ?? '—'} • ${(Array.isArray(m.genre) ? m.genre.join(', ') : (m.genre || '—'))}
+            ${m.year ?? '—'} • ${(Array.isArray(m.genre) ? m.genre.join(', ') : (m.genre || '—'))} <!-- only year is relevant here, genre will be implemented later but it wont change once we implement it.-->
           </div>
+          <!-- same concept as previous one, this is just for rating, star added to show rating and not just a weird number between 1-5-->
           ${m.rating != null ? `<div class="movie-sub">⭐ ${m.rating}</div>` : ""}
+          <!-- will possibly have top 2-3 actors in here after the rating in the future -->
         </article>
       `).join("");
   }
@@ -194,6 +201,7 @@
     const status = document.getElementById("status");
     status.textContent = "Loading…";
     try {
+      // Two-step process, fetch and render. Fetch uses the buildQuery function to make up a url for the search to the database.
       const movies = await fetchMovies(params);
       renderMovies(movies);
     } catch (e) {
@@ -202,7 +210,7 @@
     }
   }
 
-
+  // simple buttons that for now do the same thing, till "searchTop" will actually go to the main page, didn't hurt to duplicate but keep separate.
   document.getElementById("goBtn").addEventListener("click", doSearch);
   document.getElementById("searchTop").addEventListener("click", doSearch);
 
