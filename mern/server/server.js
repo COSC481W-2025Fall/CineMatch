@@ -8,7 +8,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use("/record", records); // ← keep /record OR update your frontend to /movie
+app.use("/record", records); // We will have to change this to movies as this is still using old MongoDB guide, same with record.js
 
 
 import db from "./db/connection.js";
