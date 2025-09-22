@@ -1,42 +1,91 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
+    * { margin:0; padding:0; box-sizing:border-box; }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
+    body {
+      background-color:#1a1a1a;
+      color:#fff;
+      font-family:'Tomorrow', sans-serif;
+    }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
+    .navigation-top {
+      display:flex; align-items:center;
+      padding:10px 20px;
+      background-color:#2a2a2a;
+      border-bottom:2px solid #444;
+    }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
+    .navigation-button {
+      background:linear-gradient(45deg,#ff4444,#cc3333);
+      border:none; color:#fff; padding:8px 16px; margin-right:10px;
+      font-weight:700; font-size:14px; text-transform:uppercase; letter-spacing:1px;
+      cursor:pointer; border-radius:3px; box-shadow:0 2px 4px rgba(0,0,0,.3);
+    }
+    .navigation-button.active { background:linear-gradient(45deg,#f7e135,#cc8800); }
 
-.card {
-  padding: 2em;
-}
+    .logo {
+      font-family:'Magz', cursive; font-size:30px; color:#f7e135; font-style:italic;
+      margin:0 auto; text-shadow:2px 2px 4px rgba(0,0,0,.5); transform:scaleX(1.5);
+    }
 
-.read-the-docs {
-  color: #888;
-}
+    .main-container { display:flex; height:calc(100vh - 60px); }
+
+    .sidebar {
+      width:200px; background:#333; border-right:2px solid #555; padding:10px 8px;
+    }
+
+    .search-filters {
+      list-style:none;
+      flex: 1;
+      overflow-y: auto
+    }
+
+    .sidebar-footer-credit {
+      /*margin-top: auto;*/
+      margin: 12px;
+      padding: 10px 12px;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .sidebar-footer-credit a:host{text-decoration: underline;}
+
+    .filter-item {
+      background:linear-gradient(45deg,#dd4444,#aa3333);
+      margin:8px 12px; border-radius:20px; overflow:hidden;
+      box-shadow:0 2px 4px rgba(0,0,0,.3);
+    }
+    .filter-link { padding:10px 12px; }
+    .filter-input {
+      width:100%; background:transparent; border:none; outline:none;
+      color:#fff; font-size:13px; font-weight:700; letter-spacing:1px;
+    }
+
+    .go-btn {
+      width:calc(100% - 24px);
+      margin:12px; padding:10px 12px;
+      background:linear-gradient(45deg,#f7e135,#cc8800);
+      border:none; color:#222; font-weight:800; cursor:pointer; border-radius:6px;
+    }
+
+    .content-area {
+      flex: 1;
+      background: #1a1a1a;
+      padding: 20px;
+      margin: 20px;
+      border-radius: 8px;
+    }
+
+    .movie-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+      gap:20px; padding-top:10px;
+    }
+    .movie-card {
+      background:#222; border:1px solid #333; border-radius:10px; padding:12px;
+    }
+    .movie-card img {
+      width:100%; aspect-ratio:2/3; object-fit:cover; border-radius:8px; margin-bottom:10px;
+      background:#111;
+    }
+    .movie-title { font-size:16px; font-weight:800; }
+    .movie-sub  { font-size:13px; color:#bbb; margin-top:2px; }
+    .muted { color:#aaa; }
