@@ -2,6 +2,7 @@
 import express from "express";
 import cors from "cors";
 import records from "./routes/record.js";
+import search_actor from "./routes/Search_actor.js"
 
 const PORT = process.env.PORT || 5050;
 const app = express();
@@ -9,7 +10,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use("/record", records); // We will have to change this to movies as this is still using old MongoDB guide, same with record.js
-
+app.use("/actors", search_actor);
 
 import db from "./db/connection.js";
 app.get("/__debug", async (_req, res) => {
