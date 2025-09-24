@@ -18,10 +18,10 @@ router.get("/", async (req, res) => {
     if (rating) filter.rating = { $gte: Number(rating) };
     if (desc)   filter.description = { $regex: desc, $options: "i" };
 
-    // 1) get up to 50 movies
+
     const movies = await moviesCol.aggregate([
       { $match: filter },
-      { $limit: 50 },
+      { $limit: 50 }, // We might have to eventually lower this, if performance takes even a bigger hit
       {
         $project: {
           _id: 0,
