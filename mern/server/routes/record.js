@@ -12,13 +12,12 @@ router.get("/", async (req, res) => {
   try {
     const col = db.collection("movies");
 
-    const { title, name, year, rating, desc, genre } = req.query;
+    const { title, name, year, rating, genre } = req.query;
     const filter = {};
     const qName = name ?? title;                 
     if (qName) filter.name = { $regex: qName, $options: "i" };
     if (year)  filter.date = Number(year);
     if (rating) filter.rating = { $gte: Number(rating) };
-    if (desc)  filter.description = { $regex: desc, $options: "i" };
     if (genre)  filter.description = { $regex: genre, $options: "i" };
 
 
