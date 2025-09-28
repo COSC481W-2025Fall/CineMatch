@@ -12,7 +12,7 @@ router.get("/", async (req, res) => {
   try {
     const col = db.collection("movies");
 
-    const { title, name, year, rating, desc } = req.query;
+    const { title, name, year, rating, desc, director } = req.query;
     const filter = {};
     const qName = name ?? title;                 
     if (qName) filter.name = { $regex: qName, $options: "i" };
@@ -20,9 +20,30 @@ router.get("/", async (req, res) => {
     if (rating) filter.rating = { $gte: Number(rating) };
     if (desc)  filter.description = { $regex: desc, $options: "i" };
 
+
+    const directorRegex = director ? new RegExp(director, "i") : null;
     const docs = await col.aggregate([
-      { $match: filter },
+      { $match: filter }, 
+      
+      {
+    $lookup: {
+      from: "crew",
+      let: { mid: "$id" },             
+      pipeline: [
+        { $match: { $expr: { $and: [
+          { $eq: ["$id", "$$mid"] },
+          { $eq: ["$role", "Director"] }
+        ] } } },
+        { $project: { _id: 0, name: 1 } }
+      ],
+      as: "directors"
+    }
+  },
+
+      ...(directorRegex ? [{ $match: { "directors.name": directorRegex } }] : []),
+
       { $limit: 50 }, // will only show 50 movies at a time for now
+
       {
         $project: {
           title: "$name",
