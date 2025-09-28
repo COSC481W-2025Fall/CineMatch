@@ -15,7 +15,6 @@ router.get("/", async (req, res) => {
         if (name) filter.name = { $regex: name, $options: "i" };
         if (movie) filter.role = { $regex: movie, $options: "i" };
 
-
         const docs = await db.collection("directors").find(filter).limit(50).toArray();
         res.json(docs);
     } catch (err) {
