@@ -20,7 +20,9 @@ function App() {
   function buildQuery(p) {
     const qs = new URLSearchParams();
     Object.entries(p).forEach(([k, v]) => { if (v) qs.append(k, v); });
-    return qs.toString() ? `/record?${qs.toString()}` : "/record";
+    // this would allow the spaces to work, basically replacing empty with the %20, which is identified by browsers to be a space
+    const fullSearch = qs.toString().replace(/\+/g, '%20');
+    return fullSearch ? `/record?${qs.toString()}` : "/record";
   }
   // Fetch movies from the backend API
   async function fetchMovies(p = {}) {
@@ -52,7 +54,7 @@ function App() {
     setParams((prev) => ({
       ...prev,
       // map input id to state key by stripping 'q' prefix and lowercasing
-      [id.replace("q", "").toLowerCase()]: value.trim()
+      [id.replace("q", "").toLowerCase()]: value // to fix the spaces in the string
     }));
   }
 
@@ -64,7 +66,7 @@ function App() {
           SEARCH
         </button>
         <div className="logo">cineMatch</div>
-        <button className="navigation-button">FEED</button>   {/* They both go nowhere rightnow */}
+        <button className="navigation-button">FEED</button>   {/* They both go nowhere right now */}
         <button className="navigation-button">WATCH LIST</button>
 
       </div>
