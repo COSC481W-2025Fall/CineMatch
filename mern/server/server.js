@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 app.use("/record/actors", actors); // Referencing actors endpoint for Vitest
 app.use("/record/directors", directors); // Referencing directors endpoint for Vitest
-app.use("/genre", genre); // Referencing genre endpoint for Vitest
+app.use("/record/genre", genre); // Referencing genre endpoint for Vitest
 app.use("/record", records); // Referencing record endpoint for Vitest (This can get all of the above)
 
 

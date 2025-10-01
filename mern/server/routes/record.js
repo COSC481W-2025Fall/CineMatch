@@ -16,7 +16,6 @@ router.get("/", async (req, res) => {
         const genreCol = db.collection("genre");
 
 
-        // read the query parameters, (New: includes actor)
         const { title, name, director, actor, year, rating, desc, genre } = req.query;
         // build the base movie filter
         const filter = {};
