@@ -1,3 +1,4 @@
+/*TODO: make top and sidebar "sticky" and add a footer padding */
 * { margin:0; padding:0; box-sizing:border-box; }
 
 body {
@@ -11,6 +12,10 @@ body {
     padding:10px 20px;
     background-color:#2a2a2a;
     border-bottom:2px solid #444;
+    position: sticky;
+    top: 0;
+    width: 100%;
+    z-index:100;
 }
 
 .navigation-button {

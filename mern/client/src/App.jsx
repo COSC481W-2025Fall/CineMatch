@@ -7,7 +7,6 @@ const GENRES = [
   "Action",
   "Adventure",
   "Animation",
-  "Biography",
   "Comedy",
   "Crime",
   "Documentary",

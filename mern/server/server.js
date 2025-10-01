@@ -10,10 +10,10 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use("/record/actors", actors);
-app.use("/record/directors", directors);
-app.use("/genre", genre); // genre button search
-app.use("/record", records); // We will have to change this to movies as this is still using old MongoDB guide, same with record.js
+app.use("/record/actors", actors); // Referencing actors endpoint for Vitest
+app.use("/record/directors", directors); // Referencing directors endpoint for Vitest
+app.use("/genre", genre); // Referencing genre endpoint for Vitest
+app.use("/record", records); // Referencing record endpoint for Vitest (This can get all of the above)
 
 
 import db from "./db/connection.js";

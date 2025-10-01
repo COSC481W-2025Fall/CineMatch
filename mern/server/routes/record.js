@@ -1,4 +1,4 @@
-// TODO: Reorganize
+// TODO: better comments and structure in this
 // routes/record.js
 import { Router } from "express";
 import db from "../db/connection.js";
@@ -27,10 +27,27 @@ router.get("/", async (req, res) => {
         if (desc)   filter.description = { $regex: desc, $options: "i" };
 
 
-        const syncID = (v) => v;
 
+
+        // This chunk is just to help us connect the ID's together to make it an AND operation and not an OR operation.
         let setID = null;
+        const syncID = (arr) => {
+            const clean = arr.filter(v => v !== null && v !== undefined);
+            if(clean.length === 0) return false;
+            if(setID)
+            {
+                const next = new Set(clean);
+                const intersection = new Set([...setID].filter(x => next.has(x)));
+                if (intersection.size === 0) return false;
+                setID = intersection;
+            } else {
+                setID = new Set(clean);
+            }
+            return true;
 
+        };
+
+        // SEARCH BY DIRECTOR
         if (director) {
             // Find director whose name matches the query provided
             const directorRows = await directorsCol.aggregate([
@@ -40,88 +57,40 @@ router.get("/", async (req, res) => {
                 { $limit: 500 }                 // limit will possibly be smaller in the future
             ]).toArray();
 
-            // Attaches directors to the movies and builds aggregation
-            ///////////////
-            const directorID = directorRows.map(r => syncID(r._id)).filter(v => v !== null && v !== undefined);
-            if (directorRows.length === 0) return res.status(200).json([]);   // when there is nothing matching, return nothing
 
-            // narrows down the movie pipeline to only those that natch the above filter
-            setID = new Set(directorID);
+            ///////////////
+            if (!syncID(directorRows.map(r => r._id))) return res.status(200).json([]);
             ///////////////
         }
 
+        // SEARCH BY ACTOR
         if (actor) {
-            // 1) Find actors whose name matches the query
+
             const actorRows = await actorsCol.aggregate([
-                // find actor data who's name matches (CASE INSENSITIVE)
                 { $match: { name: { $regex: actor, $options: "i" } } },
-                // 2) Collapse duplicates: gives each distinct 'role' once.
-                //In this schema, 'role' represents the MOVIE TITLE.
+
                 { $group: { _id: "$id" } },   // distinct, shoooould allow for no repeats
                 { $limit: 500 }                 // the actors database is very big, we had to make this smaller
             ]).toArray();
 
-            // 4) Convert group results to a flat string array of titles
-            const actorID = actorRows.map(r => syncID(r._id)).filter(v => v !== null && v !== undefined);
-            if (actorID.length === 0) return res.status(200).json([]);   // when there is nothing matching, return nothing
-
-            // narrows down the movie pipeline to only those that natch the above filter
-
-            if(setID)
-            {
-                const intersection = actorID.filter(x => setID.has(x));
-                if (intersection.length === 0) return res.status(200).json([]);
-                setID = new Set(intersection);
-            } else {
-                setID = new Set(actorID);
-            }
+            if (!syncID(actorRows.map(r => r._id))) return res.status(200).json([]);
 
         }
 
         if (setID) { filter.id = {$in: Array.from(setID)};}
 
+        // SEARCH BY GENRE
         if (genre) {
-            // get all movie ids in this genre
             const genreIds = await genreCol
-                .find({ genre: { $regex: genre, $options: "i" } })  // finds all matching genre docs
-                .project({ id: 1, _id: 0 })   // only return the id field of each genre not full doc
-                .map(doc => doc.id)   // convert each genre document to its movie ID
+                .find({ genre: { $regex: genre, $options: "i" } }, { projection: { _id: 0, id: 1 } })
+                .limit(500)
+                .map(doc => doc.id)
                 .toArray();
 
-            if (genreIds.length === 0) {
-                return res.json([]); // no movies in this genre
-            }
-
-            // filter movies by those ids
-            filter.id = { $in: genreIds };
+            if (!syncID(genreIds)) return res.status(200).json([]);
         }
 
-        // query movies collection with filter, limit 50
-        let moviesGenre = await moviesCol.find(filter).limit(50).toArray();
-
-        // attach genres to movies and map fields for frentend
-        if (moviesGenre.length) {
-            const movieIds = moviesGenre.map(m => m.id);   // extract all movie IDs in this result set
-
-            const genresList = await genreCol
-                .find({ id: { $in: movieIds } })    // finds all documents in genreCol whose ID is in movieIds
-                .project({ id: 1, genre: 1, _id: 0 }) // return movie ID and genre string, exclude MongoDB's automatic _id field
-                .toArray();
-
-            // build a lookup map. key = movie ID, value = array of genres for that movie
-            const genreMap = {};
-            genresList.forEach(g => {
-                if (!genreMap[g.id]) genreMap[g.id] = [];
-                genreMap[g.id].push(g.genre);
-            });
-
-            // attach array of genre names to each movie
-            moviesGenre.forEach(m => {
-                m.genre = genreMap[m.id] || [];
-                m.title = m.name;     // map name to title
-                m.year = m.date;      // map date to year
-            });
-        }
+        if (setID) {filter.id = { $in: Array.from(setID) };}
 
         const movies = await moviesCol.aggregate([
             { $match: filter },
@@ -141,11 +110,26 @@ router.get("/", async (req, res) => {
             }
         ]).toArray()
 
+        if (movies.length === 0) return res.status(200).json([]);
 
+        {
+            const ids = movies.map(m => m.id).filter(Boolean);
+            if (ids.length) {
+                const rows = await genreCol
+                    .find({ id: { $in: ids } }, { projection: { _id: 0, id: 1, genre: 1 } })
+                    .toArray();
 
-        // if user provides a genre
+                const map = new Map(); // id -> array of genres
+                for (const r of rows) {
+                    if (!map.has(r.id)) map.set(r.id, []);
+                    map.get(r.id).push(r.genre);
+                }
 
+                for (const m of movies) { m.genre = Array.isArray(m.genre) ? m.genre : (map.get(m.id) || []);}
+            } else { for (const m of movies) m.genre = Array.isArray(m.genre) ? m.genre : [];}
+        }
 
+        ////////// END OF SEARCH BY GENRE
         // This would help us fetch the posters ONLY for the movies we request for, and not ALL some 945k movies posters, too much processing
         const ids = movies.map(m => m.id).filter(Boolean); // This just removes any values that aren't intended such as null, and it gets mapped into ids
         let posterMap = new Map(); // THEN, we reserve a variable for the movie
