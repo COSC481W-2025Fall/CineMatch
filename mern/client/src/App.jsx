@@ -3,6 +3,28 @@ import "./App.css";
 
 const API_BASE = ""; // set your API base here
 
+const GENRES = [
+  "Action",
+  "Adventure",
+  "Animation",
+  "Biography",
+  "Comedy",
+  "Crime",
+  "Documentary",
+  "Drama",
+  "Family",
+  "Fantasy",
+  "History",
+  "Horror",
+  "Music",
+  "Mystery",
+  "Romance",
+  "Science Fiction",
+  "Thriller",
+  "War",
+  "Western"
+]
+
 function App() {
   // State for search parameters
   const [params, setParams] = useState({
@@ -59,79 +81,99 @@ function App() {
   }
 
   return (
-    <>
-      <div className="navigation-top">
-        <button className="navigation-button active" onClick={doSearch}>{/*
+      <>
+        <div className="navigation-top">
+          <button className="navigation-button active" onClick={doSearch}>{/*
   <button class="navigation-button active" id="searchTop">SEARCH</button> <!-- Temporary till we add in Feed and Watch List, for now this just does the same as search */}
-          SEARCH
-        </button>
-        <div className="logo">cineMatch</div>
-        <button className="navigation-button">FEED</button>   {/* They both go nowhere right now */}
-        <button className="navigation-button">WATCH LIST</button>
 
-      </div>
+            SEARCH
+          </button>
+          <div className="logo">cineMatch</div>
+          <button className="navigation-button">FEED</button>   {/* They both go nowhere rightnow */}
+          <button className="navigation-button">WATCH LIST</button>
 
-      <div className="main-container">
-        <aside className="sidebar">
-          {/*  Simple text boxes that we will take as input  */}
-          <ul className="search-filters">
-            {["Actor", "Director", "Genre", "Title", "Year", "Rating"].map((label) => (
-              <li className="filter-item" key={label}>
+
+        </div>
+
+        <div className="main-container">
+          <aside className="sidebar">
+            {/*  Simple text boxes that we will take as input  */}
+            <ul className="search-filters">
+              {["Actor", "Director", "Genre", "Title", "Year", "Rating"].map((label) => (
+                  <li className="filter-item" key={label}>
+                    <div className="filter-link">
+                      <input
+                          id={`q${label}`}
+                          className="filter-input"
+                          placeholder={`${label.toUpperCase()}...`}
+                          value={params[label.toLowerCase()] || ""}
+                          onChange={handleChange}
+                          onKeyDown={(e) => e.key === "Enter" && doSearch()}
+                      />
+                    </div>
+                  </li>
+              ))}
+
+              {/*Genre dropdown selection that will handle the state and changes of the genre filter by looping through an
+            array of the 19 genres listed above */}
+              <li className="filter-item" key="Genre">
                 <div className="filter-link">
-                  <input
-                    id={`q${label}`}
-                    className="filter-input"
-                    placeholder={`${label.toUpperCase()}...`}
-                    value={params[label.toLowerCase()] || ""}
-                    onChange={handleChange}
-                    onKeyDown={(e) => e.key === "Enter" && doSearch()}
-                  />
+                  <select id="qGenre"
+                          className="filter-select"
+                          value={params.genre || ""}
+                          onChange={handleChange}>
+                    <option value="">GENRE...</option>
+                    {GENRES.map((genre) => (
+                        <option key={genre} value={genre}> {genre}
+                        </option>
+                    ))}
+                  </select>
                 </div>
               </li>
-            ))}
-          </ul>
-          <button className="go-btn" onClick={doSearch}>SEARCH</button>  {/* The button to actually search, this one is permanent */}
+            </ul>
 
-          <footer className="sidebar-footer-credit">
-            <p>
-              Source of data:{" "}
-              <a href="https://www.themoviedb.org/">{/* We need this to abide by the TOS  */}
-                TMDB{" "}
-                <img
-                  src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"
-                  style={{ height: "10px", width: "auto", verticalAlign: "middle", marginLeft: "6px" }}
-                  alt="TMDB logo"
-                />
-              </a>
-            </p>
-            <p>
-              This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
-            </p>
-          </footer>
-        </aside>
+            <button className="go-btn" onClick={doSearch}>SEARCH</button>  {/* The button to actually search, this one is permanent */}
 
-        <main className="content-area">
-          <div id="status" className="muted">{status}</div>
-          <div id="results" className="movie-grid">
-            {movies.map((m, idx) => (
-              <article className="movie-card" key={idx}>
-                <img
-                  src={m.posterUrl || "https://placehold.co/300x450?text=No+Poster"}
-                  alt={m.title || ""}
-                />
-                <div className="movie-title">{m.title ?? "Untitled"}</div>
-                <div className="movie-sub">
-                  {m.year ?? "—"} • {Array.isArray(m.genre) ? m.genre.join(", ") : (m.genre || "—")}
-                </div>
-                {m.rating != null && (
-                  <div className="movie-sub">⭐ {m.rating}</div>
-                )}
-              </article>
-            ))}
-          </div>
-        </main>
-      </div>
-    </>
+            <footer className="sidebar-footer-credit">
+              <p>
+                Source of data:{" "}
+                <a href="https://www.themoviedb.org/">{/* We need this to abide by the TOS  */}
+                  TMDB{" "}
+                  <img
+                      src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"
+                      style={{ height: "10px", width: "auto", verticalAlign: "middle", marginLeft: "6px" }}
+                      alt="TMDB logo"
+                  />
+                </a>
+              </p>
+              <p>
+                This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
+              </p>
+            </footer>
+          </aside>
+
+          <main className="content-area">
+            <div id="status" className="muted">{status}</div>
+            <div id="results" className="movie-grid">
+              {movies.map((m, idx) => (
+                  <article className="movie-card" key={idx}>
+                    <img
+                        src={m.posterUrl || "https://placehold.co/300x450?text=No+Poster"}
+                        alt={m.title || ""}
+                    />
+                    <div className="movie-title">{m.title ?? "Untitled"}</div>
+                    <div className="movie-sub">
+                      {m.year ?? "—"} • {Array.isArray(m.genre) ? m.genre.join(", ") : (m.genre || "—")}
+                    </div>
+                    {m.rating != null && (
+                        <div className="movie-sub">⭐ {m.rating}</div>
+                    )}
+                  </article>
+              ))}
+            </div>
+          </main>
+        </div>
+      </>
   );
 }
 
