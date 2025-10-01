@@ -9,8 +9,11 @@ router.get("/", async (req, res) => {
   try {
     const moviesCol  = db.collection("movies");
     const postersCol = db.collection("posters");
+    const actorsCol = db.collection("actors");
 
-    const { title, name, year, rating, desc } = req.query;
+    // read the query parameters, (New: includes actor)
+    const { title, name, actor, year, rating, desc } = req.query;
+    // build the base movie filter
     const filter = {};
     const qName = name ?? title;
     if (qName)  filter.name = { $regex: qName, $options: "i" };
@@ -19,8 +22,28 @@ router.get("/", async (req, res) => {
     if (desc)   filter.description = { $regex: desc, $options: "i" };
 
 
+    if (actor) {
+      // 1) Find actors whose name matches the query
+      const roles = await actorsCol.aggregate([
+          // find actor data who's name matches (CASE INSENSITIVE)
+          { $match: { name: { $regex: actor, $options: "i" } } },
+          // 2) Collapse duplicates: gives each distinct 'role' once.
+          //In this schema, 'role' represents the MOVIE TITLE.
+          { $group: { _id: "$id" } },   // distinct, shoooould allow for no repeats
+          { $limit: 500 }                 // the actors database is very big, we had to make this smaller
+          ]).toArray();
+
+          // 4) Convert group results to a flat string array of titles
+          const titles = roles.map(r => r._id).filter(v => v !== null && v !== undefined);
+          if (titles.length === 0) return res.status(200).json([]);   // when there is nothing matching, return nothing
+
+          // narrows down the movie pipeline to only those that natch the above filter
+          filter.id = { $in: titles };
+    }
+
     const movies = await moviesCol.aggregate([
       { $match: filter },
+      { $sort: {rating: -1, date: -1, name: 1}},
       { $limit: 50 }, // We might have to eventually lower this, if performance takes even a bigger hit
       {
         $project: {
@@ -52,10 +75,10 @@ router.get("/", async (req, res) => {
 
     res.status(200).json(result);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
+        console.error(err);
+        res.status(500).json({ error: "Server error" });
+      }
+    });
 
 router.get("/:id", async (req, res) => {
   try {
