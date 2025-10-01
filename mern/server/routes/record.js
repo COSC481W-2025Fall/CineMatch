@@ -1,3 +1,4 @@
+// TODO: Reorganize
 // routes/record.js
 import { Router } from "express";
 import db from "../db/connection.js";
@@ -10,9 +11,11 @@ router.get("/", async (req, res) => {
     const moviesCol  = db.collection("movies");
     const postersCol = db.collection("posters");
     const actorsCol = db.collection("actors");
+    const directorsCol = db.collection("directors");
+
 
     // read the query parameters, (New: includes actor)
-    const { title, name, actor, year, rating, desc } = req.query;
+    const { title, name, director, actor, year, rating, desc } = req.query;
     // build the base movie filter
     const filter = {};
     const qName = name ?? title;
@@ -22,24 +25,59 @@ router.get("/", async (req, res) => {
     if (desc)   filter.description = { $regex: desc, $options: "i" };
 
 
-    if (actor) {
-      // 1) Find actors whose name matches the query
-      const roles = await actorsCol.aggregate([
-          // find actor data who's name matches (CASE INSENSITIVE)
-          { $match: { name: { $regex: actor, $options: "i" } } },
-          // 2) Collapse duplicates: gives each distinct 'role' once.
-          //In this schema, 'role' represents the MOVIE TITLE.
-          { $group: { _id: "$id" } },   // distinct, shoooould allow for no repeats
-          { $limit: 500 }                 // the actors database is very big, we had to make this smaller
+    const syncID = (v) => v;
+
+    let setID = null;
+
+      if (director) {
+          // Find director whose name matches the query provided
+          const directorRows = await directorsCol.aggregate([
+              // find director data whose name matches (CASE INSENSITIVE)
+              { $match: { role: "Director", name: { $regex: director, $options: "i" } } },
+              { $group: { _id: "$id" } },   // distinct, shoooould allow for no repeats
+              { $limit: 500 }                 // limit will possibly be smaller in the future
+          ]).toArray();
+
+          // Attaches directors to the movies and builds aggregation
+          ///////////////
+          const directorID = directorRows.map(r => syncID(r._id)).filter(v => v !== null && v !== undefined);
+          if (directorRows.length === 0) return res.status(200).json([]);   // when there is nothing matching, return nothing
+
+          // narrows down the movie pipeline to only those that natch the above filter
+          setID = new Set(directorID);
+          ///////////////
+      }
+
+      if (actor) {
+          // 1) Find actors whose name matches the query
+          const actorRows = await actorsCol.aggregate([
+              // find actor data who's name matches (CASE INSENSITIVE)
+              { $match: { name: { $regex: actor, $options: "i" } } },
+              // 2) Collapse duplicates: gives each distinct 'role' once.
+              //In this schema, 'role' represents the MOVIE TITLE.
+              { $group: { _id: "$id" } },   // distinct, shoooould allow for no repeats
+              { $limit: 500 }                 // the actors database is very big, we had to make this smaller
           ]).toArray();
 
           // 4) Convert group results to a flat string array of titles
-          const titles = roles.map(r => r._id).filter(v => v !== null && v !== undefined);
-          if (titles.length === 0) return res.status(200).json([]);   // when there is nothing matching, return nothing
+          const actorID = actorRows.map(r => syncID(r._id)).filter(v => v !== null && v !== undefined);
+          if (actorID.length === 0) return res.status(200).json([]);   // when there is nothing matching, return nothing
 
           // narrows down the movie pipeline to only those that natch the above filter
-          filter.id = { $in: titles };
-    }
+
+          if(setID)
+          {
+              const intersection = actorID.filter(x => setID.has(x));
+              if (intersection.length === 0) return res.status(200).json([]);
+              setID = new Set(intersection);
+          } else {
+              setID = new Set(actorID);
+          }
+
+      }
+
+      if (setID) { filter.id = {$in: Array.from(setID)};}
+
 
     const movies = await moviesCol.aggregate([
       { $match: filter },

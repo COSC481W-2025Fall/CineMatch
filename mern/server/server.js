@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import records from "./routes/record.js";
 import actors from "./routes/actors.js"
+import directors from "./routes/directors.js";
 
 const PORT = process.env.PORT || 5050;
 const app = express();
@@ -9,6 +10,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use("/record/actors", actors);
+app.use("/record/directors", directors);
 app.use("/record", records); // We will have to change this to movies as this is still using old MongoDB guide, same with record.js
 
 
