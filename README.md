@@ -48,3 +48,7 @@ Hey, I'm Andrew, and I'm a computer science major at EMU, with a minor in S.A.G.
 
 ### Owen O’Brien:  
 Owen is a Data Science and Analytics major at Eastern Michigan University skilled in Python, Java, SQL, and R, with additional experience in data visualization and tools such as Microsoft SQL, Power BI, AWS, and RStudio. For a database project, he created a hotel reservation system using Microsoft SQL, Power BI, and WinSCP, which allowed users to make hotel reservations through a cloud-hosted website. He has also completed coursework in big data management and data warehousing.  
+
+
+### DuJuan Owens:
+I'm a Computer Scinece major, I'm currently a senior enrolled at Eastern Michigan Universtity. I have experience with Java,Python,Php and Node.js. I made a few webistes over this summer, so I hope to put this experience to use on this project. In my free time I to study spanish and travel to other countries whenever I have the funds.
