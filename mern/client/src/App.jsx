@@ -77,7 +77,8 @@ function App() {
     director: "",
     genre: "",
     title: "",
-    year: "",
+    year_min: "", // implemented year_min and year_max instead of searching by
+    year_max: "", // only one year
     rating: ""
   });
   // State to store the list of movies returned from the API
@@ -154,6 +155,8 @@ function App() {
   async function doSearch() {
     setStatus("Loading…");
     try {
+      // TEMP LINE BELOW TO STOP YEAR INFO FROM BEING SENT TO BACK END
+      const {year_min, year_max, ... rest} = params;
       const data = await fetchMovies(params);
       setMovies(data);
       setStatus(data.length ? "" : "No results found.");
@@ -210,7 +213,10 @@ function App() {
           <aside className="sidebar">
             {/*  Simple text boxes that we will take as input  */}
             <ul className="search-filters">
-              {["Actor", "Director", "Title", "Year", "Rating"].map((label) => (
+
+              {["Actor", "Director", "Title", "Rating"].map((label) => (
+
+
                   <li className="filter-item" key={label}>
                     <div className="filter-link">
                       <input
@@ -224,6 +230,50 @@ function App() {
                     </div>
                   </li>
               ))}
+            {/* === YEAR RANGE SECTION ===
+            Displays a small label ("SEARCH BY YEAR") and two red pill inputs
+            side by side — one for the minimum year, one for the maximum year.
+            Each input behaves like the other search fields and updates state
+            through handleChange(). */}
+            <li className="year-range" key="YearRange">
+
+              {/* Section label above both bubbles */}
+              <div className="year-label">SEARCH BY YEAR</div>
+
+              {/* Container for the two pill-style year inputs */}
+              <div className="year-bubbles">
+
+                {/* ---- Minimum Year bubble ---- */}
+                <div className="filter-item">
+                  <div className="filter-link">
+                    <input
+                      id="qYear_Min"                     // maps to params.year_min
+                      className="filter-input"           // reuses shared input styling                
+                      placeholder="MIN"                  // short placeholder text
+                      value={params.year_min}            
+                      onChange={handleChange}            // updates params when typed
+                      onKeyDown={(e) => e.key === "Enter" && doSearch()} // triggers search on Enter
+                    />
+                  </div>
+                </div>
+
+                {/* ---- Maximum Year bubble ---- */}
+                <div className="filter-item">
+                  <div className="filter-link">
+                    <input
+                      id="qYear_Max"             // maps to params.year_max
+                      className="filter-input"  // reuse styling
+                      placeholder="MAX"         // placeholder text
+                      value={params.year_max}
+                      onChange={handleChange}   // updates when typed
+                      onKeyDown={(e) => e.key === "Enter" && doSearch()} // triggers search after hitting enter
+                    />
+                  </div>
+                </div>
+
+              </div>
+            </li>
+
 
               {/*Genre dropdown with checkboxes for multiple selection */}
               <li className="filter-item genre-dropdown" key="Genre">
