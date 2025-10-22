@@ -46,7 +46,7 @@ app.use("/genre", genreRouter);
 
 describe("GET /genre", () => {
     beforeEach(() => {
-        vi.resetAllMocks();
+        vi.resetAllMocks(); // Added to ensure that all tests pass when ALL test files are run
         db.collection("genre").__setDocs([
             { id: 1, genre: "Adventure" },
             { id: 2, genre: "Science Fiction" },

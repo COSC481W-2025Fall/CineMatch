@@ -125,7 +125,7 @@ app.use("/record", recordRouter);
 
 describe("GET /record/details/:id", () => {
     beforeEach(() => {
-        vi.resetAllMocks();
+        vi.resetAllMocks(); // Added to ensure that all tests pass when ALL test files are run
         db.collection("movies").__setDocs([]);
         db.collection("posters").__setDocs([]);
         db.collection("genre").__setDocs([]);

@@ -161,7 +161,7 @@ app.use("/record", recordRouter);
 
 describe("GET /record with posters", () => {
     beforeEach(() => {
-        vi.resetAllMocks();
+        vi.resetAllMocks(); // Added to ensure that all tests pass when ALL test files are run
         db.collection("posters").__setDocs([
             { id: 1, link: "http://img/poster1.jpg" },
             { id: 2, link: "url2" },

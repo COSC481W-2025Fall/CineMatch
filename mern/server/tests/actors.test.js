@@ -51,7 +51,7 @@ app.use("/actors", actorsRouter);
 
 describe("GET /record/actors", () => {
     beforeEach(() => {
-        vi.resetAllMocks();
+        vi.resetAllMocks(); // Added to ensure that all tests pass when ALL test files are run
         db.collection("actors").__setDocs([
             { _id: "a1", id: 1000001, name: "Tom Hanks",     role: "Forrest Gump" },
             { _id: "a2", id: 1003031, name: "Jamie Foxx",  role: "Django" },
