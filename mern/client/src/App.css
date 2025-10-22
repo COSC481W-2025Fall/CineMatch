@@ -26,10 +26,10 @@
       margin:0 auto; text-shadow:2px 2px 4px rgba(0,0,0,.5); transform:scaleX(1.5);
     }
 
-    .main-container { display:flex; height:calc(100vh - 60px); }
+    .main-container { display:flex; height:calc(100vh - 60px);overflow-y: auto; }
 
     .sidebar {
-      width:200px; background:#333; border-right:2px solid #555; padding:10px 8px;
+        position:sticky;top: 0;width:200px; background:#333; border-right:2px solid #555; padding:10px 8px;
     }
 
     .search-filters {
@@ -89,3 +89,4 @@
     .movie-title { font-size:16px; font-weight:800; }
     .movie-sub  { font-size:13px; color:#bbb; margin-top:2px; }
     .muted { color:#aaa; }
+
