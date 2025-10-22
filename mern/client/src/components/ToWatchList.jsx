@@ -13,10 +13,10 @@ const GENRES = [
 ];
 
 export default function WatchListPage() {
-    // read watchlist IDs from localStorage
+
     const watchlist = new Set(JSON.parse(localStorage.getItem("to-watch") || "[]"));
 
-    // details modal state (same as App.jsx)
+    
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
     async function openDetails(movie) {
@@ -31,7 +31,7 @@ export default function WatchListPage() {
         }
     }
 
-    // searches (same inputs)
+    
     const [params, setParams] = useState({
         actor: "",
         director: "",
@@ -62,7 +62,7 @@ export default function WatchListPage() {
         setStatus("Loading…");
         try {
             const data = await fetchMovies(params);
-            // Only keep movies that are in the saved watchlist
+            
             const filtered = data.filter(m => watchlist.has(m.id));
             setMovies(filtered);
             setStatus(filtered.length ? "" : "Your watch list is empty or no matches for this search.");
@@ -88,7 +88,7 @@ export default function WatchListPage() {
                     </Link>
                 </button>
                 <div className="logo">cineMatch</div>
-                <button className="navigation-button" >FEED</button>  {/* They both go nowhere rightnow */}
+                <button className="navigation-button" >FEED</button>  
                 <button className="navigation-button"><Link to="/watchlist" style={{ color: "inherit", textDecoration: "none" }}>WATCHED LIST</Link></button>
                 <button className="navigation-button active"><Link to="/to-watch-list" style={{ color: "inherit", textDecoration: "none" }}>TO-WATCH LIST</Link></button>
             </div>
@@ -166,7 +166,6 @@ export default function WatchListPage() {
                 <MovieDetails
                     details={details}
                     onClose={() => setShowDetails(false)}
-                    // optional: show “Added!” state if you also mark watched here
                     isWatched={false}
                     inWatchlist={true}
                     onMarkWatched={() => {}}

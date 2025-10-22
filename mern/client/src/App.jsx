@@ -148,8 +148,9 @@ function App() {
             SEARCH
           </button>
           <div className="logo">cineMatch</div>
-          <button className="navigation-button">FEED</button>   {/* They both go nowhere rightnow */}
-          <button className="navigation-button">WATCH LIST</button>
+          <button className="navigation-button" >FEED</button>  {/* Only this goes nowhere right now */}
+          <button className="navigation-button"><Link to="/watchlist" style={{ color: "inherit", textDecoration: "none" }}>WATCHED LIST</Link></button>
+          <button className="navigation-button"><Link to="/to-watch-list" style={{ color: "inherit", textDecoration: "none" }}>TO-WATCH LIST</Link></button>
 
         </div>
 
