@@ -83,6 +83,58 @@ function App() {
   // State to store the list of movies returned from the API
   const [movies, setMovies] = useState([]);
   const [status, setStatus] = useState("Loading…");
+
+  const [genreDropdownOpen, setGenreDropdownOpen] = useState(false);
+  const [selectedGenres, setSelectedGenres] = useState([]);
+
+
+  function toggleDropdown() {
+    if (genreDropdownOpen) {
+      setGenreDropdownOpen(false);
+    } else {
+      setGenreDropdownOpen(true);
+    }
+  }
+
+  function handleGenreToggle(genre) {
+    const newSelectedGenres = [...selectedGenres];
+
+    if (selectedGenres.includes(genre)) {
+      const index = newSelectedGenres.indexOf(genre);
+      newSelectedGenres.splice(index, 1);
+    } else {
+      newSelectedGenres.push(genre);
+    }
+    setSelectedGenres(newSelectedGenres);
+  }
+
+
+  function getGenreLabel() {
+    if (selectedGenres.length === 0) {
+      return "GENRE...";
+    } else {
+      return selectedGenres.length + " SELECTED";
+    }
+  }
+
+  function getDropdownArrowClass() {
+    if (genreDropdownOpen) {
+      return "dropdown-arrow open";
+    } else {
+      return "dropdown-arrow";
+    }
+  }
+
+  function isGenreChecked(genre) {
+    if (selectedGenres.includes(genre)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+
+
   // Build the query string for the API request based on filled parameters
   function buildQuery(p) {
     const qs = new URLSearchParams();
@@ -158,7 +210,7 @@ function App() {
           <aside className="sidebar">
             {/*  Simple text boxes that we will take as input  */}
             <ul className="search-filters">
-              {["Actor", "Director", "Genre", "Title", "Year", "Rating"].map((label) => (
+              {["Actor", "Director", "Title", "Year", "Rating"].map((label) => (
                   <li className="filter-item" key={label}>
                     <div className="filter-link">
                       <input
@@ -173,21 +225,32 @@ function App() {
                   </li>
               ))}
 
-              {/*Genre dropdown selection that will handle the state and changes of the genre filter by looping through an
-            array of the 19 genres listed above */}
-              <li className="filter-item" key="Genre">
-                <div className="filter-link">
-                  <select id="qGenre"
-                          className="filter-select"
-                          value={params.genre || ""}
-                          onChange={handleChange}>
-                    <option value="">GENRE...</option>
-                    {GENRES.map((genre) => (
-                        <option key={genre} value={genre}> {genre}
-                        </option>
-                    ))}
-                  </select>
+              {/*Genre dropdown with checkboxes for multiple selection */}
+              <li className="filter-item genre-dropdown" key="Genre">
+                <div
+                    className="filter-link genre-header"
+                    onClick={toggleDropdown} // When clicked this opens or closes the dropdown
+                >
+                  <span className="genre-label">  {/* Calls the function to display either GENRE or shows how many geners where selcted  */}
+                    {getGenreLabel()}
+                  </span>
+                  <span className={getDropdownArrowClass()}>▼</span> {/* Displays dropdown arrow from getDropDownArrowClass */}
                 </div>
+                {genreDropdownOpen && (
+                    <div className="genre-checkbox-list">
+                    {GENRES.map((genre) => (
+                        <label key={genre} className="genre-checkbox-item">
+                          <input
+                              type="checkbox"
+                              checked={isGenreChecked(genre)}
+                              onChange={() => handleGenreToggle(genre)}
+                          />
+                          <span>{genre}</span>
+                        </label>
+                    ))}
+                    </div>
+                )}
+
               </li>
             </ul>
 
