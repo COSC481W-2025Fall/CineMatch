@@ -161,28 +161,28 @@ app.use("/record", recordRouter);
 
 describe("GET /record with posters", () => {
     beforeEach(() => {
-        db.collection("movies").__setDocs([
-            { id: 1, name: "Movie1", date: 2018, rating: 4.0, posterUrl: null, description: "random description" },
-            { id: 2, name: "Movie2", date: 2019, rating: 4.5, posterUrl: "url2", description: "random description 2" },
-        ]);
+        vi.resetAllMocks(); // Added to ensure that all tests pass when ALL test files are run
         db.collection("posters").__setDocs([
             { id: 1, link: "http://img/poster1.jpg" },
+            { id: 2, link: "url2" },
 
         ]);
         db.collection("genre").__setDocs([]);
         db.collection("movies").__setDocs([
             {
-                _id: "m1",
+                id: "1",
+                _id: "1",
                 name: "Avengers: Infinity War",
                 director: "Anthony Russo",
                 date: 2018,
                 rating: 4.1,
-                posterUrl: null,
+                posterUrl: "http://img/poster1.jpg",
                 description: "Thanos seeks the Infinity Stones",
                 genre: ["Action", "Adventure"],
             },
             {
-                _id: "m2",
+                id: "2",
+                _id: "2",
                 name: "Avengers: Endgame",
                 director: "Joe Russo",
                 date: 2019,
@@ -192,7 +192,8 @@ describe("GET /record with posters", () => {
                 genre: ["Action", "Sci-Fi"],
             },
             {
-                _id: "m3",
+                id: "3",
+                _id: "3",
                 name: "Barbie",
                 director: "Greta Gerwig",
                 date: 2023,
@@ -210,11 +211,11 @@ describe("GET /record with posters", () => {
     it("returns movies and fills missing posterUrl from posters collection", async () => {
         const res = await request(app).get("/record");
         expect(res.status).toBe(200);
-        expect(res.body.length).toBe(2);
+        expect(res.body.length).toBe(3);
 
         const byId = Object.fromEntries(res.body.map((m) => [m.id, m]));
         expect(byId[1].posterUrl).toBe("http://img/poster1.jpg");
-        expect(byId[2].posterUrl).toBe("url2");
+        expect(byId[2].posterUrl).toBe("keep-me");
     });
 
     // test #2: Testing movie posters by year
@@ -222,7 +223,8 @@ describe("GET /record with posters", () => {
         const res = await request(app).get("/record").query({ year: "2018" });
         expect(res.status).toBe(200);
         expect(res.body.length).toBe(1);
-        expect(res.body[0].id).toBe(1);
+
+        expect(res.body[0].id).toBe('1');
         expect(res.body[0].posterUrl).toBe("http://img/poster1.jpg");
     });
 

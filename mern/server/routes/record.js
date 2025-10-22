@@ -162,7 +162,7 @@ router.get("/:id", async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 });
-// GET /record/details/:id  <-------endpoint
+// GET /record/details/:id
 /**
  * Retrieve detailed info about a movie including genres, poster URL, and top cast members from multiple tables in MongoDB.
  * Look up movie by ID, grab movie info, put into object to send to frontend.
