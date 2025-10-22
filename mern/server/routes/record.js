@@ -162,5 +162,79 @@ router.get("/:id", async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 });
+// GET /record/details/:id  <-------endpoint
+/**
+ * Retrieve detailed info about a movie including genres, poster URL, and top cast members from multiple tables in MongoDB.
+ * Look up movie by ID, grab movie info, put into object to send to frontend.
+ */
+router.get("/details/:id", async (req, res) => {
+    try {
+
+        // convert route param to number to match numeric IDs and set references to all tables
+        const id = Number(req.params.id);
+        const moviesCol   = db.collection("movies");
+        const postersCol  = db.collection("posters");
+        const genreCol    = db.collection("genre");
+        const actorsCol   = db.collection("actors");
+
+        // find movie from movie table using its ID
+        const movie = await moviesCol.findOne({ id });
+        if (!movie) return res.status(404).json({ error: "Movie not found" });
+
+        // look up all genre docs for movie ID
+        const grows = await genreCol
+            .find({ id }, { projection: { _id: 0, genre: 1 } })     // return only genre field
+            .toArray();
+        const genres = grows.map(g => g.genre);             // map array of docs to simple array of strings i.e. ["Sci-fi", "Romance"]
+
+        // use pre-existing poster URL, else find matching poster in posters table to display
+        let posterUrl = movie.posterUrl ?? null;
+        if (!posterUrl) {
+            const prow = await postersCol.findOne(
+                { id },
+                { projection: { _id: 0, link: 1 } }
+            );
+            if (prow?.link) posterUrl = prow.link;
+        }
+
+        // pipeline to get top 5 cast by movie ID
+        const castById = await actorsCol.aggregate([
+            { $match: { id } },
+            { $group: { _id: "$name", appearances: { $sum: 1 } } },     // group actors by name, count # of appearances
+            { $sort: { appearances: -1, _id: 1 } },                     // sort by most frequent actors then by alphabetically
+            { $limit: 5 }
+        ]).toArray();
+
+        // find cast using title of movie if no actors match movie ID and use same pipeline above
+        let topCast = castById.map(d => d._id);
+        if (topCast.length === 0) {
+            const castByTitle = await actorsCol.aggregate([
+                { $match: { role: movie.name } },
+                { $group: { _id: "$name", appearances: { $sum: 1 } } },
+                { $sort: { appearances: -1, _id: 1 } },
+                { $limit: 5 }
+            ]).toArray();
+            topCast = castByTitle.map(d => d._id);
+        }
+        // object created containing all movie info
+        const payload = {
+            id: movie.id,
+            title: movie.name,
+            year: movie.date,
+            rating: movie.rating ?? null,
+            posterUrl,
+            description: movie.description ?? "",
+            genres,
+            topCast,
+        };
+        // send movie details
+        res.status(200).json(payload);
+        
+        // throw error for any mishaps
+    } catch (err) {
+        console.error("GET /record/details/:id error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
 
 export default router;
