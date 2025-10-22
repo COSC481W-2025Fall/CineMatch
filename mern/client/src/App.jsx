@@ -4,7 +4,13 @@ import MovieDetails from "./components/MovieDetails.jsx"
 
 import { Link } from "react-router-dom";
 
-const API_BASE = ""; // set your API base here
+const API_BASE = ""; // Your backend API
+
+// get TMDB key from .env file
+const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+const TMDB_BASE_URL = "https://api.themoviedb.org/3";
+
+
 
 const GENRES = [
   "Action",
