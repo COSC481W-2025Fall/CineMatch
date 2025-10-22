@@ -13,10 +13,8 @@ const GENRES = [
 ];
 
 export default function WatchListPage() {
-
     const watchlist = new Set(JSON.parse(localStorage.getItem("to-watch") || "[]"));
 
-    
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
     async function openDetails(movie) {
@@ -31,7 +29,6 @@ export default function WatchListPage() {
         }
     }
 
-    
     const [params, setParams] = useState({
         actor: "",
         director: "",
@@ -62,7 +59,6 @@ export default function WatchListPage() {
         setStatus("Loading…");
         try {
             const data = await fetchMovies(params);
-            
             const filtered = data.filter(m => watchlist.has(m.id));
             setMovies(filtered);
             setStatus(filtered.length ? "" : "Your watch list is empty or no matches for this search.");
@@ -88,7 +84,7 @@ export default function WatchListPage() {
                     </Link>
                 </button>
                 <div className="logo">cineMatch</div>
-                <button className="navigation-button" >FEED</button>  
+                <button className="navigation-button" >FEED</button>  {}
                 <button className="navigation-button"><Link to="/watchlist" style={{ color: "inherit", textDecoration: "none" }}>WATCHED LIST</Link></button>
                 <button className="navigation-button active"><Link to="/to-watch-list" style={{ color: "inherit", textDecoration: "none" }}>TO-WATCH LIST</Link></button>
             </div>
