@@ -64,7 +64,6 @@ function App() {
           SEARCH
         </button>
         <div className="logo">cineMatch</div>
-        <button className="navigation-button">HELP</button>
         <button className="navigation-button">FEED</button>   {/* They both go nowhere rightnow */}
         <button className="navigation-button">WATCH LIST</button>
         
