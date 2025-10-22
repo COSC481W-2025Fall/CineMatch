@@ -46,6 +46,7 @@ app.use("/genre", genreRouter);
 
 describe("GET /genre", () => {
     beforeEach(() => {
+        vi.resetAllMocks();
         db.collection("genre").__setDocs([
             { id: 1, genre: "Adventure" },
             { id: 2, genre: "Science Fiction" },

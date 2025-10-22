@@ -46,6 +46,7 @@ app.use("/directors", directorsRouter);
 
 describe("GET /record/directors", () => {
     beforeEach(() => {
+        vi.resetAllMocks();
         db.collection("directors").__setDocs([
             { _id: "a1", id: 1000001, name: "Greta Gerwig",     role: "Director" },
             { _id: "a2", id: 1000002, name: "Bong Joon-ho",     role: "Director" },
