@@ -122,4 +122,20 @@ body {
 }
 .movie-title { font-size:16px; font-weight:800; }
 .movie-sub  { font-size:13px; color:#bbb; margin-top:2px; }
-.muted { color:#aaa; }
+.muted { color:#aaa; opacity: 0.7; }
+
+.modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+}
+.modal {
+    background: #111; color: #fff; max-width: 800px; width: 92%;
+    border-radius: 12px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.modal-close {
+    position: absolute; right: 12px; top: 8px;
+    background: transparent; border: 0; color: #fff; font-size: 24px; cursor: pointer;
+}
+.modal-header { display: flex; gap: 16px; align-items: flex-start; }

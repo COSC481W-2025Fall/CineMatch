@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, {useState, useEffect, useMemo} from "react";
 import "./App.css";
+import MovieDetails from "./components/MovieDetails.jsx"
+
+import { Link } from "react-router-dom";
 
 const API_BASE = ""; // set your API base here
 
@@ -25,6 +28,49 @@ const GENRES = [
 ]
 
 function App() {
+
+  const [watched, setWatched] = useState(() => new Set(JSON.parse(localStorage.getItem("watched") || "[]")));
+  //const [watchlist, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("watchlist") || "[]")));
+
+  const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("toWatch") || "[]")));
+
+
+  useEffect(() => { localStorage.setItem("watched", JSON.stringify([...watched])); }, [watched]);
+  useEffect(() => { localStorage.setItem("to-watch", JSON.stringify([...toWatch])); }, [toWatch]);
+
+  const [details, setDetails] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+  async function openDetails(movie) {
+    try {
+      const res = await fetch(`/record/details/${movie.id}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setDetails({ id: movie.id, ...data });  // <-- keep id
+      setShowDetails(true);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  /*function markWatched(movie) {
+    setWatched(prev => {
+      const next = new Set(prev);
+      next.add(movie.id);
+      return next;
+    });
+  }
+
+  function addToWatchlist(movie) {
+    setWatchlist(prev => {
+      const next = new Set(prev);
+      next.add(movie.id);
+      return next;
+    });
+  }*/
+
+
+
+
   // State for search parameters
   const [params, setParams] = useState({
     actor: "",
@@ -79,18 +125,31 @@ function App() {
     }));
   }
 
+
+  const isWatched = useMemo(() => details && watched.has(details.id), [details, watched]);
+  const inToWatch = useMemo(() => details && toWatch.has(details.id), [details, toWatch]);
+
+  const onMarkWatched = () => {
+    if (!details) return;
+    if (watched.has(details.id)) return;
+    setWatched(prev => new Set(prev).add(details.id));
+  };
+  const onAddToWatch = () => {
+    if (!details) return;
+    if (toWatch.has(details.id)) return;
+    setWatchlist(prev => new Set(prev).add(details.id));
+  };
+
   return (
       <>
         <div className="navigation-top">
           <button className="navigation-button active" onClick={doSearch}>{/*
   <button class="navigation-button active" id="searchTop">SEARCH</button> <!-- Temporary till we add in Feed and Watch List, for now this just does the same as search */}
-
             SEARCH
           </button>
           <div className="logo">cineMatch</div>
           <button className="navigation-button">FEED</button>   {/* They both go nowhere rightnow */}
           <button className="navigation-button">WATCH LIST</button>
-
 
         </div>
 
@@ -155,7 +214,7 @@ function App() {
             <div id="status" className="muted">{status}</div>
             <div id="results" className="movie-grid">
               {movies.map((m, idx) => (
-                  <article className="movie-card" key={idx}>
+                  <article className="movie-card" key={idx} onClick={() => openDetails(m)} style={{cursor: "pointer"}}>
                     <img
                         src={m.posterUrl || "https://placehold.co/300x450?text=No+Poster"}
                         alt={m.title || ""}
@@ -171,6 +230,16 @@ function App() {
               ))}
             </div>
           </main>
+          {showDetails && (
+              <MovieDetails
+                  details={details}
+                  onClose={() => setShowDetails(false)}
+                  isWatched={!!isWatched}
+                  inToWatch={!!inToWatch}
+                  onMarkWatched={onMarkWatched}
+                  onAddToWatch={onAddToWatch}
+              />
+          )}
         </div>
       </>
   );
