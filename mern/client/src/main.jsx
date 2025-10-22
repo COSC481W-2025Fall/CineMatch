@@ -1,7 +1,18 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";  // Your App.jsx file
+import App from "./App";
 import "./App.css";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import ToWatchList from "./components/ToWatchList.jsx";
+import WatchList from "./components/WatchList.jsx";
 
-const root = createRoot(document.getElementById("root")); // grab the div
-root.render(<App />); // render your React component into it
+const root = createRoot(document.getElementById("root")).render(
+    <BrowserRouter>
+        <Routes>
+            <Route path="/" element={<App />} />
+            <Route path="/to-watch-list" element={<ToWatchList />} />
+            <Route path="/watchlist" element={<WatchList />} />
+        </Routes>
+    </BrowserRouter>
+);
+root.render(<App />);
