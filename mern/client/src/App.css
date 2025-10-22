@@ -93,6 +93,74 @@ body {
     font-style: italic;
 }
 
+
+.genre-dropdown {
+    position: relative;
+}
+
+.genre-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.genre-label {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #fff;
+}
+
+.dropdown-arrow {
+    transition: transform 0.3s ease;
+    font-size: 10px;
+}
+
+.dropdown-arrow.open {
+    transform: rotate(180deg);
+}
+
+.genre-checkbox-list {
+    background: #2a2a2a;
+    border-radius: 8px;
+    margin-top: 8px;
+    padding: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    box-shadow: 0 4px 6px rgba(0,0,0,.3);
+}
+
+.genre-checkbox-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.genre-checkbox-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.genre-checkbox-item input[type="checkbox"] {
+    margin-right: 10px;
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    accent-color: #f7e135;
+}
+
+.genre-checkbox-item span {
+    color: #fff;
+}
+
 .go-btn {
     width:calc(100% - 24px);
     margin:12px; padding:10px 12px;
