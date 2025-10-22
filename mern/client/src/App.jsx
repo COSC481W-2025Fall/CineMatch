@@ -32,7 +32,7 @@ function App() {
   const [watched, setWatched] = useState(() => new Set(JSON.parse(localStorage.getItem("watched") || "[]")));
   //const [watchlist, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("watchlist") || "[]")));
 
-  const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("toWatch") || "[]")));
+  const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("to-watch") || "[]")));
 
 
   useEffect(() => { localStorage.setItem("watched", JSON.stringify([...watched])); }, [watched]);
