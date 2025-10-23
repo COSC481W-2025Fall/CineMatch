@@ -1,6 +1,7 @@
 import React, {useState, useEffect, useMemo} from "react";
 import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx"
+import { findTmdbIdByTitleYear } from "./components/converter";
 
 import { Link } from "react-router-dom";
 
