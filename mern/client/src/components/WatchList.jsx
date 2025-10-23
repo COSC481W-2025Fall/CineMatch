@@ -85,6 +85,7 @@ export default function WatchListPage() {
                     </Link>
                 </button>
                 <div className="logo">cineMatch</div>
+                <button className="navigation-button"><Link to="/help" style={{ color: "inherit", textDecoration: "none" }}>Help</Link></button>
                 <button className="navigation-button" >FEED</button>  {/* They both go nowhere rightnow */}
                 <button className="navigation-button active">WATCHED LIST</button>
                 <button className="navigation-button"><Link to="/to-watch-list" style={{ color: "inherit", textDecoration: "none" }}>TO-WATCH LIST</Link></button>

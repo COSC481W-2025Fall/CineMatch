@@ -33,7 +33,7 @@ function App() {
   //const [watchlist, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("watchlist") || "[]")));
 
   const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("toWatch") || "[]")));
-
+  
 
   useEffect(() => { localStorage.setItem("watched", JSON.stringify([...watched])); }, [watched]);
   useEffect(() => { localStorage.setItem("to-watch", JSON.stringify([...toWatch])); }, [toWatch]);
@@ -148,9 +148,13 @@ function App() {
             SEARCH
           </button>
           <div className="logo">cineMatch</div>
+
+          <button className="navigation-button"><Link to="/help" style={{ color: "inherit", textDecoration: "none" }}>Help</Link></button>
           <button className="navigation-button" >FEED</button>  {/* Only this goes nowhere right now */}
           <button className="navigation-button"><Link to="/watchlist" style={{ color: "inherit", textDecoration: "none" }}>WATCHED LIST</Link></button>
           <button className="navigation-button"><Link to="/to-watch-list" style={{ color: "inherit", textDecoration: "none" }}>TO-WATCH LIST</Link></button>
+          
+          
 
         </div>
 
