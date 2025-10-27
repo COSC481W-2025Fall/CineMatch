@@ -1,0 +1,53 @@
+#help-container {
+  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+  padding: 40px;
+}
+
+.help-header {
+  padding-top: 10px;
+  text-align: center;
+}
+
+.help-button {
+  font-family: 'Tomorrow', sans-serif;
+  padding: 15px 30px;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(45deg, #ff4444, #cc3333);
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.help-button:hover {
+  background-color: #005A9E;
+}
+
+#info-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  /* centers text inside the <p> */
+  margin-top: 20px;
+  padding: 20px;
+}
+
+
+.help-info {
+  max-width: 600px;
+  /* keeps text from stretching too wide */
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+#help-body {
+  display: flex;
+  justify-content: center;
+
+}
