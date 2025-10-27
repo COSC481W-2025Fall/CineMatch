@@ -79,7 +79,8 @@ function App() {
     title: "",
     year_min: "", // implemented year_min and year_max instead of searching by
     year_max: "", // only one year
-    rating: ""
+    rating_min: "", // implemented rating_min and rating_max instead of one rating 
+    rating_max: ""
   });
   // State to store the list of movies returned from the API
   const [movies, setMovies] = useState([]);
@@ -155,8 +156,8 @@ function App() {
   async function doSearch() {
     setStatus("Loading…");
     try {
-      // TEMP LINE BELOW TO STOP YEAR INFO FROM BEING SENT TO BACK END
-      const {year_min, year_max, ... rest} = params;
+      // TEMP LINE BELOW TO STOP YEAR/RATING INFO FROM BEING SENT TO BACK END
+      const {year_min, year_max, rating_min,rating_max, ... rest} = params;
       const data = await fetchMovies(params);
       setMovies(data);
       setStatus(data.length ? "" : "No results found.");
@@ -214,7 +215,7 @@ function App() {
             {/*  Simple text boxes that we will take as input  */}
             <ul className="search-filters">
 
-              {["Actor", "Director", "Title", "Rating"].map((label) => (
+              {["Actor", "Director", "Title"].map((label) => (
 
 
                   <li className="filter-item" key={label}>
@@ -238,7 +239,7 @@ function App() {
             <li className="year-range" key="YearRange">
 
               {/* Section label above both bubbles */}
-              <div className="year-label">SEARCH BY YEAR</div>
+              <div className="year-label">YEAR</div>
 
               {/* Container for the two pill-style year inputs */}
               <div className="year-bubbles">
@@ -271,6 +272,53 @@ function App() {
                   </div>
                 </div>
 
+              </div>
+            </li>
+
+            {/* === RATING RANGE SECTION ===
+                Two pill inputs side-by-side for rating minimum and maximum (0–5).
+                Works the same as the year. */}
+            <li className="rating-range" key="RatingRange">
+              <div className="rating-label">RATING (0–5)</div>
+
+              <div className="rating-bubbles">
+                {/* ---- Minimum Rating bubble ---- */}
+                <div className="filter-item">
+                  <div className="filter-link">
+                    <input
+                      id="qRating_Min"              // maps to params.rating_min
+                      className="filter-input"
+                      type="number"
+                      inputMode="decimal"
+                      step="0.1"
+                      min="0"
+                      max="5"
+                      placeholder="MIN"
+                      value={params.rating_min}
+                      onChange={handleChange}
+                      onKeyDown={(e) => e.key === "Enter" && doSearch()}
+                    />
+                  </div>
+                </div>
+
+                {/* ---- Maximum Rating bubble ---- */}
+                <div className="filter-item">
+                  <div className="filter-link">
+                    <input
+                      id="qRating_Max"              // maps to params.rating_max
+                      className="filter-input"
+                      type="number"
+                      inputMode="decimal"
+                      step="0.1"
+                      min="0"
+                      max="5"
+                      placeholder="MAX"
+                      value={params.rating_max}
+                      onChange={handleChange}
+                      onKeyDown={(e) => e.key === "Enter" && doSearch()}
+                    />
+                  </div>
+                </div>
               </div>
             </li>
 
