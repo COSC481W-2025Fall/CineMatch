@@ -11,7 +11,8 @@ const API_BASE = ""; // Your backend API
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
-
+// for exporting
+const CAST_LIMIT = 7
 
 const GENRES = [
   "Action",
@@ -85,7 +86,7 @@ function App() {
             // if found then pull actors and runtime from api
             if (tmdbId !== null && tmdbId !== undefined)
             {
-                const numOfActors = 7;
+                const numOfActors = CAST_LIMIT;
                 const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
                 url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
                 url.searchParams.set("append_to_response", "credits"); // include cast list
@@ -344,6 +345,10 @@ function App() {
                   inToWatch={!!inToWatch}
                   onMarkWatched={onMarkWatched}
                   onAddToWatch={onAddToWatch}
+
+                  // detail pass from api
+                  castLimit={CAST_LIMIT}
+                  runtime={details && typeof details.runtime === "number" ? details.runtime : null} // safe read
               />
           )}
         </div>
