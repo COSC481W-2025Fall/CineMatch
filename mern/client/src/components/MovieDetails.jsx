@@ -11,7 +11,7 @@ function formatRuntime(minutes)
 
     if (hours > 0)
         return `${hours}h ${mins}m`;
-    return `${mins}m`; // fallback for documentaries or older movies
+    return `${mins}m`;
 }
 
 export default function MovieDetails({ details, onClose, isWatched, inToWatch, onMarkWatched, onAddToWatch }) {

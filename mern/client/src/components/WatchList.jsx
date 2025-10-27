@@ -14,7 +14,10 @@ const GENRES = [
 
 export default function WatchListPage() {
 
-    const watchlist = new Set(JSON.parse(localStorage.getItem("watched") || "[]"));
+    //const watchlist = new Set(JSON.parse(localStorage.getItem("watched") || "[]"));
+    const watchlist = new Set(
+        (JSON.parse(localStorage.getItem("watched") || "[]") || []).map(Number)
+    );
 
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
@@ -56,7 +59,7 @@ export default function WatchListPage() {
         return res.json();
     }
 
-    async function doSearch() {
+    /*async function doSearch() {
         setStatus("Loading…");
         try {
             const data = await fetchMovies(params);
@@ -67,7 +70,62 @@ export default function WatchListPage() {
             console.error(err);
             setStatus("Error loading results.");
         }
+    }*/
+
+
+    /* ADDING TEMPORARY FIX TO SEARCH THE ENTIRE DATABASE, YES THIS WILL MAKE THE WATCHLIST SLOW! 
+    BUT WE NEED TO ACTUALLY HAVE THE STUFF IN FRONT OF US TO TEST IT
+    */
+    // TODO: Break this down to only get stuff from the cache then aggregate it by movie id to get the full list and it's details
+    async function doSearch() {
+        setStatus("Loading…");
+        try {
+            const hasAnyFilter = Object.values(params).some(v => v && String(v).trim().length > 0);
+
+            if (!hasAnyFilter) {
+                const ids = Array.from(watchlist);
+                if (ids.length === 0) {
+                    setMovies([]);
+                    setStatus("Your watch list is empty.");
+                    return;
+                }
+
+                const results = [];
+                for (const id of ids) {
+                    try {
+                        const res = await fetch(`/record/details/${id}`);
+                        if (!res.ok) continue;
+                        const d = await res.json();
+                        results.push({
+                            id: d.id,
+                            title: d.title,
+                            year: d.year,
+                            rating: d.rating ?? null,
+                            posterUrl: d.posterUrl ?? null,
+                            genre: Array.isArray(d.genres) ? d.genres : [],
+                            description: d.description || ""
+                        });
+                    } catch { /* empty */ }
+                }
+
+                setMovies(results);
+                setStatus(results.length ? "" : "Your watch list is empty.");
+                return;
+            }
+            
+            const url = buildQuery(params);
+            const res = await fetch(API_BASE + url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const filtered = data.filter(m => watchlist.has(Number(m.id)));
+            setMovies(filtered);
+            setStatus(filtered.length ? "" : "No matches for your watched list with these filters.");
+        } catch (err) {
+            console.error(err);
+            setStatus("Error loading results.");
+        }
     }
+
 
     useEffect(() => { doSearch(); /* eslint-disable-next-line */ }, []);
 
@@ -85,7 +143,7 @@ export default function WatchListPage() {
                     </Link>
                 </button>
                 <div className="logo">cineMatch</div>
-                <button className="navigation-button" >FEED</button>  {/* They both go nowhere rightnow */}
+                <button className="navigation-button"><Link to="/feed" style={{ color: "inherit", textDecoration: "none" }}>FEED</Link></button>
                 <button className="navigation-button active">WATCHED LIST</button>
                 <button className="navigation-button"><Link to="/to-watch-list" style={{ color: "inherit", textDecoration: "none" }}>TO-WATCH LIST</Link></button>
             </div>
