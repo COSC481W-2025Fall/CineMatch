@@ -1,6 +1,19 @@
 // src/components/MovieDetails.jsx
 import React from "react";
 
+function formatRuntime(minutes)
+{
+    if (typeof minutes !== "number" || minutes < 0)
+        return null;
+
+    const hours= Math.floor(minutes / 60);
+    const mins = minutes % 60;
+
+    if (hours > 0)
+        return `${hours}h ${mins}m`;
+    return `${mins}m`; // fallback for documentaries or older movies
+}
+
 export default function MovieDetails({ details, onClose, isWatched, inToWatch, onMarkWatched, onAddToWatch }) {
     if (!details) return null;
 
@@ -11,8 +24,12 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
         posterUrl,
         description,
         topCast,
+        topCastCount,
         genres,
+        runtime
     } = details;
+
+    const runtimeText = formatRuntime(runtime);
 
     return (
         <div className="modal-backdrop" onClick={onClose}>
@@ -31,7 +48,9 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
                     <div style={{ flex: 1 }}>
                         <h2 style={{ margin: "0 0 8px" }}>{title ?? "Untitled"}</h2>
                         <div className="muted" style={{ marginBottom: 8 }}>
-                            {(year ?? "—")} {rating != null ? ` • ⭐ ${rating}` : ""}
+                            {(year ?? "—")}
+                            {rating != null ? ` • ⭐ ${rating}` : ""}
+                            {runtimeText ? ` • ${runtimeText}` : ""}
                         </div>
 
                         {Array.isArray(genres) && genres.length > 0 && (
@@ -42,7 +61,7 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
 
                         {Array.isArray(topCast) && topCast.length > 0 && (
                             <div style={{ marginBottom: 12 }}>
-                                <strong>Top cast:</strong> {topCast.slice(0, 5).join(", ")}
+                                <strong>Top cast:</strong> {topCast.slice(0, topCastCount).join(", ")}
                             </div>
                         )}
 

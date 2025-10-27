@@ -1,10 +1,18 @@
 import React, {useState, useEffect, useMemo} from "react";
 import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx"
+import { findTmdbIdByTitleYear } from "./components/converter";
 
 import { Link } from "react-router-dom";
 
-const API_BASE = ""; // set your API base here
+const API_BASE = ""; // Your backend API
+
+// get TMDB key from .env file
+const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+const TMDB_BASE_URL = "https://api.themoviedb.org/3";
+
+// for exporting
+const CAST_LIMIT = 7
 
 const GENRES = [
   "Action",
@@ -40,17 +48,116 @@ function App() {
 
   const [details, setDetails] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
-  async function openDetails(movie) {
-    try {
-      const res = await fetch(`/record/details/${movie.id}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setDetails({ id: movie.id, ...data });  // <-- keep id
-      setShowDetails(true);
-    } catch (e) {
-      console.error(e);
+// App.jsx
+    async function openDetails(movie)
+    {
+        try {
+            const res = await fetch(`/record/details/${movie.id}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            // grab title and year from database
+            let titleForLookup = "";
+            if (data && typeof data.title === "string" && data.title.length > 0)
+            {
+                titleForLookup = data.title;
+            }
+            else
+            {
+                titleForLookup = movie.title;
+            }
+
+            let yearForLookup;
+            if (data && typeof data.year === "number")
+            {
+                yearForLookup = data.year;
+            }
+            else
+            {
+                yearForLookup = movie.year;
+            }
+
+            // give converter title and year
+            const tmdbId = await findTmdbIdByTitleYear(titleForLookup, yearForLookup, { language: "en-US" }); // change to any if having issues with forign movies (forign movies might have different release date based on language if 2 versions exist)
+            console.log("[TMDB TEST] input:", { titleForLookup, yearForLookup }, "=> tmdbId:", tmdbId);
+
+            let patch = {}; // empty
+
+            // if found then pull actors and runtime from api
+            if (tmdbId !== null && tmdbId !== undefined)
+            {
+                const numOfActors = CAST_LIMIT;
+                const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
+                url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
+                url.searchParams.set("append_to_response", "credits"); // include cast list
+
+                const tmdbRes = await fetch(url.toString(), { headers: { accept: "application/json" } });
+                if (tmdbRes.ok)
+                {
+                    const tmdb = await tmdbRes.json();
+
+                    // get cast (actors) from tmdb.credits.cast
+                    // tmdbCast will be empty if invalid
+                    let tmdbCast = [];
+                    if (tmdb && tmdb.credits && tmdb.credits.cast && Array.isArray(tmdb.credits.cast))
+                    {
+                        tmdbCast = tmdb.credits.cast;
+                    }
+
+                    // sort cast
+                    // ao/bo are order of ab, fixes an issue where cast is not grabbed in order
+                    tmdbCast.sort(function (a, b) // TMDB defines "order" (0 is the top credit). If missing, treat as very large (999).
+                    {
+                        let ao = 999;
+                        let bo = 999;
+                        if (a && typeof a.order === "number") ao = a.order;
+                        if (b && typeof b.order === "number") bo = b.order;
+                        return ao - bo;
+                    });
+
+                    // get the first X number of actors
+                    const topActors = tmdbCast.slice(0, numOfActors);
+
+                    // build an array of cast names with strings
+                    const topCast = [];
+                    for (let i = 0; i < topActors.length; i++)
+                    {
+                        const person = topActors[i];
+                        if (person && typeof person.name === "string" && person.name.length > 0)
+                        {
+                            topCast.push(person.name);
+                        }
+                    }
+
+                    // read runtime in min if it exists and is a number otherwise leave it as null
+                    let runtime = null;
+                    if (tmdb && typeof tmdb.runtime === "number")
+                    {
+                        runtime = tmdb.runtime;
+                    }
+
+                    // fill patch objects
+                    patch.tmdbId = tmdbId; // keep for debugging or other uses
+                    if (topCast.length > 0)
+                    {
+                        patch.topCast = topCast; // override DB actors with top billed tmdb list
+                    }
+                    if (runtime !== null)
+                    {
+                        patch.runtime = runtime; // add runtime (minutes) - convert this to hr/min on frontend
+                    }
+
+                    console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime);
+                }
+            }
+
+            setDetails({ id: movie.id, ...data, ...patch });
+            setShowDetails(true);
+        } catch (e) {
+            console.error(e);
+        }
     }
-  }
+
 
   /*function markWatched(movie) {
     setWatched(prev => {
@@ -352,6 +459,10 @@ function App() {
                   inToWatch={!!inToWatch}
                   onMarkWatched={onMarkWatched}
                   onAddToWatch={onAddToWatch}
+
+                  // detail pass from api
+                  castLimit={CAST_LIMIT}
+                  runtime={details && typeof details.runtime === "number" ? details.runtime : null} // safe read
               />
           )}
         </div>
