@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ToWatchList from "./components/ToWatchList.jsx";
 import WatchList from "./components/WatchList.jsx";
 import RecommendationFeed from "./components/RecommendationFeed.jsx";
+import Help from "./components/Help.jsx";
 
 const root = createRoot(document.getElementById("root")).render(
     <BrowserRouter>
@@ -14,6 +15,7 @@ const root = createRoot(document.getElementById("root")).render(
             <Route path="/to-watch-list" element={<ToWatchList />} />
             <Route path="/watchlist" element={<WatchList />} />
             <Route path="/feed" element={<RecommendationFeed />} />
+            <Route path="/help" element={<Help />} />
         </Routes>
     </BrowserRouter>
 );

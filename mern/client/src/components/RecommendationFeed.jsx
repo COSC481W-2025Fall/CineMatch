@@ -99,13 +99,10 @@ export default function RecommendationFeed() {
                     <Link to="/" style={{ color: "inherit", textDecoration: "none" }}>SEARCH</Link>
                 </button>
                 <div className="logo">cineMatch</div>
+                <button className="navigation-button"><Link to="/help" style={{ color: "inherit", textDecoration: "none" }}>HELP</Link></button>
                 <button className="navigation-button active">FEED</button>
-                <button className="navigation-button">
-                    <Link to="/watchlist" style={{ color: "inherit", textDecoration: "none" }}>WATCHED LIST</Link>
-                </button>
-                <button className="navigation-button">
-                    <Link to="/to-watch-list" style={{ color: "inherit", textDecoration: "none" }}>TO-WATCH LIST</Link>
-                </button>
+                <button className="navigation-button"><Link to="/watchlist" style={{ color: "inherit", textDecoration: "none" }}>WATCHED LIST</Link></button>
+                <button className="navigation-button"><Link to="/to-watch-list" style={{ color: "inherit", textDecoration: "none" }}>TO-WATCH LIST</Link></button>
             </div>
 
             <div className="main-container">

@@ -49,12 +49,17 @@ export default function Help() {
                     </Link>
                 </button>
                 <div className="logo">cineMatch</div>
-                <button className="navigation-button active">HELP</button>.       {/* Same navigation bar */}
-                <button className="navigation-button">FEED</button>
+                <button className="navigation-button active">HELP</button>       {/* Same navigation bar */}
+                <button className="navigation-button">
+                    <Link
+                    to="/feed"
+                    style={{ color: "inherit", textDecoration: "none" }}>       {/* routes to the other pages */}
+                    FEED
+                </Link></button>
                 <button className="navigation-button">
                     <Link
                         to="/watchlist"
-                        style={{ color: "inherit", textDecoration: "none" }}>.       {/* routes to the other pages */}
+                        style={{ color: "inherit", textDecoration: "none" }}>       {/* routes to the other pages */}
                         WATCHED LIST
                     </Link>
                 </button>
