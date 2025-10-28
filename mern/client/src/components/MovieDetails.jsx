@@ -11,11 +11,11 @@ function formatRuntime(minutes)
 
     if (hours > 0)
         return `${hours}h ${mins}m`;
-    return `${mins}m`; // fallback for documentaries or older movies
+    return `${mins}m`; 
 }
 
 export default function MovieDetails({ details, onClose, isWatched, inToWatch, onMarkWatched, onAddToWatch }) {
-    if (!details) return null;
+    if (!details) return null; // If no movie details are provided, render nothing
 
     const {
         title,
@@ -31,12 +31,13 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
 
     const runtimeText = formatRuntime(runtime);
 
+    // Clicking the backdrop closes the modal
     return (
         <div className="modal-backdrop" onClick={onClose}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
                 <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
 
-                <div className="modal-header">
+                <div className="modal-header"> {/* Use a placeholder image if no poster URL is provided */}
                     <img
                         src={posterUrl || "https://placehold.co/220x330?text=No+Poster"}
                         alt={title || ""}
@@ -45,7 +46,7 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
                         style={{ borderRadius: 8, flexShrink: 0 }}
                     />
 
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1 }}> {/* Show year if present, rating if its not null, and runtime if present*/}
                         <h2 style={{ margin: "0 0 8px" }}>{title ?? "Untitled"}</h2>
                         <div className="muted" style={{ marginBottom: 8 }}>
                             {(year ?? "—")}
@@ -59,6 +60,7 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
                             </div>
                         )}
 
+                        {/* Only show up the top cast members */}
                         {Array.isArray(topCast) && topCast.length > 0 && (
                             <div style={{ marginBottom: 12 }}>
                                 <strong>Top cast:</strong> {topCast.slice(0, topCastCount).join(", ")}
