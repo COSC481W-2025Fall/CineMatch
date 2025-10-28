@@ -156,9 +156,9 @@ function App() {
   async function doSearch() {
     setStatus("Loading…");
     try {
-      // TEMP LINE BELOW TO STOP YEAR/RATING INFO FROM BEING SENT TO BACK END
-      const {year_min, year_max, rating_min,rating_max, ... rest} = params;
-      const data = await fetchMovies(params);
+      // TEMP LINE BELOW TO STOP RATING INFO FROM BEING SENT TO BACK END
+      const { rating_min, rating_max, ...p } = params;
+      const data = await fetchMovies(p);
       setMovies(data);
       setStatus(data.length ? "" : "No results found.");
     } catch (err) {
@@ -249,7 +249,8 @@ function App() {
                   <div className="filter-link">
                     <input
                       id="qYear_Min"                     // maps to params.year_min
-                      className="filter-input"           // reuses shared input styling                
+                      className="filter-input"           // reuses shared input styling
+                      type="number"                
                       placeholder="MIN"                  // short placeholder text
                       value={params.year_min}            
                       onChange={handleChange}            // updates params when typed
@@ -264,6 +265,7 @@ function App() {
                     <input
                       id="qYear_Max"             // maps to params.year_max
                       className="filter-input"  // reuse styling
+                      type="number"
                       placeholder="MAX"         // placeholder text
                       value={params.year_max}
                       onChange={handleChange}   // updates when typed
@@ -276,7 +278,7 @@ function App() {
             </li>
 
             {/* === RATING RANGE SECTION ===
-                Two pill inputs side-by-side for rating minimum and maximum (0–5).
+                Two bubble inputs side-by-side for rating min and max (0–5).
                 Works the same as the year. */}
             <li className="rating-range" key="RatingRange">
               <div className="rating-label">RATING (0–5)</div>
@@ -329,7 +331,7 @@ function App() {
                     className="filter-link genre-header"
                     onClick={toggleDropdown} // When clicked this opens or closes the dropdown
                 >
-                  <span className="genre-label">  {/* Calls the function to display either GENRE or shows how many geners where selcted  */}
+                  <span className="genre-label">  {/* Calls the function to display either GENRE or shows how many genres where selected  */}
                     {getGenreLabel()}
                   </span>
                   <span className={getDropdownArrowClass()}>▼</span> {/* Displays dropdown arrow from getDropDownArrowClass */}

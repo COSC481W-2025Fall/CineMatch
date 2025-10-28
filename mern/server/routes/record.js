@@ -16,15 +16,20 @@ router.get("/", async (req, res) => {
         const genreCol = db.collection("genre");
 
 
-        const { title, name, director, actor, year, rating, desc, genre } = req.query;
+        const { title, name, director, actor, year_min, year_max, rating, desc, genre } = req.query;
         // build the base movie filter
         const filter = {};
         const qName = name ?? title;
         if (qName)  filter.name = { $regex: qName, $options: "i" };
-        if (year)   filter.date = Number(year);
         if (rating) filter.rating = { $gte: Number(rating) };
         if (desc)   filter.description = { $regex: desc, $options: "i" };
-
+        // YEAR RANGE (inclusive)
+        const yMin = Number(year_min);
+        const yMax = Number(year_max);
+        const yearRange = {};
+        if (!Number.isNaN(yMin)) yearRange.$gte = yMin;
+        if (!Number.isNaN(yMax)) yearRange.$lte = yMax;
+        if (Object.keys(yearRange).length) filter.date = yearRange;
 
 
 

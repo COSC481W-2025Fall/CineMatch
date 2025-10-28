@@ -311,3 +311,16 @@ sidebar-footer-credit {
   -moz-appearance: textfield;  /* remove spinners */
   text-align: center;          /* ensure placeholder + value stay centered */
 }
+
+/* Chrome, Edge, Safari, Opera (WebKit browsers) */
+.year-bubbles input[type="number"]::-webkit-inner-spin-button,
+.year-bubbles input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;  /* hide spinner controls */
+  margin: 0;
+}
+
+/* Firefox */
+.year-bubbles input[type="number"] {
+  -moz-appearance: textfield;  /* remove spinners */
+  text-align: center;          /* ensure placeholder + value stay centered */
+}
