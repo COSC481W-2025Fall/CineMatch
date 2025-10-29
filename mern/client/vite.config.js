@@ -8,4 +8,11 @@ export default defineConfig({
     proxy: { '/record': 'http://localhost:5050',
               '/feed':   'http://localhost:5050',},
   },
+
+   // Vitest frontend testing
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/setupTests.js',
+  },
 })
