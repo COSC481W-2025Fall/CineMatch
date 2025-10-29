@@ -78,15 +78,33 @@ router.get("/", async (req, res) => {
 
         if (setID) { filter.id = {$in: Array.from(setID)};}
 
-        // SEARCH BY GENRE
-        if (genre) {
+        // SEARCH BY GENRE using OR statement. DISABLED
+        /*
+        if (genre && (Array.isArray(genre) ? genre.length : true)) {
+            const pattern = Array.isArray(genre) ? genre.join("|") : genre;
             const genreIds = await genreCol
-                .find({ genre: { $regex: genre, $options: "i" } }, { projection: { _id: 0, id: 1 } })
+                .find({ genre: { $regex: pattern, $options: "i" } }, { projection: { _id: 0, id: 1 } })
                 .limit(500)
                 .map(doc => doc.id)
                 .toArray();
 
             if (!syncID(genreIds)) return res.status(200).json([]);
+        }*/
+
+        // SEARCH BY GENRE using AND statement. ENABLED
+        if (genre) {
+            const wanted = Array.isArray(genre) ? genre : [genre];
+            for (const g of wanted) {
+                const idsForG = await genreCol
+                    .find(
+                        { genre: { $regex: g, $options: "i" } },
+                        { projection: { _id: 0, id: 1 } }
+                    )
+                    .limit(2000)
+                    .map(doc => doc.id)
+                    .toArray();
+                if (!syncID(idsForG)) return res.status(200).json([]);
+            }
         }
 
         if (setID) {filter.id = { $in: Array.from(setID) };}
