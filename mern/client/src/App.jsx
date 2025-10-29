@@ -232,12 +232,17 @@ function App() {
 
         // Build the query string for the API request based on filled parameters
         function buildQuery(p) {
-            const qs = new URLSearchParams();
+            const qs = new URLSearchParams(); // Holds key and value pairs
+            // Add each non-empty parameter to the query string
             Object.entries(p).forEach(([k, v]) => {
-                if (v) qs.append(k, v);
+                if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) return;
+                if (Array.isArray(v)) {
+                    v.forEach(val => qs.append(k, val));
+                } else {
+                    qs.append(k, v);
+                }
             });
-            // this would allow the spaces to work, basically replacing empty with the %20, which is identified by browsers to be a space
-            const fullSearch = qs.toString().replace(/\+/g, '%20');
+            const fullSearch = qs.toString().replace(/\+/g, "%20");
             return fullSearch ? `/record?${qs.toString()}` : "/record";
         }
 
@@ -252,8 +257,12 @@ function App() {
         async function doSearch() {
             setStatus("Loading…");
             try {
-                const {...p} = params;
-                const data = await fetchMovies(p);
+                const query = {
+                    ...params,
+                    ...(selectedGenres.length ? { genre: selectedGenres } : {}) 
+                };
+
+                const data = await fetchMovies(query);
                 setMovies(data);
                 setStatus(data.length ? "" : "No results found.");
             } catch (err) {
