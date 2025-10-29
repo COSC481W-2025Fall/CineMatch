@@ -93,17 +93,17 @@ router.get("/", async (req, res) => {
 
         // SEARCH BY GENRE using AND statement. ENABLED
         if (genre) {
-            const wanted = Array.isArray(genre) ? genre : [genre];
-            for (const g of wanted) {
-                const idsForG = await genreCol
+            const genreSelected = Array.isArray(genre) ? genre : [genre];
+            for (const singularGenre of genreSelected) {
+                const idsForGenre= await genreCol
                     .find(
-                        { genre: { $regex: g, $options: "i" } },
+                        { genre: { $regex: singularGenre, $options: "i" } },
                         { projection: { _id: 0, id: 1 } }
                     )
                     .limit(500)
                     .map(doc => doc.id)
                     .toArray();
-                if (!syncID(idsForG)) return res.status(200).json([]);
+                if (!syncID(idsForGenre)) return res.status(200).json([]);
             }
         }
 
