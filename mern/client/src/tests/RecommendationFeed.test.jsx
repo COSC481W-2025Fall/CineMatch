@@ -84,7 +84,7 @@ describe("RecommendationFeed", () => {
     // test movie displays as recommendation
     await waitFor(() => expect(screen.getByText("Test Movie")).toBeInTheDocument());
   });
-  // test 4 - Failed fetch error handling
+  // test 4 - failed fetch error handling
   it("displays 'Error building your feed.' when fetch throws error", async () => {
     localStorage.setItem("watched", JSON.stringify([1]));               // user watched one movie
     global.fetch.mockRejectedValueOnce(new Error("Network error"));     // mock failed fetch
