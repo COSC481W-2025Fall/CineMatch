@@ -1,3 +1,4 @@
+//src/tests/App.testjsx
 /**
  * Testing for basic app behaviors
  * Global tests about fetching and search functionality on search page
@@ -42,7 +43,7 @@ describe('CineMatch App', () => {
     )
     expect(screen.getByText(/Loading/i)).toBeInTheDocument()
   })
-  // test 2 - fetch and display movies, confirm data loading and rendering from moch api
+  // test 2 - fetch and display movies, confirm data loading and rendering from mock api
   it('fetches and displays movies from API', async () => {
     render(
       <BrowserRouter>
@@ -102,4 +103,23 @@ describe('CineMatch App', () => {
     expect(global.fetch).toHaveBeenCalled()     // verify fetch called
     expect(titleInput.value).toBe('Matrix')     // verify input changed to "Matrix"
   })
+  // test 6 - simulate clicking movie to open modal and confirm modal shows movie info
+    it('opens MovieDetails modal when a movie is clicked', async () => {
+      render(
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      )
+  
+      // wait for movie card
+      await waitFor(() => screen.getByText('Inception'))
+  
+      const movieCard = screen.getByText('Inception').closest('article')
+      fireEvent.click(movieCard)
+  
+      // movieDetails content should appear
+      await waitFor(() => screen.getByText('Inception'))
+      expect(screen.getByText('2010 • Action, Sci-Fi')).toBeInTheDocument()
+      expect(screen.getByText('⭐ 8.8')).toBeInTheDocument()
+    })
 })
