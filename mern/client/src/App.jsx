@@ -41,7 +41,8 @@ function App() {
   const [selectedGenres, setSelectedGenres] = useState([]);
   // Build the query string for the API request based on filled parameters
   function buildQuery(p) {
-    const qs = new URLSearchParams();
+    const qs = new URLSearchParams(); // Holds key and value pairs
+    // Add each non-empty parameter to the query string
     Object.entries(p).forEach(([k, v]) => {
       if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) return;
       if (Array.isArray(v)) {
@@ -64,7 +65,7 @@ function App() {
   async function doSearch() {
     setStatus("Loading…");
     try {
-      const data = await fetchMovies({ ...params, genre: selectedGenres });
+      const data = await fetchMovies({ ...params, genre: selectedGenres }); // Added genres to the parameters 
       setMovies(data);
       setStatus(data.length ? "" : "No results found.");
     } catch (err) {
