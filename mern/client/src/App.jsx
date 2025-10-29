@@ -156,8 +156,7 @@ function App() {
   async function doSearch() {
     setStatus("Loading…");
     try {
-      // TEMP LINE BELOW TO STOP RATING INFO FROM BEING SENT TO BACK END
-      const { rating_min, rating_max, ...p } = params;
+      const {  ...p } = params;
       const data = await fetchMovies(p);
       setMovies(data);
       setStatus(data.length ? "" : "No results found.");

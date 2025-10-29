@@ -16,12 +16,11 @@ router.get("/", async (req, res) => {
         const genreCol = db.collection("genre");
 
 
-        const { title, name, director, actor, year_min, year_max, rating, desc, genre } = req.query;
+        const { title, name, director, actor, year_min, year_max, rating_min, rating_max, desc, genre } = req.query;
         // build the base movie filter
         const filter = {};
         const qName = name ?? title;
         if (qName)  filter.name = { $regex: qName, $options: "i" };
-        if (rating) filter.rating = { $gte: Number(rating) };
         if (desc)   filter.description = { $regex: desc, $options: "i" };
         // YEAR RANGE (inclusive)
         const yMin = Number(year_min);
@@ -30,7 +29,13 @@ router.get("/", async (req, res) => {
         if (!Number.isNaN(yMin)) yearRange.$gte = yMin;
         if (!Number.isNaN(yMax)) yearRange.$lte = yMax;
         if (Object.keys(yearRange).length) filter.date = yearRange;
-
+        // RATING RANGE (inclusive)
+        const yMinRating= Number(rating_min);
+        const yMaxRating = Number(rating_max);
+        const ratingRange = {};
+        if (!Number.isNaN(yMinRating)) ratingRange.$gte = yMinRating;
+        if (!Number.isNaN(yMaxRating)) ratingRange.$lte = yMaxRating;
+        if (Object.keys(ratingRange).length) filter.rating = ratingRange;
 
 
         // This chunk is just to help us connect the ID's together to make it an AND operation and not an OR operation.
