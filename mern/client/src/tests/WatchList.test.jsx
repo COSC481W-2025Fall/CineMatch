@@ -133,7 +133,8 @@ describe('WatchListPage', () => {
 
     // wait for movie card
     await waitFor(() => screen.getByText('Inception'))
-
+    
+    // click movie card
     const movieCard = screen.getByText('Inception').closest('article')
     fireEvent.click(movieCard)
 
