@@ -234,6 +234,7 @@ sidebar-footer-credit {
     letter-spacing: 1px;
     color: #f7e135;          /* same gold accent as logo/buttons */
     margin: 0 17px 6px;      /* slight side offset + space below label */
+    text-align: center;
 }
 
 /* Container for the two bubbles */
@@ -252,4 +253,74 @@ sidebar-footer-credit {
 .year-bubbles .filter-input {
     text-align: center;
 }
+/* === RATING RANGE SECTION ===
+   Custom styling for the "Search by Rating" filter.
+   Displays two red pill inputs (MIN / MAX) side-by-side
+   with a label above them. */
+.rating-range {
+    background: none;        /* remove pill background from wrapper */
+    box-shadow: none;        /* remove wrapper shadow */
+    margin: 8px 12px;
+    padding: 0;
+}
 
+/* Label text above the two rating bubbles */
+.rating-label {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #f7e135;          /* same gold accent as logo/buttons */
+    margin: 0 17px 6px;      /* slight side offset + space below label */
+    text-align: center;
+}
+
+/* Container for the two bubbles */
+.rating-bubbles {
+    display: flex;           /* line up horizontally */
+    gap: 8px;                /* spacing between the two bubbles */
+}
+
+/* Each bubble inherits the red pill style from .filter-item */
+.rating-bubbles .filter-item {
+    margin: 0;               /* override default margins for alignment */
+    flex: 1;                 /* ensure equal width for both bubbles */
+}
+
+/* Center placeholder text inside each bubble input */
+.rating-bubbles .filter-input {
+    text-align: center;
+}
+/* Remove bullet points from sidebar filter list items */
+.search-filters li {
+    list-style-type: none;   /* removes the dots */
+}
+
+/* === RATING INPUT FIX ===
+   Removes spinner arrows from number inputs
+   so MIN/MAX placeholders are perfectly centered. */
+
+/* Chrome, Edge, Safari, Opera (WebKit browsers) */
+.rating-bubbles input[type="number"]::-webkit-inner-spin-button,
+.rating-bubbles input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;  /* hide spinner controls */
+  margin: 0;
+}
+
+/* Firefox */
+.rating-bubbles input[type="number"] {
+  -moz-appearance: textfield;  /* remove spinners */
+  text-align: center;          /* ensure placeholder + value stay centered */
+}
+
+/* Chrome, Edge, Safari, Opera (WebKit browsers) */
+.year-bubbles input[type="number"]::-webkit-inner-spin-button,
+.year-bubbles input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;  /* hide spinner controls */
+  margin: 0;
+}
+
+/* Firefox */
+.year-bubbles input[type="number"] {
+  -moz-appearance: textfield;  /* remove spinners */
+  text-align: center;          /* ensure placeholder + value stay centered */
+}
