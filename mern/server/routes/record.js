@@ -100,7 +100,7 @@ router.get("/", async (req, res) => {
                         { genre: { $regex: g, $options: "i" } },
                         { projection: { _id: 0, id: 1 } }
                     )
-                    .limit(2000)
+                    .limit(500)
                     .map(doc => doc.id)
                     .toArray();
                 if (!syncID(idsForG)) return res.status(200).json([]);
