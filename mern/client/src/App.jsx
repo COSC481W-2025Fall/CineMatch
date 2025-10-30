@@ -1,10 +1,19 @@
+// App.jsx
 import React, {useState, useEffect, useMemo} from "react";
 import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx"
+import { findTmdbIdByTitleYear } from "./components/converter";
 
 import { Link } from "react-router-dom";
 
-const API_BASE = ""; // set your API base here
+const API_BASE = "";
+
+// get TMDB key from .env file
+const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+const TMDB_BASE_URL = "https://api.themoviedb.org/3";
+
+// for exporting
+const CAST_LIMIT = 7
 
 const GENRES = [
   "Action",
@@ -35,8 +44,12 @@ function App() {
   const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("to-watch") || "[]")));
 
 
-  useEffect(() => { localStorage.setItem("watched", JSON.stringify([...watched])); }, [watched]);
-  useEffect(() => { localStorage.setItem("to-watch", JSON.stringify([...toWatch])); }, [toWatch]);
+  useEffect(() => {
+    localStorage.setItem("watched", JSON.stringify([...watched]));
+  }, [watched]);
+  useEffect(() => {
+    localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
+  }, [toWatch]);
 
   const [details, setDetails] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -45,12 +58,95 @@ function App() {
       const res = await fetch(`/record/details/${movie.id}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setDetails({ id: movie.id, ...data });  // <-- keep id
+
+      // grab title and year from database
+      let titleForLookup = "";
+      if (data && typeof data.title === "string" && data.title.length > 0) {
+        titleForLookup = data.title;
+      } else {
+        titleForLookup = movie.title;
+      }
+
+      let yearForLookup;
+      if (data && typeof data.year === "number") {
+        yearForLookup = data.year;
+      } else {
+        yearForLookup = movie.year;
+      }
+
+      // give converter title and year
+      const tmdbId = await findTmdbIdByTitleYear(titleForLookup, yearForLookup, {language: "en-US"}); // change to any if having issues with forign movies (forign movies might have different release date based on language if 2 versions exist)
+      console.log("[TMDB TEST] input:", {titleForLookup, yearForLookup}, "=> tmdbId:", tmdbId);
+
+      let patch = {}; // empty
+
+      // if found then pull actors and runtime from api
+      if (tmdbId !== null && tmdbId !== undefined) {
+        const numOfActors = CAST_LIMIT;
+        const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
+        url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
+        url.searchParams.set("append_to_response", "credits"); // include cast list
+
+        const tmdbRes = await fetch(url.toString(), {headers: {accept: "application/json"}});
+        if (tmdbRes.ok) {
+          const tmdb = await tmdbRes.json();
+
+          // get cast (actors) from tmdb.credits.cast
+          // tmdbCast will be empty if invalid
+          let tmdbCast = [];
+          if (tmdb && tmdb.credits && tmdb.credits.cast && Array.isArray(tmdb.credits.cast)) {
+            tmdbCast = tmdb.credits.cast;
+          }
+
+          // sort cast
+          // ao/bo are order of ab, fixes an issue where cast is not grabbed in order
+          tmdbCast.sort(function (a, b) // TMDB defines "order" (0 is the top credit). If missing, treat as very large (999).
+          {
+            let ao = 999;
+            let bo = 999;
+            if (a && typeof a.order === "number") ao = a.order;
+            if (b && typeof b.order === "number") bo = b.order;
+            return ao - bo;
+          });
+
+          // get the first X number of actors
+          const topActors = tmdbCast.slice(0, numOfActors);
+
+          // build an array of cast names with strings
+          const topCast = [];
+          for (let i = 0; i < topActors.length; i++) {
+            const person = topActors[i];
+            if (person && typeof person.name === "string" && person.name.length > 0) {
+              topCast.push(person.name);
+            }
+          }
+
+          // read runtime in min if it exists and is a number otherwise leave it as null
+          let runtime = null;
+          if (tmdb && typeof tmdb.runtime === "number") {
+            runtime = tmdb.runtime;
+          }
+
+          // fill patch objects
+          patch.tmdbId = tmdbId; // keep for debugging or other uses
+          if (topCast.length > 0) {
+            patch.topCast = topCast; // override DB actors with top billed tmdb list
+          }
+          if (runtime !== null) {
+            patch.runtime = runtime; // add runtime (minutes) - convert this to hr/min on frontend
+          }
+
+          console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime);
+        }
+      }
+
+      setDetails({id: movie.id, ...data, ...patch});
       setShowDetails(true);
     } catch (e) {
       console.error(e);
     }
   }
+
 
   /*function markWatched(movie) {
     setWatched(prev => {
@@ -69,8 +165,6 @@ function App() {
   }*/
 
 
-
-
   // State for search parameters
   const [params, setParams] = useState({
     actor: "",
@@ -79,7 +173,7 @@ function App() {
     title: "",
     year_min: "", // implemented year_min and year_max instead of searching by
     year_max: "", // only one year
-    rating_min: "", // implemented rating_min and rating_max instead of one rating 
+    rating_min: "", // implemented rating_min and rating_max instead of one rating
     rating_max: ""
   });
   // State to store the list of movies returned from the API
@@ -136,15 +230,22 @@ function App() {
   }
 
 
-
   // Build the query string for the API request based on filled parameters
   function buildQuery(p) {
-    const qs = new URLSearchParams();
-    Object.entries(p).forEach(([k, v]) => { if (v) qs.append(k, v); });
-    // this would allow the spaces to work, basically replacing empty with the %20, which is identified by browsers to be a space
-    const fullSearch = qs.toString().replace(/\+/g, '%20');
+    const qs = new URLSearchParams(); // Holds key and value pairs
+    // Add each non-empty parameter to the query string
+    Object.entries(p).forEach(([k, v]) => {
+      if (v == null || v === "" || (Array.isArray(v) && v.length === 0)) return;
+      if (Array.isArray(v)) {
+        v.forEach(val => qs.append(k, val));
+      } else {
+        qs.append(k, v);
+      }
+    });
+    const fullSearch = qs.toString().replace(/\+/g, "%20");
     return fullSearch ? `/record?${qs.toString()}` : "/record";
   }
+
   // Fetch movies from the backend API
   async function fetchMovies(p = {}) {
     const url = API_BASE + buildQuery(p);
@@ -156,8 +257,12 @@ function App() {
   async function doSearch() {
     setStatus("Loading…");
     try {
-      const {  ...p } = params;
-      const data = await fetchMovies(p);
+      const query = {
+        ...params,
+        ...(selectedGenres.length ? { genre: selectedGenres } : {})
+      };
+
+      const data = await fetchMovies(query);
       setMovies(data);
       setStatus(data.length ? "" : "No results found.");
     } catch (err) {
@@ -166,13 +271,14 @@ function App() {
     }
   }
 
+
   useEffect(() => {
     doSearch();
     // eslint-disable-next-line
   }, []);
 
   function handleChange(e) {
-    const { id, value } = e.target;
+    const {id, value} = e.target;
     setParams((prev) => ({
       ...prev,
       // map input id to state key by stripping 'q' prefix and lowercasing
@@ -186,8 +292,13 @@ function App() {
 
   const onMarkWatched = () => {
     if (!details) return;
-    if (watched.has(details.id)) return;
-    setWatched(prev => new Set(prev).add(details.id));
+    const numericId = Number(details.id);
+    setWatched(prev => {
+      if (prev.has(numericId)) return prev;
+      const next = new Set(prev);
+      next.add(numericId);
+      return next;
+    });
   };
   const onAddToWatch = () => {
     if (!details) return;
@@ -203,9 +314,21 @@ function App() {
             SEARCH
           </button>
           <div className="logo">cineMatch</div>
-          <button className="navigation-button" >FEED</button>  {/* Only this goes nowhere right now */}
-          <button className="navigation-button"><Link to="/watchlist" style={{ color: "inherit", textDecoration: "none" }}>WATCHED LIST</Link></button>
-          <button className="navigation-button"><Link to="/to-watch-list" style={{ color: "inherit", textDecoration: "none" }}>TO-WATCH LIST</Link></button>
+
+          <button className="navigation-button"><Link to="/help" style={{
+            color: "inherit",
+            textDecoration: "none"
+          }}>HELP</Link></button>
+          <button className="navigation-button"><Link to="/feed" style={{
+            color: "inherit",
+            textDecoration: "none"
+          }}>FEED</Link></button>
+          <button className="navigation-button"><Link to="/watchlist"
+                                                      style={{color: "inherit", textDecoration: "none"}}>WATCHED
+            LIST</Link></button>
+          <button className="navigation-button"><Link to="/to-watch-list"
+                                                      style={{color: "inherit", textDecoration: "none"}}>TO-WATCH
+            LIST</Link></button>
 
         </div>
 
@@ -213,6 +336,7 @@ function App() {
           <aside className="sidebar">
             {/*  Simple text boxes that we will take as input  */}
             <ul className="search-filters">
+
 
               {["Actor", "Director", "Title"].map((label) => (
 
@@ -230,98 +354,103 @@ function App() {
                     </div>
                   </li>
               ))}
-            {/* === YEAR RANGE SECTION ===
+              {/* === YEAR RANGE SECTION ===
             Displays a small label ("SEARCH BY YEAR") and two red pill inputs
             side by side — one for the minimum year, one for the maximum year.
             Each input behaves like the other search fields and updates state
             through handleChange(). */}
-            <li className="year-range" key="YearRange">
+              <li className="year-range" key="YearRange">
 
-              {/* Section label above both bubbles */}
-              <div className="year-label">YEAR</div>
+                {/* Section label above both bubbles */}
 
-              {/* Container for the two pill-style year inputs */}
-              <div className="year-bubbles">
 
-                {/* ---- Minimum Year bubble ---- */}
-                <div className="filter-item">
-                  <div className="filter-link">
-                    <input
-                      id="qYear_Min"                     // maps to params.year_min
-                      className="filter-input"           // reuses shared input styling
-                      type="number"                
-                      placeholder="MIN"                  // short placeholder text
-                      value={params.year_min}            
-                      onChange={handleChange}            // updates params when typed
-                      onKeyDown={(e) => e.key === "Enter" && doSearch()} // triggers search on Enter
-                    />
+                {/* Section label above both bubbles */}
+                <div className="year-label">YEAR</div>
+
+
+                {/* Container for the two pill-style year inputs */}
+                <div className="year-bubbles">
+
+                  {/* ---- Minimum Year bubble ---- */}
+                  <div className="filter-item">
+                    <div className="filter-link">
+                      <input
+                          id="qYear_Min"                     // maps to params.year_min
+                          className="filter-input"           // reuses shared input styling
+                          placeholder="MIN"                  // short placeholder text
+                          value={params.year_min}
+                          onChange={handleChange}            // updates params when typed
+                          onKeyDown={(e) => e.key === "Enter" && doSearch()} // triggers search on Enter
+                      />
+                    </div>
                   </div>
-                </div>
 
-                {/* ---- Maximum Year bubble ---- */}
-                <div className="filter-item">
-                  <div className="filter-link">
-                    <input
-                      id="qYear_Max"             // maps to params.year_max
-                      className="filter-input"  // reuse styling
-                      type="number"
-                      placeholder="MAX"         // placeholder text
-                      value={params.year_max}
-                      onChange={handleChange}   // updates when typed
-                      onKeyDown={(e) => e.key === "Enter" && doSearch()} // triggers search after hitting enter
-                    />
+                  {/* ---- Maximum Year bubble ---- */}
+                  <div className="filter-item">
+                    <div className="filter-link">
+                      <input
+                          id="qYear_Max"             // maps to params.year_max
+                          className="filter-input"  // reuse styling
+                          placeholder="MAX"         // placeholder text
+                          value={params.year_max}
+                          onChange={handleChange}   // updates when typed
+                          onKeyDown={(e) => e.key === "Enter" && doSearch()} // triggers search after hitting enter
+                      />
+                    </div>
                   </div>
+
+
+
+
                 </div>
+              </li>
 
-              </div>
-            </li>
-
-            {/* === RATING RANGE SECTION ===
+              {/* === RATING RANGE SECTION ===
                 Two bubble inputs side-by-side for rating min and max (0–5).
                 Works the same as the year. */}
-            <li className="rating-range" key="RatingRange">
-              <div className="rating-label">RATING (0–5)</div>
+              <li className="rating-range" key="RatingRange">
+                <div className="rating-label">RATING (0–5)</div>
 
-              <div className="rating-bubbles">
-                {/* ---- Minimum Rating bubble ---- */}
-                <div className="filter-item">
-                  <div className="filter-link">
-                    <input
-                      id="qRating_Min"              // maps to params.rating_min
-                      className="filter-input"
-                      type="number"
-                      inputMode="decimal"
-                      step="0.1"
-                      min="0"
-                      max="5"
-                      placeholder="MIN"
-                      value={params.rating_min}
-                      onChange={handleChange}
-                      onKeyDown={(e) => e.key === "Enter" && doSearch()}
-                    />
+                <div className="rating-bubbles">
+                  {/* ---- Minimum Rating bubble ---- */}
+                  <div className="filter-item">
+                    <div className="filter-link">
+                      <input
+                          id="qRating_Min"              // maps to params.rating_min
+                          className="filter-input"
+                          type="number"
+                          inputMode="decimal"
+                          step="0.1"
+                          min="0"
+                          max="5"
+                          placeholder="MIN"
+                          value={params.rating_min}
+                          onChange={handleChange}
+                          onKeyDown={(e) => e.key === "Enter" && doSearch()}
+                      />
+                    </div>
+                  </div>
+
+                  {/* ---- Maximum Rating bubble ---- */}
+                  <div className="filter-item">
+                    <div className="filter-link">
+                      <input
+                          id="qRating_Max"              // maps to params.rating_max
+                          className="filter-input"
+                          type="number"
+                          inputMode="decimal"
+                          step="0.1"
+                          min="0"
+                          max="5"
+                          placeholder="MAX"
+                          value={params.rating_max}
+                          onChange={handleChange}
+                          onKeyDown={(e) => e.key === "Enter" && doSearch()}
+                      />
+                    </div>
                   </div>
                 </div>
-
-                {/* ---- Maximum Rating bubble ---- */}
-                <div className="filter-item">
-                  <div className="filter-link">
-                    <input
-                      id="qRating_Max"              // maps to params.rating_max
-                      className="filter-input"
-                      type="number"
-                      inputMode="decimal"
-                      step="0.1"
-                      min="0"
-                      max="5"
-                      placeholder="MAX"
-                      value={params.rating_max}
-                      onChange={handleChange}
-                      onKeyDown={(e) => e.key === "Enter" && doSearch()}
-                    />
-                  </div>
-                </div>
-              </div>
-            </li>
+              </li>
 
 
               {/*Genre dropdown with checkboxes for multiple selection */}
@@ -330,30 +459,34 @@ function App() {
                     className="filter-link genre-header"
                     onClick={toggleDropdown} // When clicked this opens or closes the dropdown
                 >
-                  <span className="genre-label">  {/* Calls the function to display either GENRE or shows how many genres where selected  */}
+                  <span
+                      className="genre-label">  {/* Calls the function to display either GENRE or shows how many genres where selected  */}
                     {getGenreLabel()}
+
                   </span>
-                  <span className={getDropdownArrowClass()}>▼</span> {/* Displays dropdown arrow from getDropDownArrowClass */}
+                  <span
+                      className={getDropdownArrowClass()}>▼</span> {/* Displays dropdown arrow from getDropDownArrowClass */}
                 </div>
                 {genreDropdownOpen && (
                     <div className="genre-checkbox-list">
-                    {GENRES.map((genre) => (
-                        <label key={genre} className="genre-checkbox-item">
-                          <input
-                              type="checkbox"
-                              checked={isGenreChecked(genre)}
-                              onChange={() => handleGenreToggle(genre)}
-                          />
-                          <span>{genre}</span>
-                        </label>
-                    ))}
+                      {GENRES.map((genre) => (
+                          <label key={genre} className="genre-checkbox-item">
+                            <input
+                                type="checkbox"
+                                checked={isGenreChecked(genre)}
+                                onChange={() => handleGenreToggle(genre)}
+                            />
+                            <span>{genre}</span>
+                          </label>
+                      ))}
                     </div>
                 )}
 
               </li>
             </ul>
 
-            <button className="go-btn" onClick={doSearch}>SEARCH</button>  {/* The button to actually search, this one is permanent */}
+            <button className="go-btn" onClick={doSearch}>SEARCH</button>
+            {/* The button to actually search, this one is permanent */}
 
             <footer className="sidebar-footer-credit">
               <p>
@@ -362,13 +495,20 @@ function App() {
                   TMDB{" "}
                   <img
                       src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"
-                      style={{ height: "10px", width: "auto", verticalAlign: "middle", marginLeft: "6px" }}
+                      style={{
+                        height: "10px",
+                        width: "auto",
+                        verticalAlign: "middle",
+                        marginLeft: "6px"
+                      }}
                       alt="TMDB logo"
                   />
                 </a>
               </p>
               <p>
-                This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
+                This website uses TMDB and the TMDB APIs but is not endorsed, certified, or
+                otherwise
+                approved by TMDB.
               </p>
             </footer>
           </aside>
@@ -377,7 +517,8 @@ function App() {
             <div id="status" className="muted">{status}</div>
             <div id="results" className="movie-grid">
               {movies.map((m, idx) => (
-                  <article className="movie-card" key={idx} onClick={() => openDetails(m)} style={{cursor: "pointer"}}>
+                  <article className="movie-card" key={idx} onClick={() => openDetails(m)}
+                           style={{cursor: "pointer"}}>
                     <img
                         src={m.posterUrl || "https://placehold.co/300x450?text=No+Poster"}
                         alt={m.title || ""}
@@ -401,6 +542,10 @@ function App() {
                   inToWatch={!!inToWatch}
                   onMarkWatched={onMarkWatched}
                   onAddToWatch={onAddToWatch}
+
+                  // detail pass from api
+                  castLimit={CAST_LIMIT}
+                  runtime={details && typeof details.runtime === "number" ? details.runtime : null} // safe read
               />
           )}
         </div>

@@ -88,15 +88,35 @@ router.get("/", async (req, res) => {
 
         if (setID) { filter.id = {$in: Array.from(setID)};}
 
-        // SEARCH BY GENRE
-        if (genre) {
+        // SEARCH BY GENRE using OR statement. DISABLED
+        /*
+        if (genre && (Array.isArray(genre) ? genre.length : true)) {
+            const genreSelected = Array.isArray(genre) ? genre.join("|") : genre;
             const genreIds = await genreCol
-                .find({ genre: { $regex: genre, $options: "i" } }, { projection: { _id: 0, id: 1 } })
+                .find({ genre: { $regex: genreSelected, $options: "i" } }, { projection: { _id: 0, id: 1 } })
                 .limit(500)
                 .map(doc => doc.id)
                 .toArray();
 
             if (!syncID(genreIds)) return res.status(200).json([]);
+        }*/
+
+        // SEARCH BY GENRE using AND statement. ENABLED
+        // If the user selected one or more genres, only keep movies that match all of them
+        if (genre) {
+            const genreSelected = Array.isArray(genre) ? genre : [genre];
+            // AND logic applied by intersecting IDs one genre at a time
+            for (const singularGenre of genreSelected) {
+                const idsForGenre= await genreCol
+                    .find(
+                        { genre: { $regex: singularGenre, $options: "i" } },
+                        { projection: { _id: 0, id: 1 } }
+                    )
+                    .limit(500) // Limit changed from 2000 for performance 
+                    .map(doc => doc.id)
+                    .toArray();
+                if (!syncID(idsForGenre)) return res.status(200).json([]);
+            }
         }
 
         if (setID) {filter.id = { $in: Array.from(setID) };}
