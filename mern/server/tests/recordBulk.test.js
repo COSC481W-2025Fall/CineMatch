@@ -1,4 +1,4 @@
-// server/tests/recordBulk.js
+// server/tests/recordBulk.test.js
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import request from "supertest";
 import express from "express";
@@ -23,6 +23,8 @@ vi.mock("../db/connection.js", () => {
                     aggregate: (pipeline = []) => {
                         let results = [...collections.movies];
 
+
+                        // This is a huge mess, will have to sort this out later
                         for (const stage of pipeline) {
                             if (stage.$match) {
                                 const f = stage.$match;
@@ -182,8 +184,8 @@ beforeEach(() => {
 
     // Movies
     db.collection("movies").__setDocs([
-        { id: 1, name: "Avengers: Infinity War", date: 2018, rating: 4.1, posterUrl: "keep1", description: "Thanos…" },
-        { id: 2, name: "Avengers: Endgame",      date: 2019, rating: 4.6, posterUrl: "keep2", description: "After the snap…" },
+        { id: 1, name: "Avengers: Infinity War", date: 2018, rating: 4.1, posterUrl: "poster1", description: "Thanos…" },
+        { id: 2, name: "Avengers: Endgame",      date: 2019, rating: 4.6, posterUrl: "poster2", description: "After the snap…" },
         { id: 3, name: "Barbie",                  date: 2023, rating: 4.5, posterUrl: null,   description: "Welcome to Barbie Land" },
     ]);
 
@@ -223,7 +225,7 @@ describe("POST /record/bulk", () => {
         expect(res.body).toEqual([]);
     });
 
-    // test #1:
+    // test #1: No filters, just return all watched
     it("returns only watched movies (no filters)", async () => {
         const res = await request(app).post("/record/bulk").send({
             ids: [1, 3],
@@ -239,10 +241,11 @@ describe("POST /record/bulk", () => {
         expect(res.body[0].genre).toEqual(expect.arrayContaining(["Comedy", "Adventure"]));
 
         expect(res.body[1].id).toBe(1);
-        expect(res.body[1].posterUrl).toBe("keep1");
+        expect(res.body[1].posterUrl).toBe("poster1");
         expect(res.body[1].genre).toEqual(expect.arrayContaining(["Action", "Adventure"]));
     });
 
+    // test #2: Filtering by title
     it("filters by title (case-insensitive)", async () => {
         const res = await request(app).post("/record/bulk").send({
             ids: [1, 3],
@@ -252,6 +255,7 @@ describe("POST /record/bulk", () => {
         expect(res.body.map(m => m.title)).toEqual(["Avengers: Infinity War"]);
     });
 
+    // test #3: Filter by year
     it("filters by exact year", async () => {
         const res = await request(app).post("/record/bulk").send({
             ids: [1, 3],
@@ -262,6 +266,7 @@ describe("POST /record/bulk", () => {
         expect(res.body[0].id).toBe(3);
     });
 
+    // test #4 Filter by minimum rating (I'm not going to test the new validation, at least not yet)
     it("filters by minimum rating", async () => {
         const res = await request(app).post("/record/bulk").send({
             ids: [1, 3],
@@ -272,7 +277,8 @@ describe("POST /record/bulk", () => {
         expect(res.body[0].id).toBe(3);
     });
 
-    it("filters by director (AND with watched)", async () => {
+    // test #5: Filter by director
+    it("filters by director", async () => {
         const res = await request(app).post("/record/bulk").send({
             ids: [1, 3],
             params: { director: "Greta" },
@@ -282,7 +288,8 @@ describe("POST /record/bulk", () => {
         expect(res.body[0].id).toBe(3);
     });
 
-    it("filters by actor (AND with watched)", async () => {
+    // test #6: Filter by actor
+    it("filters by actor", async () => {
         const res = await request(app).post("/record/bulk").send({
             ids: [1, 3],
             params: { actor: "Robert Downey" },
@@ -292,7 +299,8 @@ describe("POST /record/bulk", () => {
         expect(res.body[0].id).toBe(1);
     });
 
-    it("filters by genre (AND with watched)", async () => {
+    // test #7: Filter by genre
+    it("filters by genre", async () => {
         const res = await request(app).post("/record/bulk").send({
             ids: [1, 3],
             params: { genre: "Comedy" },
