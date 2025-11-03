@@ -259,7 +259,7 @@ function App() {
             try {
                 const query = {
                     ...params,
-                    ...(selectedGenres.length ? { genre: selectedGenres } : {}) 
+                    ...(selectedGenres.length ? { genre: selectedGenres } : {})
                 };
 
                 const data = await fetchMovies(query);
@@ -315,20 +315,10 @@ function App() {
                         </button>
                         <div className="logo">cineMatch</div>
 
-                        <button className="navigation-button"><Link to="/help" style={{
-                            color: "inherit",
-                            textDecoration: "none"
-                        }}>HELP</Link></button>
-                        <button className="navigation-button"><Link to="/feed" style={{
-                            color: "inherit",
-                            textDecoration: "none"
-                        }}>FEED</Link></button>
-                        <button className="navigation-button"><Link to="/watchlist"
-                                                                    style={{color: "inherit", textDecoration: "none"}}>WATCHED
-                            LIST</Link></button>
-                        <button className="navigation-button"><Link to="/to-watch-list"
-                                                                    style={{color: "inherit", textDecoration: "none"}}>TO-WATCH
-                            LIST</Link></button>
+                        <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
+                        <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
+                        <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
+                        <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
 
                     </div>
 

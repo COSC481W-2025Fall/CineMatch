@@ -48,7 +48,7 @@ body {
     overflow-y: auto; /* scroll inside sidebar if content is taller */
 }
 
-sidebar-footer-credit {
+.sidebar-footer-credit {
     background: #222;
     color: #ccc;
     padding: 20px;

@@ -13,11 +13,7 @@ const GENRES = [
 ];
 
 export default function WatchListPage() {
-
-    //const watchlist = new Set(JSON.parse(localStorage.getItem("watched") || "[]"));
-    const watchlist = new Set(
-        (JSON.parse(localStorage.getItem("watched") || "[]") || []).map(Number)
-    );
+    const watchlist = new Set((JSON.parse(localStorage.getItem("watched") || "[]") || []).map(Number));
 
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
@@ -45,93 +41,65 @@ export default function WatchListPage() {
     const [movies, setMovies] = useState([]);
     const [status, setStatus] = useState("Loading…");
 
-    function buildQuery(p) {
-        const qs = new URLSearchParams();
-        Object.entries(p).forEach(([k, v]) => { if (v) qs.append(k, v); });
-        const fullSearch = qs.toString().replace(/\+/g, "%20");
-        return fullSearch ? `/record?${qs.toString()}` : "/record";
-    }
+    // Since now we got the new /record/bulk backend, we can utilize it more efficiently
+    async function fetchWatchlistSubset(p = {}) {
+        const body = {
+            ids: Array.from(watchlist),
+            params: {
+                actor: p.actor || "",
+                director: p.director || "",
+                genre: p.genre || "",
+                title: p.title || "",
+                year: p.year || "",
+                rating: p.rating || ""
+            }
+        };
 
-    async function fetchMovies(p = {}) {
-        const url = API_BASE + buildQuery(p);
-        const res = await fetch(url);
+        const res = await fetch("/record/bulk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        });
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
     }
 
-    /*async function doSearch() {
-        setStatus("Loading…");
-        try {
-            const data = await fetchMovies(params);
-            const filtered = data.filter(m => watchlist.has(m.id));
-            setMovies(filtered);
-            setStatus(filtered.length ? "" : "Your watch list is empty or no matches for this search.");
-        } catch (err) {
-            console.error(err);
-            setStatus("Error loading results.");
-        }
-    }*/
-
-
-    /* ADDING TEMPORARY FIX TO SEARCH THE ENTIRE DATABASE, YES THIS WILL MAKE THE WATCHLIST SLOW! 
-    BUT WE NEED TO ACTUALLY HAVE THE STUFF IN FRONT OF US TO TEST IT
-    */
-    // TODO: Break this down to only get stuff from the cache then aggregate it by movie id to get the full list and it's details
     async function doSearch() {
         setStatus("Loading…");
+
         try {
-            const hasAnyFilter = Object.values(params).some(v => v && String(v).trim().length > 0);
-
-            if (!hasAnyFilter) {
-                const ids = Array.from(watchlist);
-                if (ids.length === 0) {
-                    setMovies([]);
-                    setStatus("Your watch list is empty.");
-                    return;
-                }
-
-                const results = [];
-                for (const id of ids) {
-                    try {
-                        const res = await fetch(`/record/details/${id}`);
-                        if (!res.ok) continue;
-                        const d = await res.json();
-                        results.push({
-                            id: d.id,
-                            title: d.title,
-                            year: d.year,
-                            rating: d.rating ?? null,
-                            posterUrl: d.posterUrl ?? null,
-                            genre: Array.isArray(d.genres) ? d.genres : [],
-                            description: d.description || ""
-                        });
-                    } catch { /* empty */ }
-                }
-
-                setMovies(results);
-                setStatus(results.length ? "" : "Your watch list is empty.");
+            if (watchlist.size === 0) {
+                setMovies([]);
+                setStatus("Your watch list is empty.");
                 return;
             }
-            
-            const url = buildQuery(params);
-            const res = await fetch(API_BASE + url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            const filtered = data.filter(m => watchlist.has(Number(m.id)));
-            setMovies(filtered);
-            setStatus(filtered.length ? "" : "No matches for your watched list with these filters.");
+
+            const data = await fetchWatchlistSubset(params);
+
+            setMovies(data);
+            setStatus(
+                data.length
+                    ? ""
+                    : "Your watch list is empty or no matches for this search."
+            );
         } catch (err) {
             console.error(err);
             setStatus("Error loading results.");
         }
     }
 
-
-    useEffect(() => { doSearch(); /* eslint-disable-next-line */ }, []);
+    useEffect(() => {
+        doSearch();
+        // eslint-disable-next-line
+    }, []);
 
     function handleChange(e) {
         const { id, value } = e.target;
-        setParams(prev => ({ ...prev, [id.replace("q", "").toLowerCase()]: value }));
+        setParams(prev => ({
+            ...prev,
+            [id.replace("q", "").toLowerCase()]: value
+        }));
     }
 
     return (
@@ -143,10 +111,10 @@ export default function WatchListPage() {
                     </Link>
                 </button>
                 <div className="logo">cineMatch</div>
-                <button className="navigation-button"><Link to="/help" style={{ color: "inherit", textDecoration: "none" }}>HELP</Link></button>
-                <button className="navigation-button"><Link to="/feed" style={{ color: "inherit", textDecoration: "none" }}>FEED</Link></button>
-                <button className="navigation-button active">WATCHED LIST</button>
-                <button className="navigation-button"><Link to="/to-watch-list" style={{ color: "inherit", textDecoration: "none" }}>TO-WATCH LIST</Link></button>
+                <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
+                <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
+                <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button active">WATCHED LIST</Link>
+                <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
             </div>
 
             <div className="main-container">
@@ -166,7 +134,7 @@ export default function WatchListPage() {
                                 </div>
                             </li>
                         ))}
-                        <li className="filter-item" key="Genre">
+                        <li className="filter-item" key="GenreSelect">
                             <div className="filter-link">
                                 <select
                                     id="qGenre"
@@ -205,13 +173,22 @@ export default function WatchListPage() {
                     <div id="status" className="muted">{status}</div>
                     <div id="results" className="movie-grid">
                         {movies.map((m, idx) => (
-                            <article className="movie-card" key={idx} onClick={() => openDetails(m)} style={{ cursor: "pointer" }}>
-                                <img src={m.posterUrl || "https://placehold.co/300x450?text=No+Poster"} alt={m.title || ""} />
+                            <article
+                                className="movie-card"
+                                key={idx}
+                                onClick={() => openDetails(m)}
+                                style={{ cursor: "pointer" }}>
+                                <img
+                                    src={m.posterUrl || "https://placehold.co/300x450?text=No+Poster"}
+                                    alt={m.title || ""}
+                                />
                                 <div className="movie-title">{m.title ?? "Untitled"}</div>
                                 <div className="movie-sub">
                                     {m.year ?? "—"} • {Array.isArray(m.genre) ? m.genre.join(", ") : (m.genre || "—")}
                                 </div>
-                                {m.rating != null && <div className="movie-sub">⭐ {m.rating}</div>}
+                                {m.rating != null && (
+                                    <div className="movie-sub">⭐ {m.rating}</div>
+                                )}
                             </article>
                         ))}
                     </div>

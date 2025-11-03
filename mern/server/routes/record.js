@@ -112,7 +112,7 @@ router.get("/", async (req, res) => {
                         { genre: { $regex: singularGenre, $options: "i" } },
                         { projection: { _id: 0, id: 1 } }
                     )
-                    .limit(500) // Limit changed from 2000 for performance 
+                    .limit(500) // Limit changed from 2000 for performance
                     .map(doc => doc.id)
                     .toArray();
                 if (!syncID(idsForGenre)) return res.status(200).json([]);
@@ -259,12 +259,183 @@ router.get("/details/:id", async (req, res) => {
         };
         // send movie details
         res.status(200).json(payload);
-        
         // throw error for any mishaps
     } catch (err) {
         console.error("GET /record/details/:id error:", err);
         res.status(500).json({ error: "Server error" });
     }
 });
+
+ // Added in new backend call to make the watched list and to-watch list more efficient
+router.post("/bulk", async (req, res) => {
+    try {
+        const moviesCol    = db.collection("movies");
+        const postersCol   = db.collection("posters");
+        const actorsCol    = db.collection("actors");
+        const directorsCol = db.collection("directors");
+        const genreCol     = db.collection("genre");
+
+        const rawIds = Array.isArray(req.body?.ids) ? req.body.ids : [];
+        const params = req.body?.params || {};
+
+        const watchedIds = rawIds.map(n => Number(n)).filter(n => !Number.isNaN(n));
+
+        if (watchedIds.length === 0) {return res.status(200).json([]);}
+
+        const baseFilter = {id: { $in: watchedIds }};
+
+        const {
+            actor = "",
+            director = "",
+            genre = "",
+            title = "",
+            year = "",
+            rating = ""
+        } = params;
+
+        if (title) {
+            baseFilter.name = { $regex: title, $options: "i" };
+        }
+
+        if (year) {
+            const yNum = Number(year);
+            if (!Number.isNaN(yNum)) {
+                baseFilter.date = yNum;
+            }
+        }
+
+        if (rating) {
+            const rNum = Number(rating);
+            if (!Number.isNaN(rNum)) {
+                baseFilter.rating = { $gte: rNum };
+            }
+        }
+
+        let allowedIds = new Set(watchedIds);
+
+        // DIRECTOR filter
+        if (director) {
+            const directorRows = await directorsCol.aggregate([
+                { $match: { role: "Director", name: { $regex: director, $options: "i" } } },
+                { $group: { _id: "$id" } },
+                { $limit: 500 }
+            ]).toArray();
+
+            const matchDirIds = new Set(directorRows.map(r => r._id));
+            allowedIds = new Set([...allowedIds].filter(id => matchDirIds.has(id)));
+            if (allowedIds.size === 0) {
+                return res.status(200).json([]);
+            }
+        }
+
+        // ACTOR filter
+        if (actor) {
+            const actorRows = await actorsCol.aggregate([
+                { $match: { name: { $regex: actor, $options: "i" } } },
+                { $group: { _id: "$id" } },
+                { $limit: 500 }
+            ]).toArray();
+
+            const matchActorIds = new Set(actorRows.map(r => r._id));
+            allowedIds = new Set([...allowedIds].filter(id => matchActorIds.has(id)));
+            if (allowedIds.size === 0) {
+                return res.status(200).json([]);
+            }
+        }
+
+        // GENRE filter
+        if (genre) {
+            const genreRows = await genreCol
+                .find(
+                    { genre: { $regex: genre, $options: "i" } },
+                    { projection: { _id: 0, id: 1 } }
+                )
+                .limit(500)
+                .toArray();
+
+            const matchGenreIds = new Set(genreRows.map(r => r.id));
+            allowedIds = new Set([...allowedIds].filter(id => matchGenreIds.has(id)));
+            if (allowedIds.size === 0) {
+                return res.status(200).json([]);
+            }
+        }
+
+        baseFilter.id = { $in: [...allowedIds] };
+
+
+        // Return all we got in 1 aggregation
+        const movies = await moviesCol.aggregate([
+            { $match: baseFilter },
+            { $sort: { rating: -1, date: -1, name: 1 } },
+            { $limit: 50 },
+            {
+                $project: {
+                    _id: 0,
+                    id: 1,
+                    title: "$name",
+                    year: "$date",
+                    rating: 1,
+                    posterUrl: 1,
+                    genre: 1,
+                    description: 1
+                }
+            }
+        ]).toArray();
+
+        if (movies.length === 0) {
+            return res.status(200).json([]);
+        }
+
+        {
+            const ids = movies.map(m => m.id).filter(Boolean);
+            if (ids.length) {
+                const rows = await genreCol
+                    .find(
+                        { id: { $in: ids } },
+                        { projection: { _id: 0, id: 1, genre: 1 } }
+                    )
+                    .toArray();
+
+                const genreMap = new Map();
+                for (const r of rows) {
+                    if (!genreMap.has(r.id)) genreMap.set(r.id, []);
+                    genreMap.get(r.id).push(r.genre);
+                }
+
+                for (const m of movies) {
+                    m.genre = Array.isArray(m.genre)
+                        ? m.genre
+                        : (genreMap.get(m.id) || []);
+                }
+            } else {
+                for (const m of movies) {
+                    m.genre = Array.isArray(m.genre) ? m.genre : [];
+                }
+            }
+        }
+
+        const idsForPoster = movies.map(m => m.id).filter(Boolean);
+        let posterMap = new Map();
+        if (idsForPoster.length) {
+            const posters = await postersCol.find(
+                { id: { $in: idsForPoster } },
+                { projection: { _id: 0, id: 1, link: 1 } }
+            ).toArray();
+
+            posterMap = new Map(posters.map(p => [p.id, p.link]));
+        }
+
+        const result = movies.map(m => ({
+            ...m,
+            posterUrl: m.posterUrl ?? posterMap.get(m.id) ?? m.posterUrl
+        }));
+
+        return res.status(200).json(result);
+    } catch (err) {
+        console.error("POST /record/bulk error:", err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+
 
 export default router;
