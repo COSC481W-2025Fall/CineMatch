@@ -1,6 +1,7 @@
 import React, {useState, useEffect, useMemo} from "react";
 import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx"
+import ErrorModal from "./components/ErrorModal.jsx";
 
 import { Link } from "react-router-dom";
 
@@ -68,8 +69,8 @@ function App() {
     });
   }*/
 
-
-
+  // Creates error state message
+  const [errorMsg, setErrorMsg] = useState("");
 
   // State for search parameters
   const [params, setParams] = useState({
@@ -147,23 +148,28 @@ function App() {
   }
   // Fetch movies from the backend API
   async function fetchMovies(p = {}) {
-    const url = API_BASE + buildQuery(p);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+    const res = await fetch(API_BASE + buildQuery(p));
+    let payload;
+    try { payload = await res.json(); } catch {}
+    // Error handling if HTTP status not working 
+    if (!res.ok) {
+      const msg = payload?.error || `Error loading results (HTTP ${res.status}).`;
+      throw new Error(msg);
+    }
+    return payload;
   }
 
   async function doSearch() {
-    setStatus("Loading…");
+  setStatus("Loading…");
     try {
-      const {  ...p } = params;
-      const data = await fetchMovies(p);
+      const data = await fetchMovies({ ...params });
       setMovies(data);
       setStatus(data.length ? "" : "No results found.");
     } catch (err) {
       console.error(err);
-      setStatus("Error loading results.");
-    }
+      setStatus("");
+      setErrorMsg(err.message);  // Opens the error modal 
+    } 
   }
 
   useEffect(() => {
@@ -403,6 +409,10 @@ function App() {
                   onAddToWatch={onAddToWatch}
               />
           )}
+          <ErrorModal
+            message={errorMsg}
+            onClose={() => setErrorMsg("")}
+          />
         </div>
       </>
   );

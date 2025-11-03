@@ -29,14 +29,28 @@ router.get("/", async (req, res) => {
         if (!Number.isNaN(yMin)) yearRange.$gte = yMin;
         if (!Number.isNaN(yMax)) yearRange.$lte = yMax;
         if (Object.keys(yearRange).length) filter.date = yearRange;
-        // RATING RANGE (inclusive)
-        const yMinRating= Number(rating_min);
+        // RATING RANGE (inclusive) — cap at 5 and validate inputs
+        const MAX_RATING = 5;
+        const yMinRating = Number(rating_min);
         const yMaxRating = Number(rating_max);
+        // Validate numbers must be in [0, 5]
+        if (!Number.isNaN(yMinRating) && (yMinRating < 0 || yMinRating > MAX_RATING)) {
+            return res.status(400).json({ error: `Maximum rating must be between 0 and ${MAX_RATING}.` });
+        }
+        if (!Number.isNaN(yMaxRating) && (yMaxRating < 0 || yMaxRating > MAX_RATING)) {
+            return res.status(400).json({ error: `Maximum rating must be between 0 and ${MAX_RATING}.` });
+        }
+        // Validate: min <= max (only if both provided)
+        if (!Number.isNaN(yMinRating) && !Number.isNaN(yMaxRating) && yMinRating > yMaxRating) {
+            return res.status(400).json({ error: `Minimum rating (${yMinRating}) cannot be greater than the maximum (${yMaxRating}).` });
+        }
         const ratingRange = {};
         if (!Number.isNaN(yMinRating)) ratingRange.$gte = yMinRating;
-        if (!Number.isNaN(yMaxRating)) ratingRange.$lte = yMaxRating;
+        // Always set an upper bound of 5
+        // If user provided a max, use the smaller of their value and 5 
+        ratingRange.$lte = Number.isNaN(yMaxRating) ? MAX_RATING : Math.min(yMaxRating, MAX_RATING);
+        // Only attach if at least one bound is present
         if (Object.keys(ratingRange).length) filter.rating = ratingRange;
-
 
         // This chunk is just to help us connect the ID's together to make it an AND operation and not an OR operation.
         let setID = null;
