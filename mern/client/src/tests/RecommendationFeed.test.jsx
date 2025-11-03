@@ -166,4 +166,36 @@ describe("RecommendationFeed", () => {
       expect(screen.getByText(/Details|Modal Movie/)).toBeInTheDocument()
     );
   });
+  // test 7 - shows loading state
+  it("displays loading indicator while fetching data", async () => {
+  localStorage.setItem("watched", JSON.stringify([1]));
+  global.fetch.mockResolvedValueOnce(new Promise(() => {})); // never resolves
+
+  render(
+    <MemoryRouter>
+      <RecommendationFeed />
+    </MemoryRouter>
+  );
+
+  expect(screen.getByText(/Building your feed…/i)).toBeInTheDocument();
+  });
+  // test 8 - no reccomendations 
+  it("shows 'no recommendations' message when feed is empty", async () => {
+  localStorage.setItem("watched", JSON.stringify([1]));   // user watched one movie
+  global.fetch.mockResolvedValueOnce({        // empty reccomendation feed
+    ok: true,
+    json: async () => ({ items: [] }),
+  });
+
+  render(
+    <MemoryRouter>
+      <RecommendationFeed />
+    </MemoryRouter>
+  );
+
+  await waitFor(() =>
+    expect(screen.getByText(/no recommendations/i)).toBeInTheDocument()
+  );
+});
+
 });
