@@ -2,6 +2,7 @@
 import React, {useState, useEffect, useMemo} from "react";
 import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx"
+import ErrorModal from "./components/ErrorModal.jsx";
 import { findTmdbIdByTitleYear } from "./components/converter";
 
 import { Link } from "react-router-dom";
@@ -43,7 +44,10 @@ function App() {
 
     const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("to-watch") || "[]")));
 
+    // Creates error state message
+    const [errorMsg, setErrorMsg] = useState("");
 
+    
     useEffect(() => {
         localStorage.setItem("watched", JSON.stringify([...watched]));
     }, [watched]);
@@ -248,10 +252,15 @@ function App() {
 
         // Fetch movies from the backend API
         async function fetchMovies(p = {}) {
-            const url = API_BASE + buildQuery(p);
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json();
+            const res = await fetch(API_BASE + buildQuery(p));
+            let payload;
+            try { payload = await res.json(); } catch { /* empty */ }
+            // Error handling if HTTP status not working 
+            if (!res.ok) {
+                const msg = payload?.error || `Error loading results (HTTP ${res.status}).`;
+                throw new Error(msg);
+            }
+            return payload;
         }
 
         async function doSearch() {
@@ -267,7 +276,8 @@ function App() {
                 setStatus(data.length ? "" : "No results found.");
             } catch (err) {
                 console.error(err);
-                setStatus("Error loading results.");
+                setStatus("");
+                setErrorMsg(err.message);  // Opens the error modal
             }
         }
 
@@ -538,6 +548,10 @@ function App() {
                                 runtime={details && typeof details.runtime === "number" ? details.runtime : null} // safe read
                             />
                         )}
+                        <ErrorModal
+                            message={errorMsg}
+                            onClose={() => setErrorMsg("")}
+                        />
                     </div>
                 </>
             );

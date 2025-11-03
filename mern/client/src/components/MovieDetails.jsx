@@ -78,14 +78,14 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
                                 onClick={onMarkWatched}
                                 disabled={isWatched}
                             >
-                                {isWatched ? "Added!" : "Watched?"}
+                                {isWatched ? "Added to Watched List!" : "Previously Seen"}
                             </button>
                             <button
                                 className="go-btn"
                                 onClick={onAddToWatch}
                                 disabled={inToWatch}
                             >
-                                {inToWatch ? "Added!" : "Add to To-Watch list"}
+                                {inToWatch ? "Added to To-Watch List!" : "Save for Later"}
                             </button>
                         </div>
                     </div>
