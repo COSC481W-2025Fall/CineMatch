@@ -9,7 +9,6 @@ export default function Help() {
     const activeStyle = {
         background: "linear-gradient(45deg,#f7e135,#cc8800)",
     };
-
     {/* If specifc button is press give one of these statemates  */}
     function renderInfo() {
         switch (activeButton) {
@@ -26,7 +25,8 @@ export default function Help() {
             case "watchlist":
                 return <p className="help-info">Your Watched List helps you keep a running
                     history of all the films you have watched,
-                    ensuring you never forget which ones you've seen.</p>;
+                    ensuring you never forget which ones you've seen. The information in this section will be used for your 
+                    recommendations in the feed </p>;
             case "to-watch":
                 return <p className="help-info" >Use the To-Watch List as a bookmark for all the movies you want to see.</p>;
             case "Uploading/Downloading Json file":
@@ -39,7 +39,6 @@ export default function Help() {
                 return null;
         }
     }
-
     return (
         <>
             <div className="navigation-top">
@@ -108,6 +107,7 @@ export default function Help() {
             </div>
 
             <div id="info-box">{renderInfo()}</div>{/*The function for when a button is pressed */}
+            <hr></hr>
         </>
     );
 }
