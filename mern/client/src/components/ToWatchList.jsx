@@ -113,8 +113,8 @@ export default function WatchListPage() {
                 <div className="logo">cineMatch</div>
                 <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
                 <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
-                <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button active">WATCHED LIST</Link>
-                <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
+                <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
+                <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button active">TO-WATCH LIST</Link>
             </div>
 
             <div className="main-container">
