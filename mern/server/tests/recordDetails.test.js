@@ -102,7 +102,52 @@ vi.mock("../db/connection.js", () => {
 
             if (name === "directors") {
                 return {
-                    aggregate: () => ({ toArray: async () => [] }),
+                    find: (filter = {}, opts = {}) => {
+                                 let _limit = Infinity;
+                             return {
+                                   limit(n) { _limit = n; return this; },
+                               async toArray() {
+                                     let res = collections.directors.filter(d => {
+                                           if (filter.id !== undefined && d.id !== filter.id) return false;
+                                           if (filter.role !== undefined && d.role !== filter.role) return false;
+                                           return true;
+                                         });
+                                         if (opts?.projection?.name === 1) {
+                                           res = res.map(d => ({ name: d.name }));
+                                         }
+                                     return res.slice(0, isFinite(_limit) ? _limit : res.length);
+                                   }
+                             };
+                           },
+                    aggregate: (pipeline = []) => {
+                        let res = [...collections.directors];
+
+                        for (const stage of pipeline) {
+                            if (stage.$match) {
+                                const f = stage.$match;
+                                if (f.id !== undefined) res = res.filter((d) => d.id === f.id);
+                                if (f.role !== undefined) res = res.filter((d) => d.role === f.role);
+                            } else if (stage.$group?.["_id"] === "$name") {
+                                const directorsMap = new Map();
+                                for (const a of res) directorsMap.set(a.name, (directorsMap.get(a.name) || 0) + 1);
+                                res = Array.from(directorsMap.entries()).map(([nm, cnt]) => ({ _id: nm, appearances: cnt }));
+                            } else if (stage.$sort) {
+                                const spec = stage.$sort;
+                                res.sort((a, b) => {
+                                    for (const [k, dir] of Object.entries(spec)) {
+                                        const av = a[k], bv = b[k];
+                                        if (av === bv) continue;
+                                        return (av > bv ? 1 : -1) * dir;
+                                    }
+                                    return 0;
+                                });
+                            } else if (stage.$limit) {
+                                res = res.slice(0, stage.$limit);
+                            }
+                        }
+
+                        return { toArray: async () => res };
+                    },
                     __setDocs: (docs) => {
                         collections.directors = docs;
                     },
@@ -130,6 +175,7 @@ describe("GET /record/details/:id", () => {
         db.collection("posters").__setDocs([]);
         db.collection("genre").__setDocs([]);
         db.collection("actors").__setDocs([]);
+        db.collection("directors").__setDocs([])
     });
 
 
@@ -148,6 +194,9 @@ describe("GET /record/details/:id", () => {
             { id: 10, name: "Alice" },
             { id: 10, name: "Charlie" },
         ]);
+        db.collection("directors").__setDocs([
+            { id: 10, name: "James", role: "Director" },
+        ]);
 
         const res = await request(app).get("/record/details/10");
         expect(res.status).toBe(200);
@@ -161,6 +210,7 @@ describe("GET /record/details/:id", () => {
         });
         expect(res.body.genres.sort()).toEqual(["Action", "Adventure"].sort());
         expect(res.body.topCast).toEqual(["Alice", "Bob", "Charlie"]);
+        expect(res.body.directors).toEqual("James");
     });
 
     it("200: uses movie.posterUrl if present (ignores posters collection)", async () => {

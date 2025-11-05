@@ -117,9 +117,9 @@ router.get("/", async (req, res) => {
             if (!syncID(genreIds)) return res.status(200).json([]);
         }*/
 
-        // SEARCH BY GENRE using AND statement. ENABLED
+        // SEARCH BY GENRE using AND statement. DISABLED
         // If the user selected one or more genres, only keep movies that match all of them
-        if (genre) {
+        /*if (genre) {
             const genreSelected = Array.isArray(genre) ? genre : [genre];
             // AND logic applied by intersecting IDs one genre at a time
             for (const singularGenre of genreSelected) {
@@ -129,6 +129,23 @@ router.get("/", async (req, res) => {
                         { projection: { _id: 0, id: 1 } }
                     )
                     .limit(500) // Limit changed from 2000 for performance
+                    .map(doc => doc.id)
+                    .toArray();
+                if (!syncID(idsForGenre)) return res.status(200).json([]);
+            }
+        }*/
+
+        // ADDED NEW FIX WITH GENRES, THE LIMIT IS CAUSING AN ISSUE! -YS
+        // SEARCH BY GENRE using AND statement. ENABLED
+        // If the user selected one or more genres, only keep movies that match all of them
+        if (genre) {
+            const genreSelected = Array.isArray(genre) ? genre : [genre];
+            for (const singularGenre of genreSelected) {
+                const genreFilter = { genre: { $regex: singularGenre, $options: "i" } };
+                if (setID && setID.size) genreFilter.id = {$in: Array.from(setID)};
+
+                const idsForGenre = await genreCol
+                    .find(genreFilter, { projection: { _id: 0, id: 1 } })
                     .map(doc => doc.id)
                     .toArray();
                 if (!syncID(idsForGenre)) return res.status(200).json([]);
@@ -264,6 +281,19 @@ router.get("/details/:id", async (req, res) => {
             topCast = castByTitle.map(d => d._id);
         }
 
+        // Directors portion
+        // This is needed for our tests
+        const dirDocs = await directorsCol
+            .find(
+                { id, role: "Director" },
+                { projection: { _id: 0, name: 1 } }
+            )
+            .limit(5)
+            .toArray();
+        const directorNames = dirDocs.map(d => d.name).filter(Boolean);
+
+
+
         const dir = await directorsCol
             .find(
                 { id, role: "Director" },
@@ -272,7 +302,6 @@ router.get("/details/:id", async (req, res) => {
             .limit(5)
             .toArray();
         const directors = dir.map(d => d.name);
-
 
         // object created containing all movie info
         const payload = {
@@ -284,6 +313,7 @@ router.get("/details/:id", async (req, res) => {
             description: movie.description ?? "",
             genres,
             topCast,
+            directors: directorNames.length === 0 ? null : (directorNames.length === 1 ? directorNames[0] : directorNames),
             director: directors.length ? directors : null
         };
         // send movie details
