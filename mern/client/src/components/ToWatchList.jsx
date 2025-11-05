@@ -82,7 +82,7 @@ export default function WatchListPage() {
         try {
             if (watchlist.size === 0) {
                 setMovies([]);
-                setStatus("Your watch list is empty.");
+                setStatus("Your to-watch list is empty.");
                 return;
             }
 
