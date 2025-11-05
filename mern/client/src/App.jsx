@@ -151,7 +151,6 @@ function App() {
         }
     }
 
-
     /*function markWatched(movie) {
       setWatched(prev => {
         const next = new Set(prev);
