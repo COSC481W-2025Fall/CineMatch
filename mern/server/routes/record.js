@@ -222,6 +222,7 @@ router.get("/details/:id", async (req, res) => {
         const postersCol  = db.collection("posters");
         const genreCol    = db.collection("genre");
         const actorsCol   = db.collection("actors");
+        const directorsCol = db.collection("directors");
 
         // find movie from movie table using its ID
         const movie = await moviesCol.findOne({ id });
@@ -262,6 +263,17 @@ router.get("/details/:id", async (req, res) => {
             ]).toArray();
             topCast = castByTitle.map(d => d._id);
         }
+
+        const dir = await directorsCol
+            .find(
+                { id, role: "Director" },
+                { projection: { _id: 0, name: 1 } }
+            )
+            .limit(5)
+            .toArray();
+        const directors = dir.map(d => d.name);
+
+
         // object created containing all movie info
         const payload = {
             id: movie.id,
@@ -272,6 +284,7 @@ router.get("/details/:id", async (req, res) => {
             description: movie.description ?? "",
             genres,
             topCast,
+            director: directors.length ? directors : null
         };
         // send movie details
         res.status(200).json(payload);

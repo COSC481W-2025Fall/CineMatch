@@ -26,7 +26,8 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
         topCast,
         topCastCount,
         genres,
-        runtime
+        runtime,
+        director
     } = details;
 
     const runtimeText = formatRuntime(runtime);
@@ -54,6 +55,11 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
                             {runtimeText ? ` • ${runtimeText}` : ""}
                         </div>
 
+                        {Array.isArray(director) && director.length > 0 && (
+                            <div style={{ marginBottom: 12 }}>
+                                <strong>Director(s):</strong> {director.join(", ")}
+                            </div>
+                        )}
                         {Array.isArray(genres) && genres.length > 0 && (
                             <div style={{ marginBottom: 12 }}>
                                 <strong>Genres:</strong> {genres.join(", ")}

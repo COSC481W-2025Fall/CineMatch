@@ -319,12 +319,8 @@ function App() {
             return (
                 <>
                     <div className="navigation-top">
-                        <button className="navigation-button active" onClick={doSearch}>{/*
-  <button class="navigation-button active" id="searchTop">SEARCH</button> <!-- Temporary till we add in Feed and Watch List, for now this just does the same as search */}
-                            SEARCH
-                        </button>
+                        <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
                         <div className="logo">cineMatch</div>
-
                         <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
                         <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
                         <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
@@ -355,10 +351,10 @@ function App() {
                                     </li>
                                 ))}
                                 {/* === YEAR RANGE SECTION ===
-            Displays a small label ("SEARCH BY YEAR") and two red pill inputs
-            side by side — one for the minimum year, one for the maximum year.
-            Each input behaves like the other search fields and updates state
-            through handleChange(). */}
+                                Displays a small label ("SEARCH BY YEAR") and two red pill inputs
+                                side by side — one for the minimum year, one for the maximum year.
+                                Each input behaves like the other search fields and updates state
+                                through handleChange(). */}
                                 <li className="year-range" key="YearRange">
 
                                     {/* Section label above both bubbles */}
@@ -406,8 +402,8 @@ function App() {
                                 </li>
 
                                 {/* === RATING RANGE SECTION ===
-                Two bubble inputs side-by-side for rating min and max (0–5).
-                Works the same as the year. */}
+                                Two bubble inputs side-by-side for rating min and max (0–5).
+                                Works the same as the year. */}
                                 <li className="rating-range" key="RatingRange">
                                     <div className="rating-label">RATING (0–5)</div>
 

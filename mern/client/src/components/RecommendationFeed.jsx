@@ -95,9 +95,7 @@ export default function RecommendationFeed() {
     return (
         <>
             <div className="navigation-top">
-                <button className="navigation-button">
-                    <Link to="/" style={{ color: "inherit", textDecoration: "none" }}>SEARCH</Link>
-                </button>
+                <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
                 <div className="logo">cineMatch</div>
                 <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
                 <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button active">FEED</Link>
