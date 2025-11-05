@@ -214,17 +214,6 @@ router.get("/", async (req, res) => {
 });
 
 
-router.get("/:id", async (req, res) => {
-    try {
-        const col = db.collection("movies");
-        const doc = await col.findOne({ _id: new ObjectId(req.params.id) });
-        if (!doc) return res.status(404).json({ error: "Not found" });
-        res.status(200).json(doc);
-    } catch (err) {
-        console.error("GET /record/:id error:", err);
-        res.status(500).json({ error: "Server error" });
-    }
-});
 // GET /record/details/:id
 /**
  * Retrieve detailed info about a movie including genres, poster URL, and top cast members from multiple tables in MongoDB.
@@ -241,14 +230,8 @@ router.get("/details/:id", async (req, res) => {
         const actorsCol   = db.collection("actors");
         const directorsCol = db.collection("directors");
 
-        
-        const idParam = req.params.id;
-        const idNum = Number(idParam);
-        const idCandidates = [idParam];
-        if (!Number.isNaN(idNum)) idCandidates.unshift(idNum);
-
         // find movie from movie table using its ID
-        const movie = await moviesCol.findOne({ id: { $in: idCandidates } });
+        const movie = await moviesCol.findOne({ id });
         if (!movie) return res.status(404).json({ error: "Movie not found" });
 
         // look up all genre docs for movie ID
@@ -330,8 +313,19 @@ router.get("/details/:id", async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 });
+router.get("/:id", async (req, res) => {
+    try {
+        const col = db.collection("movies");
+        const doc = await col.findOne({ _id: new ObjectId(req.params.id) });
+        if (!doc) return res.status(404).json({ error: "Not found" });
+        res.status(200).json(doc);
+    } catch (err) {
+        console.error("GET /record/:id error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
 
- // Added in new backend call to make the watched list and to-watch list more efficient
+// Added in new backend call to make the watched list and to-watch list more efficient
 router.post("/bulk", async (req, res) => {
     try {
         const moviesCol    = db.collection("movies");
