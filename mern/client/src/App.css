@@ -37,6 +37,8 @@ body {
 }
 
 .sidebar {
+    display: flex;
+    flex-direction: column;
     position: sticky;
     top: 57px; /* leave space for navbar */
     align-self: flex-start;
@@ -55,7 +57,7 @@ body {
     font-size: 12px;
     text-align: center;
     border-top: 1px solid #444;
-    margin-top: 5px; /* spacing above footer */
+    margin-top: auto; /* spacing above footer */
 }
 
 .sidebar-footer-credit a:host{text-decoration: underline;}
@@ -296,6 +298,7 @@ body {
 /* Remove bullet points from sidebar filter list items */
 .search-filters li {
     list-style-type: none;   /* removes the dots */
+    flex: 0 0 auto;
 }
 
 /* === RATING INPUT FIX ===

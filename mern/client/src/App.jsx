@@ -319,7 +319,7 @@ function App() {
             return (
                 <>
                     <div className="navigation-top">
-                        <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
+                        <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button active">SEARCH</Link>
                         <div className="logo">cineMatch</div>
                         <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
                         <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
