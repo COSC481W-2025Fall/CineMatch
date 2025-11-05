@@ -1,5 +1,5 @@
 // src/components/WatchList.jsx
-import React, { useEffect, useState } from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import { Link } from "react-router-dom";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
@@ -13,7 +13,18 @@ const GENRES = [
 ];
 
 export default function WatchListPage() {
+
+    const [watched, setWatched] = useState(() => new Set(JSON.parse(localStorage.getItem("watched") || "[]")));
+    const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("to-watch") || "[]")));
     const watchlist = new Set((JSON.parse(localStorage.getItem("watched") || "[]") || []).map(Number));
+
+
+    useEffect(() => {
+        localStorage.setItem("watched", JSON.stringify([...watched]));
+    }, [watched]);
+    useEffect(() => {
+        localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
+    }, [toWatch]);
 
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
@@ -101,6 +112,28 @@ export default function WatchListPage() {
             [id.replace("q", "").toLowerCase()]: value
         }));
     }
+
+    const isWatched = useMemo(() => details && watched.has(details.id), [details, watched]);
+    const inToWatch = useMemo(() => details && toWatch.has(details.id), [details, toWatch]);
+
+    const onMarkWatched = () => {
+        if (!details) return;
+        const id = Number(details.id);
+        setWatched(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
+    const onAddToWatch = () => {
+        if (!details) return;
+        const id = Number(details.id);
+        setWatchlist(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
 
     return (
         <>
@@ -195,10 +228,10 @@ export default function WatchListPage() {
                 <MovieDetails
                     details={details}
                     onClose={() => setShowDetails(false)}
-                    isWatched={false}
-                    inWatchlist={true}
-                    onMarkWatched={() => {}}
-                    onAddWatchlist={() => {}}
+                    isWatched={!!isWatched}
+                    inToWatch={!!inToWatch}
+                    onMarkWatched={onMarkWatched}
+                    onAddToWatch={onAddToWatch}
                 />
             )}
         </>

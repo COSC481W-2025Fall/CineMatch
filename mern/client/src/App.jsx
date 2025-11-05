@@ -302,18 +302,21 @@ function App() {
 
             const onMarkWatched = () => {
                 if (!details) return;
-                const numericId = Number(details.id);
+                const id = Number(details.id);
                 setWatched(prev => {
-                    if (prev.has(numericId)) return prev;
                     const next = new Set(prev);
-                    next.add(numericId);
+                    next.has(id) ? next.delete(id) : next.add(id);
                     return next;
                 });
             };
             const onAddToWatch = () => {
                 if (!details) return;
-                if (toWatch.has(details.id)) return;
-                setWatchlist(prev => new Set(prev).add(details.id));
+                const id = Number(details.id);
+                setWatchlist(prev => {
+                    const next = new Set(prev);
+                    next.has(id) ? next.delete(id) : next.add(id);
+                    return next;
+                });
             };
 
             return (

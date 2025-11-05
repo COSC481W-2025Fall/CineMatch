@@ -82,16 +82,17 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
                             <button
                                 className="go-btn"
                                 onClick={onMarkWatched}
-                                disabled={isWatched}
+                                aria-pressed={!!isWatched}
                             >
-                                {isWatched ? "Added to Watched List!" : "Previously Seen"}
+                                {isWatched ? "Remove from Watched List" : "Add to Watched List"}
                             </button>
+
                             <button
                                 className="go-btn"
                                 onClick={onAddToWatch}
-                                disabled={inToWatch}
+                                aria-pressed={!!inToWatch}
                             >
-                                {inToWatch ? "Added to To-Watch List!" : "Save for Later"}
+                                {inToWatch ? "Remove from To-Watch List" : "Save for Later"}
                             </button>
                         </div>
                     </div>
