@@ -241,8 +241,14 @@ router.get("/details/:id", async (req, res) => {
         const actorsCol   = db.collection("actors");
         const directorsCol = db.collection("directors");
 
+        
+        const idParam = req.params.id;
+        const idNum = Number(idParam);
+        const idCandidates = [idParam];
+        if (!Number.isNaN(idNum)) idCandidates.unshift(idNum);
+
         // find movie from movie table using its ID
-        const movie = await moviesCol.findOne({ id });
+        const movie = await moviesCol.findOne({ id: { $in: idCandidates } });
         if (!movie) return res.status(404).json({ error: "Movie not found" });
 
         // look up all genre docs for movie ID
