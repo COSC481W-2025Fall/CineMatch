@@ -1,9 +1,11 @@
+import 'dotenv/config';
 import express from "express";
 import cors from "cors";
 import records from "./routes/record.js";
 import actors from "./routes/actors.js"
 import directors from "./routes/directors.js";
 import genre from "./routes/genre.js";
+import feedRouter from "./routes/feed.js";
 
 const PORT = process.env.PORT || 5050;
 const app = express();
@@ -14,6 +16,7 @@ app.use("/record/actors", actors); // Referencing actors endpoint for Vitest
 app.use("/record/directors", directors); // Referencing directors endpoint for Vitest
 app.use("/record/genre", genre); // Referencing genre endpoint for Vitest
 app.use("/record", records); // Referencing record endpoint for Vitest (This can get all of the above)
+app.use("/feed", feedRouter); // Added the feed router, will add more reasonable comments later
 
 
 import db from "./db/connection.js";

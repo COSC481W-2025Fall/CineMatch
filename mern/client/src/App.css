@@ -12,10 +12,9 @@ body {
     padding:10px 20px;
     background-color:#2a2a2a;
     border-bottom:2px solid #444;
-    position: sticky;
-    top: 0;
+    position:sticky;top: 0;
+    z-index: 1;
     width: 100%;
-    z-index:100;
 }
 
 .navigation-button {
@@ -31,24 +30,34 @@ body {
     margin:0 auto; text-shadow:2px 2px 4px rgba(0,0,0,.5); transform:scaleX(1.5);
 }
 
-.main-container { display:flex; height:calc(100vh - 60px); }
-
-.sidebar {
-    width:200px; background:#333; border-right:2px solid #555; padding:10px 8px;
+.main-container {
+    display: flex;
+    align-items: flex-start;
+    min-height: calc(100vh - 60px); /* full screen minus navbar */
 }
 
-.search-filters {
-    list-style:none;
-    flex: 1;
-    overflow-y: auto
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 57px; /* leave space for navbar */
+    align-self: flex-start;
+    width: 200px;
+    height: calc(100vh -  57px); /* full viewport minus navbar */
+    background: #333;
+    border-right: 2px solid #555;
+    padding: 10px 8px;
+    overflow-y: auto; /* scroll inside sidebar if content is taller */
 }
 
 .sidebar-footer-credit {
-    /*margin-top: auto;*/
-    margin: 12px;
-    padding: 10px 12px;
+    background: #222;
+    color: #ccc;
+    padding: 20px;
     font-size: 12px;
     text-align: center;
+    border-top: 1px solid #444;
+    margin-top: auto; /* spacing above footer */
 }
 
 .sidebar-footer-credit a:host{text-decoration: underline;}
@@ -93,6 +102,77 @@ body {
     font-style: italic;
 }
 
+
+.genre-dropdown {
+    position: relative;
+}
+
+.genre-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.genre-label {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #fff;
+}
+
+.dropdown-arrow {
+    transition: transform 0.3s ease;
+    font-size: 10px;
+}
+
+.dropdown-arrow.open {
+    transform: rotate(180deg);
+}
+
+.genre-checkbox-list {
+    background: #2a2a2a;
+    border-radius: 8px;
+    margin-top: 8px;
+    padding: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    box-shadow: 0 4px 6px rgba(0,0,0,.3);
+}
+
+.genre-checkbox-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.genre-checkbox-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.genre-checkbox-item input[type="checkbox"] {
+    margin-right: 10px;
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
+    flex-shrink: 0;
+    accent-color: #f7e135;
+}
+
+.genre-checkbox-item span {
+    color: #fff;
+}
+
 .go-btn {
     width:calc(100% - 24px);
     margin:12px; padding:10px 12px;
@@ -122,4 +202,131 @@ body {
 }
 .movie-title { font-size:16px; font-weight:800; }
 .movie-sub  { font-size:13px; color:#bbb; margin-top:2px; }
-.muted { color:#aaa; }
+
+.muted { color:#aaa; opacity: 0.7; }
+
+.modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+}
+.modal {
+    background: #111; color: #fff; max-width: 800px; width: 92%;
+    border-radius: 12px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.modal-close {
+    position: absolute; right: 12px; top: 8px;
+    background: transparent; border: 0; color: #fff; font-size: 24px; cursor: pointer;
+}
+.modal-header { display: flex; gap: 16px; align-items: flex-start; }
+
+/* === YEAR RANGE SECTION ===
+   Custom styling for the "Search by Year" filter.
+   Displays two red pill inputs (MIN / MAX) side-by-side
+   with a label above them. */
+.year-range {
+    background: none;        /* remove pill background from wrapper */
+    box-shadow: none;        /* remove wrapper shadow */
+    margin: 8px 12px;
+    padding: 0;
+}
+
+/* Label text above the two year bubbles */
+.year-label {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #f7e135;          /* same gold accent as logo/buttons */
+    margin: 0 17px 6px;      /* slight side offset + space below label */
+    text-align: center;
+}
+
+/* Container for the two bubbles */
+.year-bubbles {
+    display: flex;           /* line up horizontally */
+    gap: 8px;                /* spacing between the two bubbles */
+}
+
+/* Each bubble inherits the red pill style from .filter-item */
+.year-bubbles .filter-item {
+    margin: 0;               /* override default margins for alignment */
+    flex: 1;                 /* ensure equal width for both bubbles */
+}
+
+/* Center placeholder text inside each bubble input */
+.year-bubbles .filter-input {
+    text-align: center;
+}
+/* === RATING RANGE SECTION ===
+   Custom styling for the "Search by Rating" filter.
+   Displays two red pill inputs (MIN / MAX) side-by-side
+   with a label above them. */
+.rating-range {
+    background: none;        /* remove pill background from wrapper */
+    box-shadow: none;        /* remove wrapper shadow */
+    margin: 8px 12px;
+    padding: 0;
+}
+
+/* Label text above the two rating bubbles */
+.rating-label {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: #f7e135;          /* same gold accent as logo/buttons */
+    margin: 0 17px 6px;      /* slight side offset + space below label */
+    text-align: center;
+}
+
+/* Container for the two bubbles */
+.rating-bubbles {
+    display: flex;           /* line up horizontally */
+    gap: 8px;                /* spacing between the two bubbles */
+}
+
+/* Each bubble inherits the red pill style from .filter-item */
+.rating-bubbles .filter-item {
+    margin: 0;               /* override default margins for alignment */
+    flex: 1;                 /* ensure equal width for both bubbles */
+}
+
+/* Center placeholder text inside each bubble input */
+.rating-bubbles .filter-input {
+    text-align: center;
+}
+/* Remove bullet points from sidebar filter list items */
+.search-filters li {
+    list-style-type: none;   /* removes the dots */
+    flex: 0 0 auto;
+}
+
+/* === RATING INPUT FIX ===
+   Removes spinner arrows from number inputs
+   so MIN/MAX placeholders are perfectly centered. */
+
+/* Chrome, Edge, Safari, Opera (WebKit browsers) */
+.rating-bubbles input[type="number"]::-webkit-inner-spin-button,
+.rating-bubbles input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;  /* hide spinner controls */
+  margin: 0;
+}
+
+/* Firefox */
+.rating-bubbles input[type="number"] {
+  -moz-appearance: textfield;  /* remove spinners */
+  text-align: center;          /* ensure placeholder + value stay centered */
+}
+
+/* Chrome, Edge, Safari, Opera (WebKit browsers) */
+.year-bubbles input[type="number"]::-webkit-inner-spin-button,
+.year-bubbles input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;  /* hide spinner controls */
+  margin: 0;
+}
+
+/* Firefox */
+.year-bubbles input[type="number"] {
+  -moz-appearance: textfield;  /* remove spinners */
+  text-align: center;          /* ensure placeholder + value stay centered */
+}
