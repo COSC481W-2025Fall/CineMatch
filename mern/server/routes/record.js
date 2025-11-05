@@ -313,6 +313,7 @@ router.get("/details/:id", async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 });
+
 router.get("/:id", async (req, res) => {
     try {
         const col = db.collection("movies");
