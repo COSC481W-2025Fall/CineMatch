@@ -1,4 +1,4 @@
-config.env
+mern/server/config.env
 node_modules/
 .idea
 .env

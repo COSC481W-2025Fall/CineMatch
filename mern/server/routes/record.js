@@ -16,12 +16,11 @@ router.get("/", async (req, res) => {
         const genreCol = db.collection("genre");
 
 
-        const { title, name, director, actor, year_min, year_max, rating_min, rating_max, desc, genre } = req.query;
+        const { title, name, director, actor, year_min, year_max, rating_min, rating_max, genre } = req.query;
         // build the base movie filter
         const filter = {};
         const qName = name ?? title;
         if (qName)  filter.name = { $regex: qName, $options: "i" };
-        if (desc)   filter.description = { $regex: desc, $options: "i" };
         // YEAR RANGE (inclusive)
         const yMin = Number(year_min);
         const yMax = Number(year_max);
@@ -30,10 +29,10 @@ router.get("/", async (req, res) => {
         if (!Number.isNaN(yMax)) yearRange.$lte = yMax;
         if (Object.keys(yearRange).length) filter.date = yearRange;
         // RATING RANGE (inclusive)
-        const MAX_RATING = 5;
+        const MAX_RATING = 10;
         const yMinRating = Number(rating_min);
         const yMaxRating = Number(rating_max);
-        // Validate numbers must be in [0, 5]
+        // Validate numbers must be in [0, 10]
         if (!Number.isNaN(yMinRating) && (yMinRating < 0 || yMinRating > MAX_RATING)) {
             return res.status(400).json({ error: `Maximum rating must be between 0 and ${MAX_RATING}.` });
         }
@@ -46,8 +45,8 @@ router.get("/", async (req, res) => {
         }
         const ratingRange = {};
         if (!Number.isNaN(yMinRating)) ratingRange.$gte = yMinRating;
-        // Always set an upper bound of 5
-        // If user provided a max, use the smaller of their value and 5
+        // Always set an upper bound of 10
+        // If user provided a max, use the smaller of their value and 10
         ratingRange.$lte = Number.isNaN(yMaxRating) ? MAX_RATING : Math.min(yMaxRating, MAX_RATING);
         // Only attach if at least one bound is present
         if (Object.keys(ratingRange).length) filter.rating = ratingRange;
@@ -77,7 +76,7 @@ router.get("/", async (req, res) => {
             // Find director whose name matches the query provided
             const directorRows = await directorsCol.aggregate([
                 // find director data whose name matches (CASE INSENSITIVE)
-                { $match: { role: "Director", name: { $regex: director, $options: "i" } } },
+                { $match: { name: { $regex: director, $options: "i" } } },
                 { $group: { _id: "$id" } },   // distinct, shoooould allow for no repeats
                 { $limit: 500 }                 // limit will possibly be smaller in the future
             ]).toArray();
@@ -274,7 +273,7 @@ router.get("/details/:id", async (req, res) => {
         // This is needed for our tests
         const dirDocs = await directorsCol
             .find(
-                { id, role: "Director" },
+                { id },
                 { projection: { _id: 0, name: 1 } }
             )
             .limit(5)
@@ -285,7 +284,7 @@ router.get("/details/:id", async (req, res) => {
 
         const dir = await directorsCol
             .find(
-                { id, role: "Director" },
+                { id },
                 { projection: { _id: 0, name: 1 } }
             )
             .limit(5)
@@ -376,7 +375,7 @@ router.post("/bulk", async (req, res) => {
         // DIRECTOR filter
         if (director) {
             const directorRows = await directorsCol.aggregate([
-                { $match: { role: "Director", name: { $regex: director, $options: "i" } } },
+                { $match: { name: { $regex: director, $options: "i" } } },
                 { $group: { _id: "$id" } },
                 { $limit: 500 }
             ]).toArray();
