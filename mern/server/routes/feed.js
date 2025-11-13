@@ -5,7 +5,7 @@ import db from "../db/connection.js";
 
 const router = Router();
 
-// .env: put TMDB_API_KEY in server/..env (NOT the Vite one)
+// .env: put TMDB_API_KEY in server/.env (NOT the Vite one)
 const TMDB_API_KEY = process.env.VITE_TMDB_API_KEY;
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
