@@ -155,7 +155,7 @@ router.get("/", async (req, res) => {
 
         const movies = await moviesCol.aggregate([
             { $match: filter },
-            { $sort: {rating: -1, date: -1, name: 1}},
+            { $sort: { popularity: -1, rating: -1, date: -1, name: 1 } },
             { $limit: 50 }, // We might have to eventually lower this, if performance takes even a bigger hit
             {
                 $project: {
@@ -425,7 +425,7 @@ router.post("/bulk", async (req, res) => {
         // Return all we got in 1 aggregation
         const movies = await moviesCol.aggregate([
             { $match: baseFilter },
-            { $sort: { rating: -1, date: -1, name: 1 } },
+            { $sort: { popularity: -1, rating: -1, date: -1, name: 1 } },
             { $limit: 50 },
             {
                 $project: {
