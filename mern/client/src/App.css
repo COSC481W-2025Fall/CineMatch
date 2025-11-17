@@ -25,6 +25,10 @@ body {
 }
 .navigation-button.active { background:linear-gradient(45deg,#f7e135,#cc8800); }
 
+#mobileNavToggle {
+    display: none;
+}
+
 .logo {
     font-family:'Magz', cursive; font-size:30px; color:#f7e135; font-style:italic;
     margin:0 auto; text-shadow:2px 2px 4px rgba(0,0,0,.5); transform:scaleX(1.5);
@@ -363,4 +367,134 @@ body {
 .year-bubbles input[type="number"] {
   -moz-appearance: textfield;  /* remove spinners */
   text-align: center;          /* ensure placeholder + value stay centered */
+}
+
+/* Mobile styling */
+@media (max-width: 768px) {
+
+    #mobileNavToggle {
+        display: block;
+    }
+
+    /* make nav bar taller and rearrange layout */
+    .navigation-top {
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 16px;
+        position: fixed;
+        top: 0;
+        z-index: 100;
+    }
+
+    /* logo centered */
+    .logo {
+        margin: 0 auto;
+        padding-top: 10px;
+        font-size: 26px;
+        order: 1;
+        width: 100%;
+        text-align: center;
+        margin-bottom: 0px;
+    }
+
+    
+    #sidebarToggle {
+        order: 0;
+        margin-right: auto;
+    }
+
+    /* hide nav-buttons until toggled on */
+    .nav-links {
+        width: 100%;
+        display: none; /* start hidden */
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .nav-links.open {
+        display: flex; /* show on toggle */
+    }
+
+    .navigation-button {
+        width: 100%;       
+        text-align: center;
+        margin: 0;
+        padding: 12px;
+        font-size: 15px;
+    }
+
+    /* mobile sidebar*/
+    .sidebar {
+        position: fixed;
+        top: 57px;
+        left: 0;
+
+        width: 100vw;               /* exact viewport width */
+        max-width: 100vw;           /* prevent overflow */
+        height: calc(100vh - 57px);
+
+        background: #333;
+        z-index: 999;
+
+        padding: 12px 10px;
+
+        overflow-y: auto;
+        overflow-x: hidden;         /* no horizontal scroll */
+    }
+
+    /* hide sidebar fully when collapsed */
+    .main-container.sidebar-collapsed .sidebar {
+        transform: translateX(-100%);
+        pointer-events: none;
+    }
+
+    /* no horizontal scrolling */
+    body,
+    html,
+    .main-container,
+    .content-area {
+        overflow-x: hidden !important;
+    }
+/***
+    /* show one movie card 
+    .content-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center; /* center movie grid horizontally 
+        padding: 45px;       /* adjust spacing of card
+        padding-top: 150px;  /* keep movie cards under navbar
+        margin: 0;           /* remove extra margin for mobile 
+    }
+
+    .movie-grid {
+        justify-content: center; /* make cards centered in the grid 
+    }
+*/
+
+
+    /* show two movie cards side by side */
+    .content-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center; 
+        padding-top: 150px;
+        margin: 0;
+    }
+
+    .movie-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(clamp(120px, 25%, 180px), 1fr));
+        justify-items: center;   /* center items in each column */
+        gap: 16px;
+        width: 100%;
+        max-width: 500px;
+    }
+
+    .movie-card {
+        width: 100%;             /* fill the grid cell */
+        margin: 0;
+    }
+    
 }

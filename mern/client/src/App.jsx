@@ -55,19 +55,32 @@ function App() {
         localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
     }, [toWatch]);
 
-    // sidebar functionality
+    // sidebar toggle functionality
     useEffect(() => {
-    const toggleButton = document.getElementById("sidebarToggle");
-    const mainContainer = document.querySelector(".main-container");
+        const toggleButton = document.getElementById("sidebarToggle");
+        const mainContainer = document.querySelector(".main-container");
 
-    if (!toggleButton || !mainContainer) return;
+        if (toggleButton && mainContainer) {
+            const toggleSidebar = () => {
+                mainContainer.classList.toggle("sidebar-collapsed");
+            };
+            toggleButton.addEventListener("click", toggleSidebar);
+            return () => toggleButton.removeEventListener("click", toggleSidebar);
+        }
+    }, []);
+    // mobile navbar toggle functionality
+    useEffect(() => {
+        const mobileNavToggle = document.getElementById("mobileNavToggle");
+        const navLinks = document.getElementById("navLinks");
 
-    const toggleSidebar = () => {
-        mainContainer.classList.toggle("sidebar-collapsed");
-    };
+        if (!mobileNavToggle || !navLinks) return;
 
-    toggleButton.addEventListener("click", toggleSidebar);
-    return () => toggleButton.removeEventListener("click", toggleSidebar);
+        const toggleMobileNav = () => {
+            navLinks.classList.toggle("open");
+        };
+
+        mobileNavToggle.addEventListener("click", toggleMobileNav);
+        return () => mobileNavToggle.removeEventListener("click", toggleMobileNav);
     }, []);
 
 
@@ -341,14 +354,30 @@ function App() {
                 <>
                     <div className="navigation-top">
                         <button className="navigation-button" id="sidebarToggle">☰</button>
-                        <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button active">SEARCH</Link>
-                        <div className="logo">cineMatch</div>
-                        <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
-                        <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
-                        <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
-                        <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
 
+                        <div className="logo">cineMatch</div>
+
+                        {/* mobile toggle for navbar */}
+                        <button
+                            className="navigation-button"
+                            id="mobileNavToggle"
+                            style={{ marginLeft: "auto" }}
+                        >
+                            ▼
+                        </button>
+
+                        {/* navbar links wrapped for mobile collapse */}
+                        <div className="nav-links" id="navLinks">
+
+                            <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button active">SEARCH</Link>
+                            <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
+                            <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
+                            <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
+                            <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
+
+                        </div>
                     </div>
+
 
                     <div className="main-container">
                         <aside className="sidebar">
