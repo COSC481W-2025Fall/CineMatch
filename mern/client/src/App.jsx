@@ -35,6 +35,15 @@ const GENRES = [
     "War",
     "Western"
 ]
+// utilities (top of file)
+function shuffleArray(array) {
+  const arr = [...array];  //<-- makes a shallow copy of the original array
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));    // picks a random index from 0 to n inclusively
+    [arr[i], arr[j]] = [arr[j], arr[i]];   //swaps elemes
+  }
+  return arr;
+}
 
 function App() {
 
@@ -253,23 +262,36 @@ function App() {
             return payload;
         }
 
-        async function doSearch() {
-            setStatus("Loading…");
-            try {
-                const query = {
-                    ...params,
-                    ...(selectedGenres.length ? { genre: selectedGenres } : {})
-                };
+async function doSearch() {
+    setStatus("Loading…");   //shows the loading state (UI)
+    try {
+        const query = {
+            ...params,      //builds the query object from params 
+            ...(selectedGenres.length ? { genre: selectedGenres } : {})
+        };
 
-                const data = await fetchMovies(query);
-                setMovies(data);
-                setStatus(data.length ? "" : "No results found.");
-            } catch (err) {
-                console.error(err);
-                setStatus("");
-                setErrorMsg(err.message);  // Opens the error modal
-            }
-        }
+        const data = await fetchMovies(query);      // fetch the resluts from the  backend u
+        //checks all the params in the search filters for empty
+        const noSearch =
+            (!params.actor || !params.actor.trim()) &&
+            (!params.director || !params.director.trim()) &&
+            (!params.title || !params.title.trim()) &&
+            !selectedGenres.length &&
+            !params.year_min &&
+            !params.year_max &&
+            !params.rating_min &&
+            !params.rating_max;
+
+        setMovies(noSearch ? shuffleArray(data) : data); //if no parmas shuuffle else use the filer params
+
+        setStatus(data.length ? "" : "No results found.");
+    } catch (err) {
+        console.error(err);
+        setStatus("");
+        setErrorMsg(err.message);
+    }
+}
+
 
 
             useEffect(() => {
