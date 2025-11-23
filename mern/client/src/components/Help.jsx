@@ -19,7 +19,7 @@ export default function Help() {
                     you the option to save it to your personal Watched List or To-Watch List.</p>;
             case "feed":
                 return <p className="help-info">The main feed provides personalized movie recommendations. These
-                    suggestions are generated based on the current contents of your To-Watch List. To start receiving
+                    suggestions are generated based on the current contents of your Watched List. To start receiving
                     personalized recommendations, you must first add movies to your
                     list by clicking on a movie on the search page.</p>;
             case "watchlist":
@@ -42,28 +42,12 @@ export default function Help() {
     return (
         <>
             <div className="navigation-top">
-                <button className="navigation-button">
-                    <Link to="/" style={{ color: "inherit", textDecoration: "none" }}>
-                        SEARCH
-                    </Link>
-                </button>
+                <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
                 <div className="logo">cineMatch</div>
-                <button className="navigation-button active">HELP</button>.       {/* Same navigation bar */}
-                <button className="navigation-button">FEED</button>
-                <button className="navigation-button">
-                    <Link
-                        to="/watchlist"
-                        style={{ color: "inherit", textDecoration: "none" }}>.       {/* routes to the other pages */}
-                        WATCHED LIST
-                    </Link>
-                </button>
-                <button className="navigation-button">
-                    <Link
-                        to="/to-watch-list"
-                        style={{ color: "inherit", textDecoration: "none" }}>
-                        TO-WATCH LIST
-                    </Link>
-                </button>
+                <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button active">HELP</Link>
+                <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
+                <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
+                <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
             </div>
 
             <div className="help-header">

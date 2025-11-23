@@ -1,5 +1,4 @@
-
-
+// server/tests/record.test.js
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import request from "supertest";
 import express from "express";
@@ -35,8 +34,18 @@ vi.mock("../db/connection.js", () => {
                                         const re = new RegExp(f.name.$regex, f.name.$options);
                                         ok = ok && re.test(doc.name);
                                     }
-                                    if (typeof f.date === "number") ok = ok && doc.date === f.date;
-                                    if (f.rating?.$gte != null) ok = ok && Number(doc.rating) >= Number(f.rating.$gte);
+                                    if (typeof f.date === "number") {
+                                        ok = ok && doc.date === f.date;
+                                    } else if (f.date && typeof f.date === "object") {
+                                        if (f.date.$gte != null) ok = ok && Number(doc.date) >= Number(f.date.$gte);
+                                        if (f.date.$lte != null) ok = ok && Number(doc.date) <= Number(f.date.$lte);
+                                    }
+                                    if (typeof f.rating === "number") {
+                                        ok = ok && Number(doc.rating) === Number(f.rating);
+                                    } else if (f.rating && typeof f.rating === "object") {
+                                        if (f.rating.$gte != null) ok = ok && Number(doc.rating) >= Number(f.rating.$gte);
+                                        if (f.rating.$lte != null) ok = ok && Number(doc.rating) <= Number(f.rating.$lte);
+                                    }
                                     if (f.description?.$regex) {
                                         const re2 = new RegExp(f.description.$regex, f.description.$options);
                                         ok = ok && re2.test(doc.description ?? "");
@@ -161,28 +170,28 @@ app.use("/record", recordRouter);
 
 describe("GET /record with posters", () => {
     beforeEach(() => {
-        db.collection("movies").__setDocs([
-            { id: 1, name: "Movie1", date: 2018, rating: 4.0, posterUrl: null, description: "random description" },
-            { id: 2, name: "Movie2", date: 2019, rating: 4.5, posterUrl: "url2", description: "random description 2" },
-        ]);
+        vi.resetAllMocks(); // Added to ensure that all tests pass when ALL test files are run
         db.collection("posters").__setDocs([
             { id: 1, link: "http://img/poster1.jpg" },
+            { id: 2, link: "url2" },
 
         ]);
         db.collection("genre").__setDocs([]);
         db.collection("movies").__setDocs([
             {
-                _id: "m1",
+                id: "1",
+                _id: "1",
                 name: "Avengers: Infinity War",
                 director: "Anthony Russo",
                 date: 2018,
                 rating: 4.1,
-                posterUrl: null,
+                posterUrl: "http://img/poster1.jpg",
                 description: "Thanos seeks the Infinity Stones",
                 genre: ["Action", "Adventure"],
             },
             {
-                _id: "m2",
+                id: "2",
+                _id: "2",
                 name: "Avengers: Endgame",
                 director: "Joe Russo",
                 date: 2019,
@@ -192,7 +201,8 @@ describe("GET /record with posters", () => {
                 genre: ["Action", "Sci-Fi"],
             },
             {
-                _id: "m3",
+                id: "3",
+                _id: "3",
                 name: "Barbie",
                 director: "Greta Gerwig",
                 date: 2023,
@@ -210,19 +220,20 @@ describe("GET /record with posters", () => {
     it("returns movies and fills missing posterUrl from posters collection", async () => {
         const res = await request(app).get("/record");
         expect(res.status).toBe(200);
-        expect(res.body.length).toBe(2);
+        expect(res.body.length).toBe(3);
 
         const byId = Object.fromEntries(res.body.map((m) => [m.id, m]));
         expect(byId[1].posterUrl).toBe("http://img/poster1.jpg");
-        expect(byId[2].posterUrl).toBe("url2");
+        expect(byId[2].posterUrl).toBe("keep-me");
     });
 
     // test #2: Testing movie posters by year
     it("filters by year and keeps poster", async () => {
-        const res = await request(app).get("/record").query({ year: "2018" });
+        const res = await request(app).get("/record").query({ min_year: "2018", year_max: "2018" });
         expect(res.status).toBe(200);
         expect(res.body.length).toBe(1);
-        expect(res.body[0].id).toBe(1);
+
+        expect(res.body[0].id).toBe('1');
         expect(res.body[0].posterUrl).toBe("http://img/poster1.jpg");
     });
 
@@ -251,17 +262,41 @@ describe("GET /record with posters", () => {
 
     // test #5: test movie by date
     it("filters by exact year", async () => {
-        const res = await request(app).get("/record").query({ year: "2018" });
+        const res = await request(app).get("/record").query({ year_min: "2018", year_max: "2018" });
         expect(res.status).toBe(200);
         const titles = res.body.map(m => m.title || m.name);
         expect(titles).toEqual(["Avengers: Infinity War"]);
     });
 
     // test #6: test movie by its rating
-    it("filters by minimum rating", async () => {
-        const res = await request(app).get("/record").query({ rating: "4.4" });
+    it("filters by rating minimum (rating_min=4.4)", async () => {
+        const res = await request(app).get("/record").query({ rating_min: "4.4" });
         expect(res.status).toBe(200);
-        const titles = res.body.map(m => m.title || m.name).sort();
+        const titles = res.body.map((m) => m.title).sort();
         expect(titles).toEqual(["Avengers: Endgame", "Barbie"].sort());
+    });
+
+    // test #7: test movie by date range
+    it("filters by inclusive year range (2018–2019)", async () => {
+        const res = await request(app).get("/record").query({ year_min: "2018", year_max: "2019" });
+        expect(res.status).toBe(200);
+        const titles = res.body.map((m) => m.title).sort();
+        expect(titles).toEqual(["Avengers: Endgame", "Avengers: Infinity War"].sort());
+    });
+
+    // test #8: test movie by rating range
+    it("filters by rating range (4.2–4.45), returns only Endgame", async () => {
+        const res = await request(app).get("/record").query({ rating_min: "4.2", rating_max: "4.45" });
+        expect(res.status).toBe(200);
+        const titles = res.body.map((m) => m.title);
+        expect(titles).toEqual(["Avengers: Endgame"]);
+    });
+
+    // test #9: test movie by exact rating
+    it("filters by rating range (4.5-4.5), returns only Endgame", async () => {
+        const res = await request(app).get("/record").query({ rating_min: "4.5", rating_max: "4.5" });
+        expect(res.status).toBe(200);
+        const titles = res.body.map((m) => m.title);
+        expect(titles).toEqual(["Barbie"]);
     });
 });

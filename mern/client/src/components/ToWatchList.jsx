@@ -13,11 +13,11 @@ const GENRES = [
 ];
 
 const CAST_LIMIT = 7
-export default function WatchListPage() {
+export default function ToWatchListPage() {
 
     const [watched, setWatched] = useState(() => new Set(JSON.parse(localStorage.getItem("watched") || "[]")));
     const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("to-watch") || "[]")));
-    const watchlist = new Set((JSON.parse(localStorage.getItem("watched") || "[]") || []).map(Number));
+    const watchlist = new Set((JSON.parse(localStorage.getItem("to-watch") || "[]") || []).map(Number));
 
 
     useEffect(() => {
@@ -155,7 +155,7 @@ export default function WatchListPage() {
         try {
             if (watchlist.size === 0) {
                 setMovies([]);
-                setStatus("Your watch list is empty.");
+                setStatus("Your to-watch list is empty.");
                 return;
             }
 
@@ -215,8 +215,8 @@ export default function WatchListPage() {
                 <div className="logo">cineMatch</div>
                 <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
                 <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
-                <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button active">WATCHED LIST</Link>
-                <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
+                <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
+                <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button active">TO-WATCH LIST</Link>
             </div>
 
             <div className="main-container">

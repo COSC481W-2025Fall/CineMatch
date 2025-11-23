@@ -12,8 +12,10 @@
   "description": "",
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "mongodb": "^6.19.0"
+    "mongodb": "^6.19.0",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "supertest": "^7.1.4",
