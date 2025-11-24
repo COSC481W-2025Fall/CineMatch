@@ -6,20 +6,32 @@ import MovieDetails from "./MovieDetails";
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
 const DEFAULT_LIMIT = 10;
+const CAST_LIMIT = 7 //limit for the cast
 
 export default function RecommendationFeed() {
+    // useMemo to efficiently get the watched IDs from local storage once on initial render                                         
     const watchedIds = useMemo(
         () => new Set(JSON.parse(localStorage.getItem("watched") || "[]")),
         []
     );
+        //state hooks used for managing the user's "Watched and To watch" list
+    const [watched, setWatched] = useState(() => new Set(JSON.parse(localStorage.getItem("watched") || "[]")));
+    const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("to-watch") || "[]")));
+    useEffect(() => {
+        localStorage.setItem("watched", JSON.stringify([...watched]));// whenever to-watch or watched lists change store it as json in the cache array
+    }, [watched]);
+    useEffect(() => {
+        localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
+    }, [toWatch]);
 
+    // State hook for the recommendation limit input
     const [limit, setLimit] = useState(DEFAULT_LIMIT);
     const [recs, setRecs] = useState([]);
     const [status, setStatus] = useState("Loading…");
 
-    const [details, setDetails] = useState(null);
+    const [details, setDetails] = useState(null);  
     const [showDetails, setShowDetails] = useState(false);
-
+    // Asynchronous function to open the details modal for a selected recommendation (rec)
     async function openDetails(rec) {
         try {
             const title = rec?.title ?? "";
@@ -27,26 +39,29 @@ export default function RecommendationFeed() {
             const qs = new URLSearchParams();
             if (title) qs.set("name", title);
             if (year) qs.set("year", year);
-            const searchRes = await fetch(`/record?${qs.toString()}`);
+            const searchRes = await fetch(`/record?${qs.toString()}`);// Search the backend for a TMDB ID using the movie title and year
             let movieId = null;
             if (searchRes.ok) {
                 const hits = await searchRes.json();
-                if (Array.isArray(hits) && hits.length && hits[0]?.id != null) {
+                if (Array.isArray(hits) && hits.length && hits[0]?.id != null) { // Check if a result with an ID was found
                     movieId = hits[0].id;
                 }
             }
+            //  If a TMDB ID was found, fetch full details from the backend
 
             if (movieId != null) {
                 const res = await fetch(`/record/details/${movieId}`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
-                setDetails({ id: movieId, ...data });
+                setDetails({ id: movieId, ...data });// Set the details state with the fetched data
                 setShowDetails(true);
                 return;
             }
+            // If no TMDB ID was found in the search, display partial information 
+            // from the recommendation object itself.
 
             setDetails({
-                id: null,
+                id: null,     // Indicates we couldn't find a full record
                 title,
                 year: rec?.year ?? null,
                 rating: rec?.rating ?? null,
@@ -62,18 +77,18 @@ export default function RecommendationFeed() {
     }
 
     async function buildRecommendations() {
-        if (watchedIds.size === 0) {
+        if (watchedIds.size === 0) { // Check if the user has watched any movies yet
             setStatus("Your watched list is empty — watch a few movies to seed recommendations.");
             setRecs([]);
             return;
         }
         setStatus("Building your feed…");
         try {
-            const body = {
+            const body = {// Prepare the request body with watched IDs and the desired limit
                 watchedIds: Array.from(watchedIds),
                 limit: Math.max(1, Number(limit) || DEFAULT_LIMIT),
             };
-            const resp = await fetch("/feed", {
+            const resp = await fetch("/feed", { // Send a POST request to the /feed endpoint
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
@@ -89,8 +104,31 @@ export default function RecommendationFeed() {
             setRecs([]);
         }
     }
+    
 
     useEffect(() => { buildRecommendations(); }, []);
+
+    const isWatched = useMemo(() => details && watched.has(details.id), [details, watched]);   // useMemo to check if the currently viewed movie is in the 'watched' list
+    const inToWatch = useMemo(() => details && toWatch.has(details.id), [details, toWatch]);
+//function to add/remove a movie from the 'watched' list 
+    const onMarkWatched = () => {
+        if (!details) return;
+        const id = Number(details.id);
+        setWatched(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };// Function to add/remove a movie from the 'toWatch' list
+    const onAddToWatch = () => {
+        if (!details) return;
+        const id = Number(details.id);
+        setWatchlist(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
 
     return (
         <>
@@ -168,10 +206,10 @@ export default function RecommendationFeed() {
                 <MovieDetails
                     details={details}
                     onClose={() => setShowDetails(false)}
-                    isWatched={details.id != null && watchedIds.has(details.id)}
-                    inToWatch={false}
-                    onMarkWatched={() => {}}
-                    onAddToWatch={() => {}}
+                    isWatched={!!isWatched}
+                    inToWatch={!!inToWatch}
+                    onMarkWatched={onMarkWatched}
+                    onAddToWatch={onAddToWatch}
                 />
             )}
         </>
