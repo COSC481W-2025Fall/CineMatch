@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import "../App.css";
-import MovieDetails from "./MovieDetails";
+import MovieDetails from "./MovieDetails.jsx";
 import { findTmdbIdByTitleYear } from "./converter.js";
 import { authedFetch, refresh } from "../auth/api.js"; // make sure refresh is exported
 

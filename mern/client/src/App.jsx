@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx";
 import ErrorModal from "./components/ErrorModal.jsx";
-import { findTmdbIdByTitleYear } from "./components/converter";
+import { findTmdbIdByTitleYear } from "./components/converter.js";
 import { Link } from "react-router-dom";
 import { authedFetch } from "./auth/api.js"; // <-- use your auth helper
 
