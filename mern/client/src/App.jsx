@@ -3,7 +3,6 @@ import React, {useState, useEffect, useMemo} from "react";
 import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx"
 import ErrorModal from "./components/ErrorModal.jsx";
-import { findTmdbIdByTitleYear } from "./components/converter";
 
 import { Link } from "react-router-dom";
 
@@ -36,6 +35,15 @@ const GENRES = [
     "War",
     "Western"
 ]
+// utilities (top of file)
+function shuffleArray(array) {
+  const arr = [...array];  //<-- makes a shallow copy of the original array
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));    // picks a random index from 0 to n inclusively
+    [arr[i], arr[j]] = [arr[j], arr[i]];   //swaps elemes
+  }
+  return arr;
+}
 
 function App() {
 
@@ -57,30 +65,17 @@ function App() {
 
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
+
+    // modified to use TMDB ID directly
     async function openDetails(movie) {
         try {
             const res = await fetch(`/record/details/${movie.id}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
-            // grab title and year from database
-            let titleForLookup = "";
-            if (data && typeof data.title === "string" && data.title.length > 0) {
-                titleForLookup = data.title;
-            } else {
-                titleForLookup = movie.title;
-            }
-
-            let yearForLookup;
-            if (data && typeof data.year === "number") {
-                yearForLookup = data.year;
-            } else {
-                yearForLookup = movie.year;
-            }
-
-            // give converter title and year
-            const tmdbId = await findTmdbIdByTitleYear(titleForLookup, yearForLookup, {language: "en-US"}); // change to any if having issues with forign movies (forign movies might have different release date based on language if 2 versions exist)
-            console.log("[TMDB TEST] input:", {titleForLookup, yearForLookup}, "=> tmdbId:", tmdbId);
+            // replace whole conversion call and check with this
+            const tmdbId = movie.id;
+            console.log("[TMDB] Using ID:", tmdbId);
 
             let patch = {}; // empty
 
@@ -129,6 +124,11 @@ function App() {
                     let runtime = null;
                     if (tmdb && typeof tmdb.runtime === "number") {
                         runtime = tmdb.runtime;
+                    }
+
+                    let description = null;
+                    if (tmdb && typeof tmdb.overview === "string" && tmdb.overview.trim().length > 0) {
+                        description = tmdb.overview.trim();
                     }
 
                     // fill patch objects
@@ -262,23 +262,36 @@ function App() {
             return payload;
         }
 
-        async function doSearch() {
-            setStatus("Loading…");
-            try {
-                const query = {
-                    ...params,
-                    ...(selectedGenres.length ? { genre: selectedGenres } : {})
-                };
+async function doSearch() {
+    setStatus("Loading…");   //shows the loading state (UI)
+    try {
+        const query = {
+            ...params,      //builds the query object from params 
+            ...(selectedGenres.length ? { genre: selectedGenres } : {})
+        };
 
-                const data = await fetchMovies(query);
-                setMovies(data);
-                setStatus(data.length ? "" : "No results found.");
-            } catch (err) {
-                console.error(err);
-                setStatus("");
-                setErrorMsg(err.message);  // Opens the error modal
-            }
-        }
+        const data = await fetchMovies(query);      // fetch the resluts from the  backend u
+        //checks all the params in the search filters for empty
+        const noSearch =
+            (!params.actor || !params.actor.trim()) &&
+            (!params.director || !params.director.trim()) &&
+            (!params.title || !params.title.trim()) &&
+            !selectedGenres.length &&
+            !params.year_min &&
+            !params.year_max &&
+            !params.rating_min &&
+            !params.rating_max;
+
+        setMovies(noSearch ? shuffleArray(data) : data); //if no parmas shuuffle else use the filer params
+
+        setStatus(data.length ? "" : "No results found.");
+    } catch (err) {
+        console.error(err);
+        setStatus("");
+        setErrorMsg(err.message);
+    }
+}
+
 
 
             useEffect(() => {
@@ -407,7 +420,7 @@ function App() {
                                 Two bubble inputs side-by-side for rating min and max (0–5).
                                 Works the same as the year. */}
                                 <li className="rating-range" key="RatingRange">
-                                    <div className="rating-label">RATING (0–5)</div>
+                                    <div className="rating-label">RATING (0–10)</div>
 
                                     <div className="rating-bubbles">
                                         {/* ---- Minimum Rating bubble ---- */}
@@ -420,7 +433,7 @@ function App() {
                                                     inputMode="decimal"
                                                     step="0.1"
                                                     min="0"
-                                                    max="5"
+                                                    max="10"
                                                     placeholder="MIN"
                                                     value={params.rating_min}
                                                     onChange={handleChange}
@@ -439,7 +452,7 @@ function App() {
                                                     inputMode="decimal"
                                                     step="0.1"
                                                     min="0"
-                                                    max="5"
+                                                    max="10"
                                                     placeholder="MAX"
                                                     value={params.rating_max}
                                                     onChange={handleChange}
