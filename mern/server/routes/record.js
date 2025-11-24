@@ -298,7 +298,8 @@ router.get("/details/:id", async (req, res) => {
             year: movie.date,
             rating: movie.rating ?? null,
             posterUrl,
-            description: movie.description ?? "",
+            backdropUrl,
+            descriptions: movie.descriptions ?? "", // changed to descriptions, not description to match label
             genres,
             topCast,
             directors: directorNames.length === 0 ? null : (directorNames.length === 1 ? directorNames[0] : directorNames),
