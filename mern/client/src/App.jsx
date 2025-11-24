@@ -340,7 +340,7 @@ function App() {
             return (
                 <>
                     <div className="navigation-top">
-                        <button className="navigation-button" id="sidebarToggle">☰</button>
+                        <button className="navigation-button" id="sidebarToggle" aria-label="Toggle Sidebar">☰</button>
                         <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button active">SEARCH</Link>
                         <div className="logo">cineMatch</div>
                         <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
@@ -350,8 +350,8 @@ function App() {
 
                     </div>
 
-                    <div className="main-container">
-                        <aside className="sidebar">
+                    <div className="main-container" data-testid="main-container">
+                        <aside className="sidebar" data-testid="sidebar">
                             {/*  Simple text boxes that we will take as input  */}
                             <ul className="search-filters">
 
@@ -531,7 +531,7 @@ function App() {
                             </footer>
                         </aside>
 
-                        <main className="content-area">
+                        <main className="content-area" data-testid="content-area">
                             <div id="status" className="muted">{status}</div>
                             <div id="results" className="movie-grid">
                                 {movies.map((m, idx) => (
