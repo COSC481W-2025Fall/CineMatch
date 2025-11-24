@@ -6,7 +6,7 @@ import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import { RateLimiterMongo } from "rate-limiter-flexible";
 import { ObjectId } from "mongodb";
-import usersDb from "../db/usersConnection.js"; 
+import usersDb from "../db/usersConnections.js"; 
 import { sendMail } from "../utils/email.js";
 import { newRawToken, hashToken, tokenMatches } from "../utils/oneTimeToken.js";
 

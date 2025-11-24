@@ -2,7 +2,7 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import { ObjectId } from "mongodb";
-import usersDb from "../db/usersConnection.js";
+import usersDb from "../db/usersConnections.js";
 
 const router = Router();
 const Users = usersDb.collection("users");
