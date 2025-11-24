@@ -9,13 +9,12 @@ export default function Help() {
     const activeStyle = {
         background: "linear-gradient(45deg,#f7e135,#cc8800)",
     };
-
     {/* If specifc button is press give one of these statemates  */}
     function renderInfo() {
         switch (activeButton) {
             case "search":
                 return <p className="help-info" >To find exactly what you're looking for,
-                    use the search page to filter movies by fields like actor, genre, year, or rating (between 0 and 5).
+                    use the search page to filter movies by fields like actor, genre, year, or rating (between 0 and 10).
                     Once you find a movie, simply click on its title to see a full description. The pop-up also gives
                     you the option to save it to your personal Watched List or To-Watch List.</p>;
             case "feed":
@@ -26,20 +25,18 @@ export default function Help() {
             case "watchlist":
                 return <p className="help-info">Your Watched List helps you keep a running
                     history of all the films you have watched,
-                    ensuring you never forget which ones you've seen.</p>;
+                    ensuring you never forget which ones you've seen. The information in this section will be used for your 
+                    recommendations in the feed </p>;
             case "to-watch":
                 return <p className="help-info" >Use the To-Watch List as a bookmark for all the movies you want to see.</p>;
-            case "Uploading/Downloading Json file":
-                return <p className="help-info">The data for both your Watched List and To-Watch List is stored locally in a JSON file.
-                    This file is essential because your main feed uses it to generate personalized movie recommendations.To ensure you never lose your progress and can
-                    continue getting recommendations
-                    on future visits, you must download your JSON file before leaving the site. If you ever need to restore your
-                    saved lists, simply use the Upload feature to load the saved JSON file from your computer. </p>
+            case "login/signup":
+                return <p className="help-info"> To acces your feed, To-Watch List and Watched list you'll be required to login or signup.
+                Once logged in, your To-watch List and Watched list movies will be stored in our database where you can access from any where.
+                </p>
             default:
                 return null;
         }
     }
-
     return (
         <>
             <div className="navigation-top">
@@ -51,47 +48,45 @@ export default function Help() {
                 <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
             </div>
 
-            <div className="help-header">
-                <h2>Welcome to the Help Center!</h2>
-                <p>Need a hand? Click a button below to get answers, support, and tips.</p>      {/* Header div */}
-            </div>
+           <div id="help-container">
+    <div id="help-body">
+        <button
+            onClick={() => setActiveButton("search")}
+            style={activeButton === "search" ? activeStyle : undefined}
+            className="help-button">
+            Search
+        </button>
 
-            <div id="help-container">
-                <div id="help-body">{/* If button is click set the ActiveButton (useState) to search and when actived from the click -> style the button */}
-                    <button
-                        onClick={() => setActiveButton("search")}
-                        style={activeButton === "search" ? activeStyle : undefined}
-                        className="help-button">
-                        Search
-                    </button>
-                    <button
-                        onClick={() => setActiveButton("feed")}
-                        style={activeButton === "feed" ? activeStyle : undefined}
-                        className="help-button">
-                        Feed
-                    </button>
-                    <button
-                        onClick={() => setActiveButton("watchlist")}
-                        style={activeButton === "watchlist" ? activeStyle : undefined}
-                        className="help-button">
-                        Watchlist
-                    </button>
-                    <button
-                        onClick={() => setActiveButton("to-watch")}
-                        style={activeButton === "to-watch" ? activeStyle : undefined}
-                        className="help-button">
-                        To-Watch List
-                    </button>
-                    <button
-                        onClick={() => setActiveButton("Uploading/Downloading Json file")}
-                        style={activeButton === "Uploading/Downloading Json file" ? activeStyle : undefined}
-                        className="help-button">
-                        Uploading/Downloading Json file
-                    </button>
-                </div>
-            </div>
+        
+        <button
+            onClick={() => setActiveButton("watchlist")}
+            style={activeButton === "watchlist" ? activeStyle : undefined}
+            className="help-button">
+            Watchlist
+        </button>
 
-            <div id="info-box">{renderInfo()}</div>{/*The function for when a button is pressed */}
+        <button
+            onClick={() => setActiveButton("to-watch")}
+            style={activeButton === "to-watch" ? activeStyle : undefined}
+            className="help-button">
+            To-Watch List
+        </button>
+
+        <button
+            onClick={() => setActiveButton("login/signup")}
+            style={activeButton === "login/signup" ? activeStyle : undefined}
+            className="help-button">
+            Logging in / Signing up
+        </button>
+    </div>
+
+    {/* ⬇ THIS MUST MOVE INSIDE help-container */}
+    <div id="info-box">
+        {renderInfo()}
+    </div>
+    <hr></hr>
+</div>
+
         </>
     );
 }
