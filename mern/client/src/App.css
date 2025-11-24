@@ -50,6 +50,40 @@ body {
     overflow-y: auto; /* scroll inside sidebar if content is taller */
 }
 
+/* hide sidebar */
+.sidebar {
+  opacity: 1;
+  overflow: hidden;
+  transition:
+  width 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+  opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* collapsed state */
+.main-container.sidebar-collapsed .sidebar {
+  width: 0;
+  opacity: 0;
+}
+
+/* movie cards */
+.content-area {
+  flex: 1;
+  transition:
+    all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+/* transition movies and sidebar together */
+.main-container.sidebar-collapsed .content-area {
+  margin-left: 0;
+}
+
+
+
+
+
+
+
 .sidebar-footer-credit {
     background: #222;
     color: #ccc;
