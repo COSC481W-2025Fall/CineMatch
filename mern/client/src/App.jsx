@@ -131,6 +131,11 @@ function App() {
                         runtime = tmdb.runtime;
                     }
 
+                    let description = null;
+                    if (tmdb && typeof tmdb.overview === "string" && tmdb.overview.trim().length > 0) {
+                        description = tmdb.overview.trim();
+                    }
+
                     // fill patch objects
                     patch.tmdbId = tmdbId; // keep for debugging or other uses
                     if (topCast.length > 0) {
@@ -407,7 +412,7 @@ function App() {
                                 Two bubble inputs side-by-side for rating min and max (0–5).
                                 Works the same as the year. */}
                                 <li className="rating-range" key="RatingRange">
-                                    <div className="rating-label">RATING (0–5)</div>
+                                    <div className="rating-label">RATING (0–10)</div>
 
                                     <div className="rating-bubbles">
                                         {/* ---- Minimum Rating bubble ---- */}
@@ -420,7 +425,7 @@ function App() {
                                                     inputMode="decimal"
                                                     step="0.1"
                                                     min="0"
-                                                    max="5"
+                                                    max="10"
                                                     placeholder="MIN"
                                                     value={params.rating_min}
                                                     onChange={handleChange}
@@ -439,7 +444,7 @@ function App() {
                                                     inputMode="decimal"
                                                     step="0.1"
                                                     min="0"
-                                                    max="5"
+                                                    max="10"
                                                     placeholder="MAX"
                                                     value={params.rating_max}
                                                     onChange={handleChange}
