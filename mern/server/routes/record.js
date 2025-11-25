@@ -278,18 +278,7 @@ router.get("/details/:id", async (req, res) => {
             )
             .limit(5)
             .toArray();
-        const directorNames = dirDocs.map(d => d.name).filter(Boolean);
-
-
-
-        const dir = await directorsCol
-            .find(
-                { id },
-                { projection: { _id: 0, name: 1 } }
-            )
-            .limit(5)
-            .toArray();
-        const directors = dir.map(d => d.name);
+        const directors = dirDocs.map(d => d.name).filter(Boolean);
 
         // object created containing all movie info
         const payload = {
@@ -302,8 +291,7 @@ router.get("/details/:id", async (req, res) => {
             description: movie.descriptions ?? "", // changed to descriptions, not description to match label
             genres,
             topCast,
-            directors: directorNames.length === 0 ? null : (directorNames.length === 1 ? directorNames[0] : directorNames),
-            director: directors.length ? directors : null
+            directors
         };
         // send movie details
         res.status(200).json(payload);

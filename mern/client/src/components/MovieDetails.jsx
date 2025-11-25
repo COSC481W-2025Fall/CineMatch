@@ -28,11 +28,15 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
         topCastCount,
         genres,
         runtime,
-        director,
+        directors,
         watchProviders
     } = details;
 
     const runtimeText = formatRuntime(runtime);
+
+    const hasDirectors = directors &&
+        directors.length > 0 &&
+        !(directors.length === 1 && directors[0] === "NA");
 
     // use linear gradiant to make it look better and text easier to read
     const modalStyle = backdropUrl ? {
@@ -64,16 +68,12 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
                             {runtimeText ? ` • ${runtimeText}` : ""}
                         </div>
 
-                        {Array.isArray(director) && director.length < 2 && (
-                            <div style={{ marginBottom: 12 }}>
-                                <strong>Director:</strong> {director.join(", ")}
-                            </div>
-                        )}
-                        {Array.isArray(director) && director.length > 1 && (
-                            <div style={{ marginBottom: 12 }}>
-                                <strong>Directors:</strong> {director.join(", ")}
-                            </div>
-                        )}
+                        {/* condensed logic, list none listed for cases of no director */}
+                        <div style={{ marginBottom: 12 }}>
+                            <strong>{hasDirectors && directors.length > 1 ? "Directors:" : "Director:"}</strong>{" "}
+                            {hasDirectors ? directors.join(", ") : "None Listed"}
+                        </div>
+
                         {Array.isArray(genres) && genres.length > 0 && (
                             <div style={{ marginBottom: 12 }}>
                                 <strong>Genres:</strong> {genres.join(", ")}
