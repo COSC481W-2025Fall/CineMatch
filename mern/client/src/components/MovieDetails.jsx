@@ -64,9 +64,14 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
                             {runtimeText ? ` • ${runtimeText}` : ""}
                         </div>
 
-                        {Array.isArray(director) && director.length > 0 && (
+                        {Array.isArray(director) && director.length < 2 && (
                             <div style={{ marginBottom: 12 }}>
-                                <strong>Director(s):</strong> {director.join(", ")}
+                                <strong>Director:</strong> {director.join(", ")}
+                            </div>
+                        )}
+                        {Array.isArray(director) && director.length > 1 && (
+                            <div style={{ marginBottom: 12 }}>
+                                <strong>Directors:</strong> {director.join(", ")}
                             </div>
                         )}
                         {Array.isArray(genres) && genres.length > 0 && (
