@@ -8,20 +8,88 @@ body {
 }
 
 .navigation-top {
-    display:flex; align-items:center;
-    padding:10px 20px;
+    display:flex; 
+    justify-content: space-between;
+    align-items:center;
+    padding:15px 30px;
     background-color:#2a2a2a;
     border-bottom:2px solid #444;
-    position:sticky;top: 0;
+    position:sticky;
+    top: 0;
     z-index: 1000;
     width: 100%;
 }
 
-.navigation-button {
+/* Left side controls for the hamburger and the search options */
+.nav-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+}
+
+/* Center logo adjustment on pages */
+.logo {
+    font-family:'Magz', cursive;
+    font-size:30px;
+    color:#f7e135;
+    font-style:italic;
+    text-shadow:2px 2px 4px rgba(0,0,0,.5);
+    transform:scaleX(1.5);
+    transition: all 0.3s ease;
+    text-align: center;
+    flex: 1;
+}
+
+.logo:hover {
+    transform: scaleX(1.55) translateY(-2px);
+    text-shadow: 3px 3px 6px rgba(0,0,0,.7);
+    cursor: pointer;
+}
+
+/* Right side controls for help and profile */
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.nav-icon-btn {
+    background: transparent;
+    border: 2px solid #f7e135;
+    color: #f7e135;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.nav-icon-btn:hover {
+    background: #f7e135;
+    color: #1a1a1a;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(247, 225, 53, 0.4);
+}
+
+.nav-icon-btn.active {
+    background: #f7e135;
+    color: #1a1a1a;
+}
+
+/* .navigation-button {
     background:linear-gradient(45deg,#ff4444,#cc3333);
     border:none; color:#fff; padding:8px 16px; margin-right:10px;
     font-weight:700; font-size:14px; text-transform:uppercase; letter-spacing:1px;
     cursor:pointer; border-radius:3px; box-shadow:0 2px 4px rgba(0,0,0,.3);
+    transition: all 0.3s ease;
 }
 
 .navigation-button:hover {
@@ -31,7 +99,7 @@ body {
 .navigation-button.active { 
     background:linear-gradient(45deg,#f7e135,#cc8800); 
     transform: translateY(-2px);
-}
+} */
 
 
 /* Hamburger Menu Button */
@@ -71,9 +139,11 @@ body {
     transform: translateY(-10.5px) rotate(-45deg);
 }
 
-#mobileNavToggle {
+/* #mobileNavToggle {
     display: none;
-}
+} */
+
+
 
 .logo {
     font-family:'Magz', cursive; font-size:30px; color:#f7e135; font-style:italic;
@@ -96,7 +166,7 @@ body {
     display: flex;
     flex-direction: column;
     position: sticky;
-    top: 57px; /* leave space for navbar */
+    top: 72px; /* leave space for navbar */
     align-self: flex-start;
     width: 200px;
     height: calc(100vh -  57px); /* full viewport minus navbar */
@@ -104,21 +174,25 @@ body {
     border-right: 2px solid #555;
     padding: 10px 8px;
     overflow-y: auto; /* scroll inside sidebar if content is taller */
+    transition:
+    width 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* hide sidebar */
+/* hide sidebar
 .sidebar {
   opacity: 1;
   overflow: hidden;
   transition:
   width 1.2s cubic-bezier(0.4, 0, 0.2, 1),
   opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
+} */
 
 /* collapsed state */
 .main-container.sidebar-collapsed .sidebar {
   width: 0;
   opacity: 0;
+  overflow: hidden;
 }
 
 /* movie cards */
@@ -262,6 +336,12 @@ body {
     margin:12px; padding:10px 12px;
     background:linear-gradient(45deg,#f7e135,#cc8800);
     border:none; color:#222; font-weight:800; cursor:pointer; border-radius:6px;
+    transition: all 0.3s ease;
+}
+
+.go-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(247, 225, 53, 0.4);
 }
 
 .content-area {
@@ -279,6 +359,7 @@ body {
 }
 .movie-card {
     background:#222; border:1px solid #333; border-radius:10px; padding:12px;
+    transition: all 0.3s ease;
 }
 
 .movie-card:hover {
@@ -319,6 +400,17 @@ body {
     background: #111; color: #fff; max-width: 800px; width: 92%;
     border-radius: 12px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 .modal-close {
     position: absolute; right: 12px; top: 8px;
@@ -436,119 +528,43 @@ body {
   text-align: center;          /* ensure placeholder + value stay centered */
 }
 
+/* .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 0;
+} */
+
 /* Mobile styling */
 @media (max-width: 768px) {
 
-    .hamburger-menu {
-        display: flex;
-    }
-
-    #mobileNavToggle {
-        display: block;
-    }
-
-    /* make nav bar taller and rearrange layout */
     .navigation-top {
-        flex-wrap: wrap;
-        justify-content: space-between;
-        align-items: center;
-        padding: 15px 20px;
-        position: fixed;
-        top: 0;
-        z-index: 1000;
-        background-color: rgba(42, 42, 42, 0.98);
-        backdrop-filter: blur(10px);
+        padding: 12px 20px;
+    }
+
+    .nav-left,
+    .nav-right {
+        gap: 10px;
     }
 
     /* logo centered */
     .logo {
-        margin: 0 auto;
-        padding-top: 10px;
-        font-size: 26px;
-        order: 1;
-        width: 100%;
-        text-align: center;
-        margin-bottom: 0px;
-        padding: 0;
+        font-size: 24px;
     }
 
-    
-    #sidebarToggle {
-        order: 0;
-        margin-right: auto;
-        background: transparent;
-        border: none;
-        color: #f7e135;
-        font-size: 20px;
-        padding: 5px 10px;
-        cursor: pointer;
-        transition: all 0.3s ease;
+    .nav-icon-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 16px;
     }
 
-    #sidebarToggle:active {
-        transform: scale(0.95);
+    /* Dropdown menus */
+    .dropdown-menu {
+        min-width: 160px;
     }
 
-    /* hide nav-buttons until toggled on */
-    .nav-links {
-        width: 100%;
-        display: none; /* start hidden */
-        flex-direction: column;
-        gap: 10px;
-        margin-top: 15px;
-        padding-top: 15px;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        max-height: 0;
-        overflow: hidden;
-        opacity: 0;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .nav-links.open {
-        display: flex; /* show on toggle */
-        max-height: 400px;
-        opacity: 1;
-        animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .navigation-button {
-        width: 100%;       
-        text-align: center;
-        margin: 0;
-        padding: 14px;
-        font-size: 15px;
-        border-radius: 8px;
-        animation: fadeInButton 0.3s ease forwards;
-        opacity: 0;
-    }
-
-    .nav-links.open .navigation-button:nth-child(1) { animation-delay: 0.05s; }
-    .nav-links.open .navigation-button:nth-child(2) { animation-delay: 0.1s; }
-    .nav-links.open .navigation-button:nth-child(3) { animation-delay: 0.15s; }
-    .nav-links.open .navigation-button:nth-child(4) { animation-delay: 0.2s; }
-    .nav-links.open .navigation-button:nth-child(5) { animation-delay: 0.25s; }
-
-
-    @keyframes fadeInButton {
-        from {
-            opacity: 0;
-            transform: translateX(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(0);
-        }
+    .dropdown-item {
+        padding: 10px 16px;
+        font-size: 13px;
     }
 
     /* mobile sidebar*/
@@ -570,7 +586,8 @@ body {
     }
 
     .main-container:not(.sidebar-collapsed) .sidebar {
-        transform: translateX(0);
+        transform: translateX(-100%);
+        pointer-events: none;
     }
 
     /* Overlay backdrop when sidebar is open */
@@ -606,7 +623,7 @@ body {
         flex-direction: column;
         align-items: center;  
         padding: 15px;
-        padding-top: 140px;
+        padding-top: 90px;
         margin: 0;
     }
 
@@ -665,12 +682,13 @@ body {
 /* Extra small devices */
 @media (max-width: 480px) {
     .logo {
-        font-size: 22px;
+        font-size: 20px;
     }
 
-    .navigation-button {
-        font-size: 14px;
-        padding: 12px;
+    .nav-icon-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 15px;
     }
 
     .sidebar {
@@ -679,6 +697,15 @@ body {
 
     .movie-grid {
         gap: 10px;
+    }
+    
+    .dropdown-menu {
+        min-width: 140px;
+    }
+
+    .dropdown-item {
+        padding: 8px 12px;
+        font-size: 12px;
     }
     
 }
