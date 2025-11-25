@@ -509,13 +509,17 @@ function App() {
                                 </p>
                             </footer>
                         </aside>
-
+                        {/* remove using the index, not needed for key since moivie ID is being used now */}
                         <main className="content-area">
                             <div id="status" className="muted">{status}</div>
                             <div id="results" className="movie-grid">
-                                {movies.map((m, idx) => (
-                                    <article className="movie-card" key={idx} onClick={() => openDetails(m)}
-                                             style={{cursor: "pointer"}}>
+                                {movies.map((m) => (
+                                    <article
+                                        className="movie-card"
+                                        key={m.id} // use movie ID instead of index
+                                        onClick={() => openDetails(m)}
+                                        style={{cursor: "pointer"}}
+                                    >
                                         <img
                                             src={m.posterUrl || "https://placehold.co/300x450?text=No+Poster"}
                                             alt={m.title || ""}
