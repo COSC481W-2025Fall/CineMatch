@@ -62,7 +62,7 @@ router.post("/", async (req, res) => {
         if (!TMDB_API_KEY) return res.status(500).json({ error: "TMDB key missing on server" });
 
         const watchedIds = Array.isArray(req.body?.watchedIds) ? req.body.watchedIds : [];
-        const limit = Math.max(1, Math.min(50, Number(req.body?.limit) || 10));
+        const limit = Math.max(1, Math.min(50, Number(req.body?.limit) || 20));
         if (!watchedIds.length) return res.json({ items: [] });
 
         const agg = new Map();
