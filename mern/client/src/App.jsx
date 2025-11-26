@@ -3,7 +3,6 @@ import React, {useState, useEffect, useMemo} from "react";
 import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx"
 import ErrorModal from "./components/ErrorModal.jsx";
-import { findTmdbIdByTitleYear } from "./components/converter";
 
 import { Link } from "react-router-dom";
 
@@ -57,39 +56,26 @@ function App() {
 
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
+
+    // modified to use TMDB ID directly
     async function openDetails(movie) {
         try {
             const res = await fetch(`/record/details/${movie.id}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-
-            // grab title and year from database
-            let titleForLookup = "";
-            if (data && typeof data.title === "string" && data.title.length > 0) {
-                titleForLookup = data.title;
-            } else {
-                titleForLookup = movie.title;
-            }
-
-            let yearForLookup;
-            if (data && typeof data.year === "number") {
-                yearForLookup = data.year;
-            } else {
-                yearForLookup = movie.year;
-            }
-
-            // give converter title and year
-            const tmdbId = await findTmdbIdByTitleYear(titleForLookup, yearForLookup, {language: "en-US"}); // change to any if having issues with forign movies (forign movies might have different release date based on language if 2 versions exist)
-            console.log("[TMDB TEST] input:", {titleForLookup, yearForLookup}, "=> tmdbId:", tmdbId);
+            // replace whole conversion call and check with this
+            const tmdbId = movie.id;
+            console.log("[TMDB] Using ID:", tmdbId);
 
             let patch = {}; // empty
 
-            // if found then pull actors and runtime from api
+            // if found then pull actors, runtime, and watch providers
             if (tmdbId !== null && tmdbId !== undefined) {
                 const numOfActors = CAST_LIMIT;
                 const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
                 url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
-                url.searchParams.set("append_to_response", "credits"); // include cast list
+
+                url.searchParams.set("append_to_response", "credits,watch/providers"); // add where to watch to the append
 
                 const tmdbRes = await fetch(url.toString(), {headers: {accept: "application/json"}});
                 if (tmdbRes.ok) {
@@ -115,7 +101,6 @@ function App() {
 
                     // get the first X number of actors
                     const topActors = tmdbCast.slice(0, numOfActors);
-
                     // build an array of cast names with strings
                     const topCast = [];
                     for (let i = 0; i < topActors.length; i++) {
@@ -131,16 +116,30 @@ function App() {
                         runtime = tmdb.runtime;
                     }
 
-                    // fill patch objects
-                    patch.tmdbId = tmdbId; // keep for debugging or other uses
-                    if (topCast.length > 0) {
-                        patch.topCast = topCast; // override DB actors with top billed tmdb list
-                    }
-                    if (runtime !== null) {
-                        patch.runtime = runtime; // add runtime (minutes) - convert this to hr/min on frontend
+                    // get where to watch
+                    let watchProviders = [];
+
+                    // use US by default, not important for other areas rn since it changes by location
+                    if (tmdb && tmdb["watch/providers"] && tmdb["watch/providers"].results && tmdb["watch/providers"].results.US && tmdb["watch/providers"].results.US.flatrate) {
+                        watchProviders = tmdb["watch/providers"].results.US.flatrate;
                     }
 
-                    console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime);
+                    // fill patch objects
+
+                    // removed outdated comments here from old database logic
+                    patch.tmdbId = tmdbId;
+                    if (topCast.length > 0) {
+                        patch.topCast = topCast;
+                    }
+                    if (runtime !== null) {
+                        patch.runtime = runtime;
+                    }
+                    // add watchers to patch and pass to detail view
+                    if (watchProviders.length > 0) {
+                        patch.watchProviders = watchProviders;
+                    }
+
+                    console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime, "providers:", watchProviders.length);
                 }
             }
 
@@ -407,7 +406,7 @@ function App() {
                                 Two bubble inputs side-by-side for rating min and max (0–5).
                                 Works the same as the year. */}
                                 <li className="rating-range" key="RatingRange">
-                                    <div className="rating-label">RATING (0–5)</div>
+                                    <div className="rating-label">RATING (0–10)</div>
 
                                     <div className="rating-bubbles">
                                         {/* ---- Minimum Rating bubble ---- */}
@@ -420,7 +419,7 @@ function App() {
                                                     inputMode="decimal"
                                                     step="0.1"
                                                     min="0"
-                                                    max="5"
+                                                    max="10"
                                                     placeholder="MIN"
                                                     value={params.rating_min}
                                                     onChange={handleChange}
@@ -439,7 +438,7 @@ function App() {
                                                     inputMode="decimal"
                                                     step="0.1"
                                                     min="0"
-                                                    max="5"
+                                                    max="10"
                                                     placeholder="MAX"
                                                     value={params.rating_max}
                                                     onChange={handleChange}
