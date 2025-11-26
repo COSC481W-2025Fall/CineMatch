@@ -5,7 +5,7 @@ import "../App.css";
 import MovieDetails from "./MovieDetails";
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
-const DEFAULT_LIMIT = 10;
+const DEFAULT_LIMIT = 20; // changing for testing, full change already made on feed cleanup
 
 export default function RecommendationFeed() {
     const watchedIds = useMemo(
