@@ -350,6 +350,31 @@ function App() {
                 });
             };
 
+
+    function clearFilters() {
+    // Reset all text + numeric filters
+    setParams({
+        actor: "",
+        director: "",
+        title: "",
+        year_min: "",
+        year_max: "",
+        rating_min: "",
+        rating_max: ""
+    });
+
+    // Reset genres
+    setSelectedGenres([]);
+
+    // Close genre dropdown (optional)
+    setGenreDropdownOpen(false);
+
+    // Re-run search with empty filters
+    doSearch();
+}
+
+
+
             return (
                 <>
                     <div className="navigation-top">
@@ -534,6 +559,16 @@ function App() {
 
                             <button className="go-btn" onClick={doSearch}>SEARCH</button>
                             {/* The button to actually search, this one is permanent */}
+
+
+
+{/* CLEAR FILTERS button */}
+<button
+    className="go-btn"
+    onClick={clearFilters}>
+    CLEAR
+</button>
+
 
                             <footer className="sidebar-footer-credit">
                                 <p>
