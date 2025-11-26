@@ -141,22 +141,37 @@ vi.mock("../db/connection.js", () => {
                 return {
                     aggregate: (pipeline = []) => {
                         let res = [...collections[name]];
-                        for (const stage of pipeline) {
-                            if (stage.$match) {
-                                const f = stage.$match;
-                                if (f.name?.$regex) {
-                                    const re = new RegExp(f.name.$regex, f.name.$options);
-                                    res = res.filter((d) => re.test(d.name));
-                                }
-                                if (f.role) {
-                                    if (typeof f.role === "string") res = res.filter((d) => d.role === f.role);
-                                }
-                            } else if (stage.$group?.["_id"] === "$id") {
-                                const ids = Array.from(new Set(res.map((d) => d.id)));
-                                res = ids.map((_id) => ({ _id }));
-                            } else if (stage.$limit) {
-                                res = res.slice(0, stage.$limit);
+
+                        // find $match stages
+                        const matchStage = pipeline.find(s => s.$match);
+                        if (matchStage) {
+                            let names = [];
+                            if (matchStage.$match.name?.$regex) {
+                                // handle multiple actors separated by comma
+                                const raw = matchStage.$match.name.$regex;
+                                names = raw.split(",").map(n => n.trim().toLowerCase());
                             }
+
+                            // for each actor/director, collect movie IDs individually
+                            const perActorIds = names.length
+                                ? names.map(name => {
+                                    const re = new RegExp(name, "i");
+                                    return res.filter(d => re.test(d.name)).map(d => d.id);
+                                })
+                                : [];
+
+                            // if multiple actors, intersect their IDs
+                            if (perActorIds.length > 0) {
+                                res = perActorIds.reduce((a, b) => a.filter(id => b.includes(id)))
+                                    .map(_id => ({ _id }));
+                            } else {
+                                // fallback: group all IDs if single match
+                                const ids = Array.from(new Set(res.map(d => d.id)));
+                                res = ids.map(_id => ({ _id }));
+                            }
+                        } else if (pipeline.some(s => s.$group && s.$group._id === "$id")) {
+                            const ids = Array.from(new Set(res.map(d => d.id)));
+                            res = ids.map(_id => ({ _id }));
                         }
                         return { toArray: async () => res };
                     },
@@ -299,7 +314,44 @@ describe("POST /record/bulk", () => {
         expect(res.body[0].id).toBe(1);
     });
 
-    // test #7: Filter by genre
+    // test #7: Find movies that have both actors casted
+    it("filters by multiple actors (AND logic)", async () => {
+        // Both Robert Downey Jr. (id=1) and Chris Pratt (id=1) are in Avengers: Infinity War
+        const res = await request(app).post("/record/bulk").send({
+            ids: [1, 2, 3],
+            params: { actor: "Robert Downey Jr.,Chris Pratt" },
+        });
+
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(1);
+        expect(res.body[0].id).toBe(1); // only Avengers: Infinity War has both actors
+    });
+
+    // test #8: Multiple actors not cast in any movie together
+    it("returns empty array if multiple actors share no movie", async () => {
+        // Robert Downey Jr. (id=1) and Margot Robbie (id=3) don't share a movie
+        const res = await request(app).post("/record/bulk").send({
+            ids: [1, 2, 3],
+            params: { actor: "Robert Downey Jr.,Margot Robbie" },
+        });
+
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual([]);
+    });
+
+    // test #9: Multiple actors search with extra spaces and case-insensitivity
+    it("handles multiple actors with extra spaces and case-insensitive names", async () => {
+        const res = await request(app).post("/record/bulk").send({
+            ids: [1, 2, 3],
+            params: { actor: "  robert downey jr. , chris pratt " },
+        });
+
+        expect(res.status).toBe(200);
+        expect(res.body.length).toBe(1);
+        expect(res.body[0].id).toBe(1);
+    });
+
+    // test #10: Filter by genre
     it("filters by genre", async () => {
         const res = await request(app).post("/record/bulk").send({
             ids: [1, 3],
