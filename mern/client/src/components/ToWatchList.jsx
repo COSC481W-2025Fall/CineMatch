@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import Navigation from "./Navigation.jsx";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
-import {findTmdbIdByTitleYear} from "./converter.js";
 
 const API_BASE = "";
 
@@ -70,24 +69,9 @@ export default function ToWatchListPage() {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
-            // grab title and year from database
-            let titleForLookup = "";
-            if (data && typeof data.title === "string" && data.title.length > 0) {
-                titleForLookup = data.title;
-            } else {
-                titleForLookup = movie.title;
-            }
-
-            let yearForLookup;
-            if (data && typeof data.year === "number") {
-                yearForLookup = data.year;
-            } else {
-                yearForLookup = movie.year;
-            }
-
-            // give converter title and year
-            const tmdbId = await findTmdbIdByTitleYear(titleForLookup, yearForLookup, {language: "en-US"}); // change to any if having issues with forign movies (forign movies might have different release date based on language if 2 versions exist)
-            console.log("[TMDB TEST] input:", {titleForLookup, yearForLookup}, "=> tmdbId:", tmdbId);
+            // replace whole conversion call and check with this
+            const tmdbId = movie.id;
+            console.log("[TMDB] Using ID:", tmdbId);
 
             let patch = {}; // empty
 
@@ -136,6 +120,11 @@ export default function ToWatchListPage() {
                     let runtime = null;
                     if (tmdb && typeof tmdb.runtime === "number") {
                         runtime = tmdb.runtime;
+                    }
+
+                    let description = null;
+                    if (tmdb && typeof tmdb.overview === "string" && tmdb.overview.trim().length > 0) {
+                        description = tmdb.overview.trim();
                     }
 
                     // fill patch objects

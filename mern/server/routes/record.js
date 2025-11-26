@@ -16,12 +16,11 @@ router.get("/", async (req, res) => {
         const genreCol = db.collection("genre");
 
 
-        const { title, name, director, actor, year_min, year_max, rating_min, rating_max, desc, genre } = req.query;
+        const { title, name, director, actor, year_min, year_max, rating_min, rating_max, genre } = req.query;
         // build the base movie filter
         const filter = {};
         const qName = name ?? title;
         if (qName)  filter.name = { $regex: qName, $options: "i" };
-        if (desc)   filter.description = { $regex: desc, $options: "i" };
         // YEAR RANGE (inclusive)
         const yMin = Number(year_min);
         const yMax = Number(year_max);
@@ -30,10 +29,10 @@ router.get("/", async (req, res) => {
         if (!Number.isNaN(yMax)) yearRange.$lte = yMax;
         if (Object.keys(yearRange).length) filter.date = yearRange;
         // RATING RANGE (inclusive)
-        const MAX_RATING = 5;
+        const MAX_RATING = 10;
         const yMinRating = Number(rating_min);
         const yMaxRating = Number(rating_max);
-        // Validate numbers must be in [0, 5]
+        // Validate numbers must be in [0, 10]
         if (!Number.isNaN(yMinRating) && (yMinRating < 0 || yMinRating > MAX_RATING)) {
             return res.status(400).json({ error: `Maximum rating must be between 0 and ${MAX_RATING}.` });
         }
@@ -46,8 +45,8 @@ router.get("/", async (req, res) => {
         }
         const ratingRange = {};
         if (!Number.isNaN(yMinRating)) ratingRange.$gte = yMinRating;
-        // Always set an upper bound of 5
-        // If user provided a max, use the smaller of their value and 5
+        // Always set an upper bound of 10
+        // If user provided a max, use the smaller of their value and 10
         ratingRange.$lte = Number.isNaN(yMaxRating) ? MAX_RATING : Math.min(yMaxRating, MAX_RATING);
         // Only attach if at least one bound is present
         if (Object.keys(ratingRange).length) filter.rating = ratingRange;
@@ -77,7 +76,7 @@ router.get("/", async (req, res) => {
             // Find director whose name matches the query provided
             const directorRows = await directorsCol.aggregate([
                 // find director data whose name matches (CASE INSENSITIVE)
-                { $match: { role: "Director", name: { $regex: director, $options: "i" } } },
+                { $match: { name: { $regex: director, $options: "i" } } },
                 { $group: { _id: "$id" } },   // distinct, shoooould allow for no repeats
                 { $limit: 500 }                 // limit will possibly be smaller in the future
             ]).toArray();
@@ -88,18 +87,46 @@ router.get("/", async (req, res) => {
             ///////////////
         }
 
-        // SEARCH BY ACTOR
+                // SEARCH BY ACTOR (supports single or multiple actors, AND logic)
         if (actor) {
 
-            const actorRows = await actorsCol.aggregate([
-                { $match: { name: { $regex: actor, $options: "i" } } },
+                // Works with:
+            //   ?actor=Tom Hanks
+            //   ?actor=Tom Hanks,Brad Pitt   // comma-separated
+            let actorList = [];
+            if (Array.isArray(actor)) {
+                actorList = actor;
+            } else {
+                actorList = actor
+                    .split(",")
+                    .map(a => a.trim())
+                    .filter(Boolean);
+            }
 
-                { $group: { _id: "$id" } },   // distinct, shoooould allow for no repeats
-                { $limit: 500 }                 // the actors database is very big, we had to make this smaller
-            ]).toArray();
+            // For each actor, intersect movie IDs using syncID
+            for (const singularActor of actorList) {
+                const matchStage = {
+                    name: { $regex: singularActor, $options: "i" }
+                };
 
-            if (!syncID(actorRows.map(r => r._id))) return res.status(200).json([]);
+                // If we already have a set of IDs (from director / genre / etc),
+                // restrict actor search to those IDs for true AND behavior.
+                if (setID && setID.size) {
+                    matchStage.id = { $in: Array.from(setID) };
+                }
 
+                const actorRows = await actorsCol.aggregate([
+                    { $match: matchStage },
+                    { $group: { _id: "$id" } },  // distinct movie IDs
+                    { $limit: 500 }              // safety limit
+                ]).toArray();
+
+                const idsForActor = actorRows.map(r => r._id);
+                if (!syncID(idsForActor)) {
+                    // No overlap → no results
+                    return res.status(200).json([]);
+                }
+            }
         }
 
         if (setID) { filter.id = {$in: Array.from(setID)};}
@@ -156,7 +183,7 @@ router.get("/", async (req, res) => {
 
         const movies = await moviesCol.aggregate([
             { $match: filter },
-            { $sort: {rating: -1, date: -1, name: 1}},
+            { $sort: { popularity: -1, rating: -1, date: -1, name: 1 } },
             { $limit: 50 }, // We might have to eventually lower this, if performance takes even a bigger hit
             {
                 $project: {
@@ -240,15 +267,15 @@ router.get("/details/:id", async (req, res) => {
             .toArray();
         const genres = grows.map(g => g.genre);             // map array of docs to simple array of strings i.e. ["Sci-fi", "Romance"]
 
-        // use pre-existing poster URL, else find matching poster in posters table to display
-        let posterUrl = movie.posterUrl ?? null;
-        if (!posterUrl) {
-            const prow = await postersCol.findOne(
-                { id },
-                { projection: { _id: 0, link: 1 } }
-            );
-            if (prow?.link) posterUrl = prow.link;
-        }
+        // get poster and backdrop
+        // store backdrop if available
+        const prow = await postersCol.findOne(
+            { id },
+            { projection: { _id: 0, link: 1, backdrop_link: 1 } }
+        );
+
+        let posterUrl = movie.posterUrl ?? prow?.link ?? null;
+        let backdropUrl = prow?.backdrop_link ?? null;
 
         // pipeline to get top 5 cast by movie ID
         const castById = await actorsCol.aggregate([
@@ -274,7 +301,7 @@ router.get("/details/:id", async (req, res) => {
         // This is needed for our tests
         const dirDocs = await directorsCol
             .find(
-                { id, role: "Director" },
+                { id },
                 { projection: { _id: 0, name: 1 } }
             )
             .limit(5)
@@ -285,7 +312,7 @@ router.get("/details/:id", async (req, res) => {
 
         const dir = await directorsCol
             .find(
-                { id, role: "Director" },
+                { id },
                 { projection: { _id: 0, name: 1 } }
             )
             .limit(5)
@@ -299,7 +326,8 @@ router.get("/details/:id", async (req, res) => {
             year: movie.date,
             rating: movie.rating ?? null,
             posterUrl,
-            description: movie.description ?? "",
+            backdropUrl,
+            description: movie.descriptions ?? "", // changed to descriptions, not description to match label
             genres,
             topCast,
             directors: directorNames.length === 0 ? null : (directorNames.length === 1 ? directorNames[0] : directorNames),
@@ -376,7 +404,7 @@ router.post("/bulk", async (req, res) => {
         // DIRECTOR filter
         if (director) {
             const directorRows = await directorsCol.aggregate([
-                { $match: { role: "Director", name: { $regex: director, $options: "i" } } },
+                { $match: { name: { $regex: director, $options: "i" } } },
                 { $group: { _id: "$id" } },
                 { $limit: 500 }
             ]).toArray();
@@ -426,7 +454,7 @@ router.post("/bulk", async (req, res) => {
         // Return all we got in 1 aggregation
         const movies = await moviesCol.aggregate([
             { $match: baseFilter },
-            { $sort: { rating: -1, date: -1, name: 1 } },
+            { $sort: { popularity: -1, rating: -1, date: -1, name: 1 } },
             { $limit: 50 },
             {
                 $project: {
