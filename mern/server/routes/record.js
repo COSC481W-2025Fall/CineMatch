@@ -87,18 +87,46 @@ router.get("/", async (req, res) => {
             ///////////////
         }
 
-        // SEARCH BY ACTOR
+                // SEARCH BY ACTOR (supports single or multiple actors, AND logic)
         if (actor) {
 
-            const actorRows = await actorsCol.aggregate([
-                { $match: { name: { $regex: actor, $options: "i" } } },
+                // Works with:
+            //   ?actor=Tom Hanks
+            //   ?actor=Tom Hanks,Brad Pitt   // comma-separated
+            let actorList = [];
+            if (Array.isArray(actor)) {
+                actorList = actor;
+            } else {
+                actorList = actor
+                    .split(",")
+                    .map(a => a.trim())
+                    .filter(Boolean);
+            }
 
-                { $group: { _id: "$id" } },   // distinct, shoooould allow for no repeats
-                { $limit: 500 }                 // the actors database is very big, we had to make this smaller
-            ]).toArray();
+            // For each actor, intersect movie IDs using syncID
+            for (const singularActor of actorList) {
+                const matchStage = {
+                    name: { $regex: singularActor, $options: "i" }
+                };
 
-            if (!syncID(actorRows.map(r => r._id))) return res.status(200).json([]);
+                // If we already have a set of IDs (from director / genre / etc),
+                // restrict actor search to those IDs for true AND behavior.
+                if (setID && setID.size) {
+                    matchStage.id = { $in: Array.from(setID) };
+                }
 
+                const actorRows = await actorsCol.aggregate([
+                    { $match: matchStage },
+                    { $group: { _id: "$id" } },  // distinct movie IDs
+                    { $limit: 500 }              // safety limit
+                ]).toArray();
+
+                const idsForActor = actorRows.map(r => r._id);
+                if (!syncID(idsForActor)) {
+                    // No overlap → no results
+                    return res.status(200).json([]);
+                }
+            }
         }
 
         if (setID) { filter.id = {$in: Array.from(setID)};}

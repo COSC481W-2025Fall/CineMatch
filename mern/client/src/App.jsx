@@ -36,6 +36,65 @@ const GENRES = [
     "Western"
 ]
 
+    // Renders clickable chips for the active filters
+    function ActiveFilterBar({ params, selectedGenres, visible, onRemove }) {
+    if (!visible) return null; // don't show chips until a search has run
+
+    const chips = [];
+    // helper: push a chip into the list (idx helps remove the exact genre chip)
+    const push = (key, value, text, idx = null) => chips.push({ key, value, text, idx });
+
+    // Actor(s) — split comma list into one chip per actor
+    if (params.actor?.trim()) {
+        params.actor
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean)
+        .forEach(name => push("actor", name, `Actor: ${name}`));
+    }
+
+        // Director — single chip only (no comma support)
+    if (params.director?.trim()) {
+    const d = params.director.trim();
+    push("director", d, `Director: ${d}`); // <-- keep value so the X knows what to remove
+    }
+
+    // Title — single chip
+    if (params.title?.trim()) push("title", null, `Title: ${params.title.trim()}`);
+
+    // Year range — make chips if set
+    if (params.year_min?.trim()) push("year_min", null, `Year ≥ ${params.year_min}`);
+    if (params.year_max?.trim()) push("year_max", null, `Year ≤ ${params.year_max}`);
+
+    // Rating range — make chips if set
+    if (params.rating_min?.trim()) push("rating_min", null, `Rating ≥ ${params.rating_min}`);
+    if (params.rating_max?.trim()) push("rating_max", null, `Rating ≤ ${params.rating_max}`);
+
+    // Genres — one chip per selected genre (carry index so we can remove the exact one)
+    (selectedGenres || []).forEach((g, i) => push("genre", g, `Genre: ${g}`, i));
+
+    if (!chips.length) return null; // nothing to show
+
+    return (
+        <div className="active-filters">
+        {chips.map((c, i) => (
+            <button
+            // key uses idx so duplicate genres are uniquely removable
+            key={`${c.key}-${c.value ?? i}-${c.idx ?? "x"}`}
+            className="chip"
+            onClick={() => onRemove(c)}          // clicking chip calls parent to remove
+            aria-label={`Remove ${c.text}`}      // a11y label for screen readers
+            type="button"
+            >
+            <span className="chip-text">{c.text}</span>
+            <span className="chip-x" aria-hidden>×</span> {/* the little X */}
+            </button>
+        ))}
+        </div>
+    );
+    }
+
+
 function App() {
 
     const [watched, setWatched] = useState(() => new Set(JSON.parse(localStorage.getItem("watched") || "[]")));
@@ -209,6 +268,10 @@ function App() {
     const [genreDropdownOpen, setGenreDropdownOpen] = useState(false);
     const [selectedGenres, setSelectedGenres] = useState([]);
 
+    // Frozen copies of the last submitted filters (chips read from these)
+    const [appliedParams, setAppliedParams] = useState(params);
+    const [appliedGenres, setAppliedGenres] = useState(selectedGenres);
+    const [hasSearched, setHasSearched] = useState(false);
 
     function toggleDropdown() {
         if (genreDropdownOpen) {
@@ -285,7 +348,7 @@ function App() {
             return payload;
         }
 
-        async function doSearch() {
+        {/*}async function doSearch() {
             setStatus("Loading…");
             try {
                 const query = {
@@ -302,7 +365,173 @@ function App() {
                 setErrorMsg(err.message);  // Opens the error modal
             }
         }
+                */}
 
+        // helper: union (case-insensitive) of two comma lists
+        function mergeCommaLists(prev = "", curr = "") {
+        // turn "a, b, c" into ["a","b","c"] and clean spaces
+        const toList = (s) =>
+            (s || "")
+            .split(",")
+            .map(x => x.trim())
+            .filter(Boolean);
+
+        const prevList = toList(prev);  // what we already had applied
+        const currList = toList(curr);  // what the user just typed
+
+        // build union (case-insensitive unique)
+        const seen = new Set(prevList.map(x => x.toLowerCase())); // remember lowercased items
+        const merged = [...prevList];                              // start with old list
+        for (const x of currList) {                                // go through new values
+            const low = x.toLowerCase();
+            if (!seen.has(low)) {                                    // only add if not already there
+            seen.add(low);
+            merged.push(x);
+            }
+        }
+        return merged.join(", ");                                   // return as "a, b, c"
+        }
+
+ async function doSearch(overrideQuery, opts = {}) {
+    if (
+        overrideQuery &&
+        typeof overrideQuery === "object" &&
+        ("nativeEvent" in overrideQuery || "target" in overrideQuery || "preventDefault" in overrideQuery)
+    ) {
+        overrideQuery = undefined; 
+    }
+     // helper function that merge two comma-separated actor lists case-insensitively
+    const mergeCommaLists = (prev = "", curr = "") => {
+        const toList = (s) =>
+            (s || "")
+            .split(",")
+            .map((x) => x.trim())
+            .filter(Boolean);
+        const prevList = toList(prev); // previous search actors
+        const currList = toList(curr);
+        const seen = new Set(prevList.map((x) => x.toLowerCase()));
+        const merged = [...prevList];
+        for (const x of currList) {
+            const low = x.toLowerCase();
+            if (!seen.has(low)) {
+                seen.add(low);
+                merged.push(x);
+            }
+        }
+        return merged.join(", ");
+    };
+    //shows loading on screen
+    setStatus("Loading…");
+
+    try {
+        let nextParams = overrideQuery ? { ...params, ...overrideQuery } : { ...params };
+
+        // Determine genres
+        let nextGenres = overrideQuery
+            ? (Object.prototype.hasOwnProperty.call(overrideQuery, "genre")
+                ? [...(overrideQuery.genre || [])]
+                : [...appliedGenres])
+            : [...selectedGenres];
+
+        // Skip merging if removing a chip OR clearing everything
+        const skipActorMerge = opts.fromChip === true || opts.isClear === true;
+        if (!skipActorMerge && hasSearched) {
+            nextParams.actor = mergeCommaLists(appliedParams.actor, nextParams.actor);
+        }
+
+        // Clean actor string
+        if (typeof nextParams.actor === "string") {
+            nextParams.actor = nextParams.actor
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .join(", ");
+        }
+
+        const query = {
+            ...nextParams,
+            ...(nextGenres.length ? { genre: nextGenres } : {})
+        };
+
+        const data = await fetchMovies(query);
+
+        setMovies(data);
+        setStatus(data.length ? "" : "No results found.");
+
+        // Freeze applied filters
+        setAppliedParams(nextParams);
+        setAppliedGenres(nextGenres);
+        if (!opts.isClear) setHasSearched(true); // only show chips if not clearing
+    } catch (err) {
+        console.error(err);
+        setStatus("");
+        setErrorMsg(err.message);
+    }
+}
+
+
+        function handleRemoveChip(chip) {
+        // start from the applied filters, this matches what's on screen
+        const baseParams = { ...appliedParams };
+        let baseGenres = [...appliedGenres];
+
+        
+
+        // remove one item from a comma list (case-insensitive)
+        const removeFromCommaList = (raw, valueToRemove) =>
+            (raw || "")
+            .split(",")
+            .map(s => s.trim())
+            .filter(Boolean)
+            .filter(s => s.toLowerCase() !== (valueToRemove || "").toLowerCase())
+            .join(", ");
+
+        // clear the right thing based on which chip was clicked
+        switch (chip.key) {
+            case "actor":
+            baseParams.actor = removeFromCommaList(baseParams.actor, chip.value); // drop one actor
+            break;
+            case "director":
+            baseParams.director = ""; // single-value field, just clear it           
+            case "title":
+            baseParams.title = ""; // clear title
+            break;
+            case "year_min":
+            baseParams.year_min = ""; // clear min year
+            break;
+            case "year_max":
+            baseParams.year_max = ""; // clear max year
+            break;
+            case "rating_min":
+            baseParams.rating_min = ""; // clear min rating
+            break;
+            case "rating_max":
+            baseParams.rating_max = ""; // clear max rating
+            break;
+            case "genre":
+            // remove by index if provided 
+            if (typeof chip.idx === "number") {
+                baseGenres = baseGenres.filter((_, i) => i !== chip.idx);
+            } else {
+                baseGenres = baseGenres.filter(g => g !== chip.value);
+            }
+            break;
+            default:
+            break;
+        }
+
+        // keep sidebar inputs/checkboxes same with what we removed
+        setParams(prev => ({ ...prev, ...baseParams }));
+        setSelectedGenres(baseGenres);
+
+        // UI: hide the chip right away (don't wait for the fetch)
+        setAppliedParams(baseParams);
+        setAppliedGenres(baseGenres);
+
+        // run the search again with updated filters
+        // tells doSearch not to "merge actors" back in
+        doSearch({ ...baseParams, genre: baseGenres }, { fromChip: true });
+        }
 
             useEffect(() => {
                 doSearch();
@@ -340,9 +569,8 @@ function App() {
                     return next;
                 });
             };
-                function clearFilters() {
-    // Reset all text + numeric filters
-    setParams({
+function clearFilters() {
+    const emptyParams = {
         actor: "",
         director: "",
         title: "",
@@ -350,12 +578,18 @@ function App() {
         year_max: "",
         rating_min: "",
         rating_max: ""
-    });
-    setSelectedGenres([]);// Reset genres 
-    setGenreDropdownOpen(false); // Close genre dropdown (optional)
-    doSearch();// Re-run search with empty filters
-    
+    };
+
+    // Reset all states
+    setParams(emptyParams);
+    setSelectedGenres([]);
+    setAppliedParams(emptyParams);
+    setAppliedGenres([]);
+
+    // Run search with empty filters
+    doSearch({ ...emptyParams, genre: [] }, { fromChip: true, isClear: true });
 }
+
 
 
 
@@ -541,7 +775,7 @@ function App() {
                                 </li>
                             </ul>
 
-                            <button className="go-btn" onClick={doSearch}>SEARCH</button>
+                            <button className="go-btn" onClick={() => doSearch()}>SEARCH</button>
                             {/* The button to actually search, this one is permanent */}
 
                             <button className="go-btn"onClick={clearFilters}>CLEAR</button>
@@ -574,6 +808,12 @@ function App() {
                         </aside>
 
                         <main className="content-area">
+                        <ActiveFilterBar
+                        params={appliedParams}        // use the last SUBMITTED filters (not what is currently being typing)
+                        selectedGenres={appliedGenres}// same for genres: chips show what was actually searched
+                        visible={hasSearched}         // only show chips after the first search
+                        onRemove={handleRemoveChip}   // clicking a chip's X calls this to remove it and rerun search
+                        />
                             <div id="status" className="muted">{status}</div>
                             <div id="results" className="movie-grid">
                                 {movies.map((m, idx) => (
