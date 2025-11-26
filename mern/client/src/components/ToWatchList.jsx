@@ -248,13 +248,29 @@ export default function ToWatchListPage() {
             return next;
         });
     };
+    function clearFilters() {
+    // Reset all text + numeric filters
+    setParams({
+        actor: "",
+        director: "",
+        title: "",
+        year_min: "",
+        year_max: "",
+        rating_min: "",
+        rating_max: ""
+    });
+    setSelectedGenres([]);// Reset genres 
+    setGenreDropdownOpen(false); // Close genre dropdown (optional)
+    doSearch();// Re-run search with empty filters
+    
+}
 
     return (
         <>
             <div className="navigation-top">
                 <button className="navigation-button" id="sidebarToggle">☰</button>
 
-                <div className="logo">cineMatch</div>
+                <Link to="/" className="logo"><div className="logo">cineMatch</div></Link>  {/* creates the logo link */}
 
                 {/* mobile toggle for navbar */}
                 <button
@@ -312,6 +328,9 @@ export default function ToWatchListPage() {
                     </ul>
 
                     <button className="go-btn" onClick={doSearch}>SEARCH</button>
+                    {/* CLEAR FILTERS button */}
+                    <button className="go-btn"onClick={clearFilters}>CLEAR</button>
+
 
                     <footer className="sidebar-footer-credit">
                         <p>

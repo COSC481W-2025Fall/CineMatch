@@ -349,9 +349,7 @@ function App() {
                     return next;
                 });
             };
-
-
-    function clearFilters() {
+                function clearFilters() {
     // Reset all text + numeric filters
     setParams({
         actor: "",
@@ -362,15 +360,10 @@ function App() {
         rating_min: "",
         rating_max: ""
     });
-
-    // Reset genres
-    setSelectedGenres([]);
-
-    // Close genre dropdown (optional)
-    setGenreDropdownOpen(false);
-
-    // Re-run search with empty filters
-    doSearch();
+    setSelectedGenres([]);// Reset genres 
+    setGenreDropdownOpen(false); // Close genre dropdown (optional)
+    doSearch();// Re-run search with empty filters
+    
 }
 
 
@@ -560,14 +553,8 @@ function App() {
                             <button className="go-btn" onClick={doSearch}>SEARCH</button>
                             {/* The button to actually search, this one is permanent */}
 
-
-
-{/* CLEAR FILTERS button */}
-<button
-    className="go-btn"
-    onClick={clearFilters}>
-    CLEAR
-</button>
+                            <button className="go-btn"onClick={clearFilters}>CLEAR</button>
+                             {/* This button clears the filter */}
 
 
                             <footer className="sidebar-footer-credit">

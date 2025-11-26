@@ -44,7 +44,7 @@ export default function Help() {
         <>
             <div className="navigation-top">
                 <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
-                <div className="logo">cineMatch</div>
+                <Link to="/" className="logo"><div className="logo">cineMatch</div></Link>  {/* creates the logo link */}
                 <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button active">HELP</Link>
                 <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
                 <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
