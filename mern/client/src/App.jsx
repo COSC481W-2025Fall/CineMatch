@@ -4,7 +4,7 @@ import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx"
 import ErrorModal from "./components/ErrorModal.jsx";
 import { findTmdbIdByTitleYear } from "./components/converter";
-
+import Navigation from "./components/Navigation.jsx";
 import { Link } from "react-router-dom";
 
 const API_BASE = "";
@@ -46,7 +46,7 @@ function App() {
 
     // Creates error state message
     const [errorMsg, setErrorMsg] = useState("");
-
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
     
     useEffect(() => {
         localStorage.setItem("watched", JSON.stringify([...watched]));
@@ -56,36 +56,32 @@ function App() {
     }, [toWatch]);
 
     // sidebar toggle functionality
-    useEffect(() => {
-        const toggleButton = document.getElementById("sidebarToggle");
-        const mainContainer = document.querySelector(".main-container");
+    // useEffect(() => {
+    //     const toggleButton = document.getElementById("sidebarToggle");
+    //     const mainContainer = document.querySelector(".main-container");
 
-        if (toggleButton && mainContainer) {
-            const toggleSidebar = () => {
-                mainContainer.classList.toggle("sidebar-collapsed");
-            };
-            toggleButton.addEventListener("click", toggleSidebar);
-            return () => toggleButton.removeEventListener("click", toggleSidebar);
-        }
-    }, []);
+    //     if (toggleButton && mainContainer) {
+    //         const toggleSidebar = () => {
+    //             mainContainer.classList.toggle("sidebar-collapsed");
+    //         };
+    //         toggleButton.addEventListener("click", toggleSidebar);
+    //         return () => toggleButton.removeEventListener("click", toggleSidebar);
+    //     }
+    // }, []);
     // mobile navbar toggle functionality
-    useEffect(() => {
-        const mobileNavToggle = document.getElementById("mobileNavToggle");
-        const navLinks = document.getElementById("navLinks");
+    // useEffect(() => {
+    //     const mobileNavToggle = document.getElementById("mobileNavToggle");
+    //     const navLinks = document.getElementById("navLinks");
 
-        if (!mobileNavToggle || !navLinks) return;
+    //     if (!mobileNavToggle || !navLinks) return;
 
-        const toggleMobileNav = () => {
-            navLinks.classList.toggle("open");
-        };
+    //     const toggleMobileNav = () => {
+    //         navLinks.classList.toggle("open");
+    //     };
 
-        mobileNavToggle.addEventListener("click", toggleMobileNav);
-        return () => mobileNavToggle.removeEventListener("click", toggleMobileNav);
-    }, []);
-
-
-
-
+    //     mobileNavToggle.addEventListener("click", toggleMobileNav);
+    //     return () => mobileNavToggle.removeEventListener("click", toggleMobileNav);
+    // }, []);
 
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
@@ -370,12 +366,12 @@ function App() {
 
             return (
                 <>
-                    <div className="navigation-top">
+                    {/* <div className="navigation-top">
                         <button className="navigation-button" id="sidebarToggle">☰</button>
 
                         <div className="logo">cineMatch</div>
 
-                        {/* mobile toggle for navbar */}
+                        
                         <button
                             className="navigation-button"
                             id="mobileNavToggle"
@@ -384,7 +380,7 @@ function App() {
                             ▼
                         </button>
 
-                        {/* navbar links wrapped for mobile collapse */}
+                        
                         <div className="nav-links" id="navLinks">
 
                             <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button active">SEARCH</Link>
@@ -394,10 +390,14 @@ function App() {
                             <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
 
                         </div>
-                    </div>
+                    </div> */}
 
+                    <Navigation 
+                    sidebarCollapsed={sidebarCollapsed}
+                    setSidebarCollapsed={setSidebarCollapsed}
+                    />
 
-                    <div className="main-container">
+                    <div className={`main-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
                         <aside className="sidebar">
                             {/*  Simple text boxes that we will take as input  */}
                             <ul className="search-filters">

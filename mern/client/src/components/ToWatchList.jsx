@@ -1,6 +1,7 @@
 // src/components/WatchList.jsx
 import React, {useEffect, useMemo, useState} from "react";
 import { Link } from "react-router-dom";
+import Navigation from "./Navigation.jsx";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
 import {findTmdbIdByTitleYear} from "./converter.js";
@@ -19,7 +20,7 @@ export default function ToWatchListPage() {
     const [watched, setWatched] = useState(() => new Set(JSON.parse(localStorage.getItem("watched") || "[]")));
     const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("to-watch") || "[]")));
     const watchlist = new Set((JSON.parse(localStorage.getItem("to-watch") || "[]") || []).map(Number));
-
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
     useEffect(() => {
         localStorage.setItem("watched", JSON.stringify([...watched]));
@@ -30,32 +31,35 @@ export default function ToWatchListPage() {
 
 
     // sidebar toggle functionality
-    useEffect(() => {
-        const toggleButton = document.getElementById("sidebarToggle");
-        const mainContainer = document.querySelector(".main-container");
+    // useEffect(() => {
+    //     const toggleButton = document.getElementById("sidebarToggle");
+    //     const mainContainer = document.querySelector(".main-container");
 
-        if (toggleButton && mainContainer) {
-            const toggleSidebar = () => {
-                mainContainer.classList.toggle("sidebar-collapsed");
-            };
-            toggleButton.addEventListener("click", toggleSidebar);
-            return () => toggleButton.removeEventListener("click", toggleSidebar);
-        }
-    }, []);
+    //     if (toggleButton && mainContainer) {
+    //         const toggleSidebar = () => {
+    //             mainContainer.classList.toggle("sidebar-collapsed");
+    //         };
+    //         toggleButton.addEventListener("click", toggleSidebar);
+    //         return () => toggleButton.removeEventListener("click", toggleSidebar);
+    //     }
+    // }, []);
+
+
+
     // mobile navbar toggle functionality
-    useEffect(() => {
-        const mobileNavToggle = document.getElementById("mobileNavToggle");
-        const navLinks = document.getElementById("navLinks");
+    // useEffect(() => {
+    //     const mobileNavToggle = document.getElementById("mobileNavToggle");
+    //     const navLinks = document.getElementById("navLinks");
 
-        if (!mobileNavToggle || !navLinks) return;
+    //     if (!mobileNavToggle || !navLinks) return;
 
-        const toggleMobileNav = () => {
-            navLinks.classList.toggle("open");
-        };
+    //     const toggleMobileNav = () => {
+    //         navLinks.classList.toggle("open");
+    //     };
 
-        mobileNavToggle.addEventListener("click", toggleMobileNav);
-        return () => mobileNavToggle.removeEventListener("click", toggleMobileNav);
-    }, []);
+    //     mobileNavToggle.addEventListener("click", toggleMobileNav);
+    //     return () => mobileNavToggle.removeEventListener("click", toggleMobileNav);
+    // }, []);
 
 
     const [details, setDetails] = useState(null);
@@ -267,12 +271,12 @@ export default function ToWatchListPage() {
 
     return (
         <>
-            <div className="navigation-top">
+            {/* <div className="navigation-top">
                 <button className="navigation-button" id="sidebarToggle">☰</button>
 
-                <Link to="/" className="logo"><div className="logo">cineMatch</div></Link>  {/* creates the logo link */}
+                <Link to="/" className="logo"><div className="logo">cineMatch</div></Link>  
 
-                {/* mobile toggle for navbar */}
+                
                 <button
                     className="navigation-button"
                     id="mobileNavToggle"
@@ -281,7 +285,7 @@ export default function ToWatchListPage() {
                     ▼
                 </button>
 
-                {/* navbar links wrapped for mobile collapse */}
+                
                 <div className="nav-links" id="navLinks">
 
                     <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
@@ -291,9 +295,14 @@ export default function ToWatchListPage() {
                     <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button active">TO-WATCH LIST</Link>
 
                 </div>
-            </div>
+            </div> */}
 
-            <div className="main-container">
+            <Navigation 
+                sidebarCollapsed={sidebarCollapsed}
+                setSidebarCollapsed={setSidebarCollapsed}
+            />
+
+            <div className={`main-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
                 <aside className="sidebar">
                     <ul className="search-filters">
                         {["Actor", "Director", "Genre", "Title", "Year", "Rating"].map((label) => (

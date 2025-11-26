@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import Navigation from "./Navigation.jsx";
 import "./Help.css";
 
 export default function Help() {
@@ -42,14 +43,16 @@ export default function Help() {
 
     return (
         <>
-            <div className="navigation-top">
+            {/* <div className="navigation-top">
                 <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
-                <Link to="/" className="logo"><div className="logo">cineMatch</div></Link>  {/* creates the logo link */}
-                <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button active">HELP</Link>
-                <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
+                <Link to="/" className="logo"><div className="logo">cineMatch</div></Link>  
+                <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
+                <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button active">FEED</Link>
                 <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
                 <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
-            </div>
+            </div> */}
+            
+            <Navigation sidebarCollapsed={true} setSidebarCollapsed={() => {}} />
 
             <div className="help-header">
                 <h2>Welcome to the Help Center!</h2>

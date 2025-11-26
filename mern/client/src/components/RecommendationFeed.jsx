@@ -1,6 +1,7 @@
 // src/components/RecommendationFeed.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import Navigation from "./Navigation.jsx";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
 
@@ -94,14 +95,16 @@ export default function RecommendationFeed() {
 
     return (
         <>
-            <div className="navigation-top">
+            {/* <div className="navigation-top">
                 <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
-                <Link to="/" className="logo"><div className="logo">cineMatch</div></Link>  {/* creates the logo link */}
+                <Link to="/" className="logo"><div className="logo">cineMatch</div></Link>  
                 <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
                 <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button active">FEED</Link>
                 <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
                 <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
-            </div>
+            </div> */}
+
+            <Navigation sidebarCollapsed={false} setSidebarCollapsed={() => {}} />
 
             <div className="main-container">
                 <aside className="sidebar">
