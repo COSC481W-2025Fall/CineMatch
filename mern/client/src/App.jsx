@@ -622,8 +622,7 @@ function clearFilters() {
                     setSidebarCollapsed={setSidebarCollapsed}
                     />
 
-                    <div className={`main-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-                        <aside className="sidebar">
+                    <div className={`main-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>                        <aside className="sidebar">
                             {/*  Simple text boxes that we will take as input  */}
                             <ul className="search-filters">
 
