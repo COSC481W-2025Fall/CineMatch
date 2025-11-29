@@ -239,15 +239,15 @@ router.get("/details/:id", async (req, res) => {
             .toArray();
         const genres = grows.map(g => g.genre);             // map array of docs to simple array of strings i.e. ["Sci-fi", "Romance"]
 
-        // use pre-existing poster URL, else find matching poster in posters table to display
-        let posterUrl = movie.posterUrl ?? null;
-        if (!posterUrl) {
-            const prow = await postersCol.findOne(
-                { id },
-                { projection: { _id: 0, link: 1 } }
-            );
-            if (prow?.link) posterUrl = prow.link;
-        }
+        // get poster and backdrop
+        // store backdrop if available
+        const prow = await postersCol.findOne(
+            { id },
+            { projection: { _id: 0, link: 1, backdrop_link: 1 } }
+        );
+
+        let posterUrl = movie.posterUrl ?? prow?.link ?? null;
+        let backdropUrl = prow?.backdrop_link ?? null;
 
         // pipeline to get top 5 cast by movie ID
         const castById = await actorsCol.aggregate([
@@ -298,7 +298,8 @@ router.get("/details/:id", async (req, res) => {
             year: movie.date,
             rating: movie.rating ?? null,
             posterUrl,
-            description: movie.description ?? "",
+            backdropUrl,
+            description: movie.descriptions ?? "", // changed to descriptions, not description to match label
             genres,
             topCast,
             directors: directorNames.length === 0 ? null : (directorNames.length === 1 ? directorNames[0] : directorNames),
