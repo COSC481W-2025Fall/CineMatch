@@ -28,10 +28,15 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
         topCastCount,
         genres,
         runtime,
-        director
+        directors,
+        watchProviders
     } = details;
 
     const runtimeText = formatRuntime(runtime);
+
+    const hasDirectors = directors &&
+        directors.length > 0 &&
+        !(directors.length === 1 && directors[0] === "NA");
 
     // use linear gradiant to make it look better and text easier to read
     const modalStyle = backdropUrl ? {
@@ -63,11 +68,12 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
                             {runtimeText ? ` • ${runtimeText}` : ""}
                         </div>
 
-                        {Array.isArray(director) && director.length > 0 && (
-                            <div style={{ marginBottom: 12 }}>
-                                <strong>Director(s):</strong> {director.join(", ")}
-                            </div>
-                        )}
+                        {/* condensed logic, list none listed for cases of no director */}
+                        <div style={{ marginBottom: 12 }}>
+                            <strong>{hasDirectors && directors.length > 1 ? "Directors:" : "Director:"}</strong>{" "}
+                            {hasDirectors ? directors.join(", ") : "None Listed"}
+                        </div>
+
                         {Array.isArray(genres) && genres.length > 0 && (
                             <div style={{ marginBottom: 12 }}>
                                 <strong>Genres:</strong> {genres.join(", ")}
@@ -78,6 +84,37 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
                         {Array.isArray(topCast) && topCast.length > 0 && (
                             <div style={{ marginBottom: 12 }}>
                                 <strong>Top cast:</strong> {topCast.slice(0, topCastCount).join(", ")}
+                            </div>
+                        )}
+
+                        {/*where to watch icons*/}
+                        {Array.isArray(watchProviders) && watchProviders.length > 0 && (
+                            <div style={{ marginBottom: 12 }}>
+                                <strong style={{ display: 'block', marginBottom: 6 }}>Where to watch:</strong>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                    {watchProviders.map((provider, index) => {
+                                        if (typeof provider === 'object' && provider.logo_path) {
+                                            return (
+                                                <img
+                                                    key={index}
+                                                    src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                                                    alt={provider.provider_name}
+                                                    title={provider.provider_name} // show name on hover, maybe add click to go to website
+                                                    style={{
+                                                        width: 45, // no automatic sizing for now
+                                                        height: 45,
+                                                        borderRadius: 8,
+                                                        cursor: "help",
+                                                        boxShadow: "0 2px 4px rgba(0,0,0,0.3)"
+                                                    }}
+                                                />
+                                            );
+                                        }
+                                    })}
+                                </div>
+                                <div style={{ fontSize: "0.7em", opacity: 0.6, marginTop: 4 }}>
+                                    Source: JustWatch
+                                </div>
                             </div>
                         )}
 

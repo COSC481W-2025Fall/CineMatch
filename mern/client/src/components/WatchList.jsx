@@ -104,12 +104,7 @@ export default function WatchListPage() {
                     if (tmdb && typeof tmdb.runtime === "number") {
                         runtime = tmdb.runtime;
                     }
-
-                    let description = null;
-                    if (tmdb && typeof tmdb.overview === "string" && tmdb.overview.trim().length > 0) {
-                        description = tmdb.overview.trim();
-                    }
-
+                    
                     // fill patch objects
                     patch.tmdbId = tmdbId; // keep for debugging or other uses
                     if (topCast.length > 0) {

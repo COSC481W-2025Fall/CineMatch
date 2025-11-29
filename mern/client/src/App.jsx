@@ -91,19 +91,19 @@ function App() {
             const res = await fetch(`/record/details/${movie.id}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-
             // replace whole conversion call and check with this
             const tmdbId = movie.id;
             console.log("[TMDB] Using ID:", tmdbId);
 
             let patch = {}; // empty
 
-            // if found then pull actors and runtime from api
+            // if found then pull actors, runtime, and watch providers
             if (tmdbId !== null && tmdbId !== undefined) {
                 const numOfActors = CAST_LIMIT;
                 const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
                 url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
-                url.searchParams.set("append_to_response", "credits"); // include cast list
+
+                url.searchParams.set("append_to_response", "credits,watch/providers"); // add where to watch to the append
 
                 const tmdbRes = await fetch(url.toString(), {headers: {accept: "application/json"}});
                 if (tmdbRes.ok) {
@@ -129,7 +129,6 @@ function App() {
 
                     // get the first X number of actors
                     const topActors = tmdbCast.slice(0, numOfActors);
-
                     // build an array of cast names with strings
                     const topCast = [];
                     for (let i = 0; i < topActors.length; i++) {
@@ -145,21 +144,30 @@ function App() {
                         runtime = tmdb.runtime;
                     }
 
-                    let description = null;
-                    if (tmdb && typeof tmdb.overview === "string" && tmdb.overview.trim().length > 0) {
-                        description = tmdb.overview.trim();
+                    // get where to watch
+                    let watchProviders = [];
+
+                    // use US by default, not important for other areas rn since it changes by location
+                    if (tmdb && tmdb["watch/providers"] && tmdb["watch/providers"].results && tmdb["watch/providers"].results.US && tmdb["watch/providers"].results.US.flatrate) {
+                        watchProviders = tmdb["watch/providers"].results.US.flatrate;
                     }
 
                     // fill patch objects
-                    patch.tmdbId = tmdbId; // keep for debugging or other uses
+
+                    // removed outdated comments here from old database logic
+                    patch.tmdbId = tmdbId;
                     if (topCast.length > 0) {
-                        patch.topCast = topCast; // override DB actors with top billed tmdb list
+                        patch.topCast = topCast;
                     }
                     if (runtime !== null) {
-                        patch.runtime = runtime; // add runtime (minutes) - convert this to hr/min on frontend
+                        patch.runtime = runtime;
+                    }
+                    // add watchers to patch and pass to detail view
+                    if (watchProviders.length > 0) {
+                        patch.watchProviders = watchProviders;
                     }
 
-                    console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime);
+                    console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime, "providers:", watchProviders.length);
                 }
             }
 
@@ -544,12 +552,18 @@ async function doSearch() {
                             </footer>
                         </aside>
 
-                        <main className="content-area" data-testid="content-area">
+                        {/* remove using the index, not needed for key since moivie ID is being used now */}
+                        <main className="content-area">
+
                             <div id="status" className="muted">{status}</div>
                             <div id="results" className="movie-grid">
-                                {movies.map((m, idx) => (
-                                    <article className="movie-card" key={idx} onClick={() => openDetails(m)}
-                                             style={{cursor: "pointer"}}>
+                                {movies.map((m) => (
+                                    <article
+                                        className="movie-card"
+                                        key={m.id} // use movie ID instead of index
+                                        onClick={() => openDetails(m)}
+                                        style={{cursor: "pointer"}}
+                                    >
                                         <img
                                             src={m.posterUrl || "https://placehold.co/300x450?text=No+Poster"}
                                             alt={m.title || ""}
