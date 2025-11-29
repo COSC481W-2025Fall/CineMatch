@@ -16,9 +16,9 @@ router.post("/", async (req, res) => {
 
         const watchedIds = Array.isArray(req.body?.watchedIds) ? req.body.watchedIds : [];
 
-        // hard coding this here but its fixed later
         const limit = Math.max(1, Math.min(50, Number(req.body?.limit) || 20));
-        if (!watchedIds.length) return res.json({ items: [] })
+        if (!watchedIds.length) return res.json({ items: [] });
+
 
         const agg = new Map();
         const exclude = new Set();

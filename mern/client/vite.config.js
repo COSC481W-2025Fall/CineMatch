@@ -9,10 +9,10 @@ export default defineConfig({
               '/feed':   'http://localhost:5050',},
   },
 
-  // Vitest frontend testing
   test: {
     globals: true,
-    environment: 'jsdom',
-    setupFiles: './src/setupTests.js',
+    environment: "jsdom",
+    setupFiles: ["./src/tests/setup.js"],
+
   },
 })

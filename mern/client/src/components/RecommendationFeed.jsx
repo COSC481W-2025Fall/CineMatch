@@ -5,7 +5,9 @@ import "../App.css";
 import MovieDetails from "./MovieDetails";
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
-const DEFAULT_LIMIT = 20; // changing for testing, full change already made on feed cleanup
+
+const DEFAULT_LIMIT = 20; 
+
 
 export default function RecommendationFeed() {
     const watchedIds = useMemo(
@@ -13,7 +15,7 @@ export default function RecommendationFeed() {
         []
     );
 
-    const [limit, setLimit] = useState(DEFAULT_LIMIT);
+    
     const [recs, setRecs] = useState([]);
     const [status, setStatus] = useState("Loading…");
 
@@ -71,7 +73,7 @@ export default function RecommendationFeed() {
         try {
             const body = {
                 watchedIds: Array.from(watchedIds),
-                limit: Math.max(1, Number(limit) || DEFAULT_LIMIT),
+                limit: DEFAULT_LIMIT,
             };
             const resp = await fetch("/feed", {
                 method: "POST",
@@ -103,44 +105,9 @@ export default function RecommendationFeed() {
                 <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
             </div>
 
-            <div className="main-container">
-                <aside className="sidebar">
-                    <ul className="search-filters">
-                        <li className="filter-item" key="Limit">
-                            <div className="filter-link">
-                                <input
-                                    id="qLimit"
-                                    className="filter-input"
-                                    placeholder="LIMIT…"
-                                    type="number"
-                                    min="1"
-                                    max="50"
-                                    value={limit}
-                                    onChange={(e) => setLimit(e.target.value)}
-                                    onKeyDown={(e) => e.key === "Enter" && buildRecommendations()}
-                                />
-                            </div>
-                        </li>
-                    </ul>
-                    <button className="go-btn" onClick={buildRecommendations}>REBUILD FEED</button>
-
-                    <footer className="sidebar-footer-credit">
-                        <p>
-                            Source of data:{" "}
-                            <a href="https://www.themoviedb.org/">
-                                TMDB{" "}
-                                <img
-                                    src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"
-                                    style={{ height: "10px", width: "auto", verticalAlign: "middle", marginLeft: "6px" }}
-                                    alt="TMDB logo"
-                                />
-                            </a>
-                        </p>
-                        <p>This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.</p>
-                    </footer>
-                </aside>
-
-                <main className="content-area">
+            <div className="main-container" style={{ marginLeft: 0, width: '100%' }}>
+        
+                <main className="content-area" style={{ marginLeft: 0, width: '100%' }}>
                     <div id="status" className="muted">{status}</div>
                     <div id="results" className="movie-grid">
                         {recs.map((r, idx) => {
@@ -163,6 +130,28 @@ export default function RecommendationFeed() {
                     </div>
                 </main>
             </div>
+            
+             <footer style={{ 
+                        marginTop: '2rem', 
+                        padding: '1rem', 
+                        textAlign: 'center', 
+                        fontSize: '0.85rem', 
+                        color: '#999' 
+                    }}>
+                        <p>
+                            Source of data:{" "}
+                            <a href="https://www.themoviedb.org/">
+                                TMDB{" "}
+                                <img
+                                    src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"
+                                    style={{ height: "10px", width: "auto", verticalAlign: "middle", marginLeft: "6px" }}
+                                    alt="TMDB logo"
+                                />
+                            </a>
+                        </p>
+                        <p>This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.</p>
+                    </footer>
+
 
             {showDetails && details && (
                 <MovieDetails
