@@ -27,6 +27,23 @@ export default function ToWatchListPage() {
         localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
     }, [toWatch]);
 
+
+    // sidebar functionality
+    useEffect(() => {
+    const toggleButton = document.getElementById("sidebarToggle");
+    const mainContainer = document.querySelector(".main-container");
+
+    if (!toggleButton || !mainContainer) return;
+
+    const toggleSidebar = () => {
+        mainContainer.classList.toggle("sidebar-collapsed");
+    };
+
+    toggleButton.addEventListener("click", toggleSidebar);
+    return () => toggleButton.removeEventListener("click", toggleSidebar);
+    }, []);
+
+
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
     async function openDetails(movie) {
@@ -211,6 +228,7 @@ export default function ToWatchListPage() {
     return (
         <>
             <div className="navigation-top">
+                <button className="navigation-button" id="sidebarToggle">☰</button>
                 <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
                 <div className="logo">cineMatch</div>
                 <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>

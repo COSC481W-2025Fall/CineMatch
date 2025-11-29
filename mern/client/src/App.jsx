@@ -63,6 +63,25 @@ function App() {
         localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
     }, [toWatch]);
 
+    // sidebar functionality
+    useEffect(() => {
+    const toggleButton = document.getElementById("sidebarToggle");
+    const mainContainer = document.querySelector(".main-container");
+
+    if (!toggleButton || !mainContainer) return;
+
+    const toggleSidebar = () => {
+        mainContainer.classList.toggle("sidebar-collapsed");
+    };
+
+    toggleButton.addEventListener("click", toggleSidebar);
+    return () => toggleButton.removeEventListener("click", toggleSidebar);
+    }, []);
+
+
+
+
+
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
 
@@ -334,6 +353,7 @@ async function doSearch() {
             return (
                 <>
                     <div className="navigation-top">
+                        <button className="navigation-button" id="sidebarToggle" aria-label="Toggle Sidebar">☰</button>
                         <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button active">SEARCH</Link>
                         <div className="logo">cineMatch</div>
                         <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
@@ -343,8 +363,8 @@ async function doSearch() {
 
                     </div>
 
-                    <div className="main-container">
-                        <aside className="sidebar">
+                    <div className="main-container" data-testid="main-container">
+                        <aside className="sidebar" data-testid="sidebar">
                             {/*  Simple text boxes that we will take as input  */}
                             <ul className="search-filters">
 
@@ -524,7 +544,7 @@ async function doSearch() {
                             </footer>
                         </aside>
 
-                        <main className="content-area">
+                        <main className="content-area" data-testid="content-area">
                             <div id="status" className="muted">{status}</div>
                             <div id="results" className="movie-grid">
                                 {movies.map((m, idx) => (
