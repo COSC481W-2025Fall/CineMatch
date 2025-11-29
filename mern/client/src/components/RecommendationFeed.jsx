@@ -8,6 +8,7 @@ const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
 
 const DEFAULT_LIMIT = 20; 
 
+const CAST_LIMIT = 7
 
 export default function RecommendationFeed() {
     const watchedIds = useMemo(
@@ -15,7 +16,19 @@ export default function RecommendationFeed() {
         []
     );
 
-    
+
+    const [watched, setWatched] = useState(() => new Set(JSON.parse(localStorage.getItem("watched") || "[]")));
+    const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("to-watch") || "[]")));
+    useEffect(() => {
+        localStorage.setItem("watched", JSON.stringify([...watched]));
+    }, [watched]);
+    useEffect(() => {
+        localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
+    }, [toWatch]);
+
+
+    const [limit, setLimit] = useState(DEFAULT_LIMIT); // THIS ISN'T BEING USED, PENDING REMOVAL DURING CODE CLEANUP -YS
+
     const [recs, setRecs] = useState([]);
     const [status, setStatus] = useState("Loading…");
 
@@ -94,6 +107,28 @@ export default function RecommendationFeed() {
 
     useEffect(() => { buildRecommendations(); }, []);
 
+    const isWatched = useMemo(() => details && watched.has(details.id), [details, watched]);
+    const inToWatch = useMemo(() => details && toWatch.has(details.id), [details, toWatch]);
+
+    const onMarkWatched = () => {
+        if (!details) return;
+        const id = Number(details.id);
+        setWatched(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
+    const onAddToWatch = () => {
+        if (!details) return;
+        const id = Number(details.id);
+        setWatchlist(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
+
     return (
         <>
             <div className="navigation-top">
@@ -157,10 +192,10 @@ export default function RecommendationFeed() {
                 <MovieDetails
                     details={details}
                     onClose={() => setShowDetails(false)}
-                    isWatched={details.id != null && watchedIds.has(details.id)}
-                    inToWatch={false}
-                    onMarkWatched={() => {}}
-                    onAddToWatch={() => {}}
+                    isWatched={!!isWatched}
+                    inToWatch={!!inToWatch}
+                    onMarkWatched={onMarkWatched}
+                    onAddToWatch={onAddToWatch}
                 />
             )}
         </>
