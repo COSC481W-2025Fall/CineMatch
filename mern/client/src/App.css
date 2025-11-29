@@ -364,3 +364,80 @@ body {
   -moz-appearance: textfield;  /* remove spinners */
   text-align: center;          /* ensure placeholder + value stay centered */
 }
+
+        /* ===== Active Filter Chips (matches existing colors) ===== */
+
+        /* container that holds all chips above the results grid */
+        .active-filters {
+        display: flex;
+        flex-wrap: wrap;     /* wrap onto new lines if needed */
+        gap: 8px;            /* space between chips */
+        margin: 0 0 12px 0;  /* add a little space below */
+        }
+
+        /* the chip (pill) itself */
+        .chip {
+        display: inline-flex;
+        align-items: center;               /* center text + X vertically */
+        gap: 8px;                          /* space between text and X */
+        padding: 6px 12px 6px 10px;       
+        border-radius: 999px;              /* pill shape */
+        border: 1px solid #555;            /* matches sidebar border */
+        background: linear-gradient(45deg,#dd4444,#aa3333); /* same red as .filter-item */
+        color: #fff;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,.35);  
+        cursor: pointer;
+        transition: background .15s ease, transform .05s ease,
+                    box-shadow .15s ease, border-color .15s ease; 
+        }
+
+        
+        .chip:hover {
+        background: linear-gradient(45deg,#ff5555,#cc4444);
+        box-shadow: 0 3px 6px rgba(0,0,0,.45);
+        border-color: #666;
+        }
+
+        /* active press = push down */
+        .chip:active {
+        transform: translateY(1px) scale(0.99);
+        }
+
+        /* gold (matches site accents) */
+        .chip:focus-visible {
+        outline: 2px solid #f7e135;
+        outline-offset: 2px;
+        }
+
+        
+        .chip-text {
+        max-width: 36ch;     /* don't let it get too long */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        }
+
+        /* the small “×” button on the right */
+        .chip-x {
+        display: grid;
+        place-items: center; /* center the × */
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        font-weight: 900;
+        line-height: 1;
+        background: #2a2a2a;  /* same dark as bar */
+        border: 1px solid #555;
+        color: #f7e135;       /* gold accent */
+        transition: background .15s ease, color .15s ease, border-color .15s ease;
+        }
+
+        /* hover style just for the × */
+        .chip:hover .chip-x {
+        background: #222;
+        border-color: #666;
+        color: #ffdf6a;       /* lighter gold on hover */
+        }
