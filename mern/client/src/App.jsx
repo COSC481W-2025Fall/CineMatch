@@ -353,7 +353,7 @@ function App() {
         }
 
 
-async function doSearch() {
+/*async function doSearch() {
     setStatus("Loading…");   //shows the loading state (UI)
     try {
         const query = {
@@ -381,10 +381,12 @@ async function doSearch() {
         setStatus("");
         setErrorMsg(err.message);
     }
-}
+} */
 
 
+    // THIS IS NEVER USED, COMMENTING OUT, PENDING REMOVAL DURING CODE CLEANUP
 
+    /*
         // helper: union (case-insensitive) of two comma lists
         function mergeCommaLists(prev = "", curr = "") {
         // turn "a, b, c" into ["a","b","c"] and clean spaces
@@ -408,9 +410,9 @@ async function doSearch() {
             }
         }
         return merged.join(", ");                                   // return as "a, b, c"
-        }
+        }*/
 
-            async function doSearch(overrideQuery, opts = {}) {
+        /*async function doSearch(overrideQuery, opts = {}) {
         // sometimes onClick passes the click event as the first arg
         // if that happens, ignore it so we don't treat it like overrides
         if (
@@ -496,9 +498,113 @@ async function doSearch() {
             setStatus("");            // stop showing "Loading…"
             setErrorMsg(err.message); // open error modal
         }
+        }*/
+
+    async function doSearch(overrideQuery, opts = {}) {
+        // sometimes onClick passes the click event as the first arg
+        // if that happens, ignore it so we don't treat it like overrides
+        if (
+            overrideQuery &&
+            typeof overrideQuery === "object" &&
+            ("nativeEvent" in overrideQuery ||
+                "target" in overrideQuery ||
+                "preventDefault" in overrideQuery)
+        ) {
+            overrideQuery = undefined;
         }
 
-        function handleRemoveChip(chip) {
+        // Inline helper to merge comma-separated actor lists without duplicates
+        const mergeCommaLists = (prev = "", curr = "") => {
+            const toList = (s) =>
+                (s || "")
+                    .split(",")
+                    .map((x) => x.trim())
+                    .filter(Boolean);
+            const prevList = toList(prev);
+            const currList = toList(curr);
+            const seen = new Set(prevList.map((x) => x.toLowerCase()));
+            const merged = [...prevList];
+            for (const x of currList) {
+                const low = x.toLowerCase();
+                if (!seen.has(low)) {
+                    seen.add(low);
+                    merged.push(x);
+                }
+            }
+            return merged.join(", ");
+        };
+
+        setStatus("Loading…"); // show loading message while we fetch
+        try {
+            // start from current inputs unless we received an override (chip removal, etc.)
+            let nextParams = overrideQuery ? { ...params, ...overrideQuery } : { ...params };
+
+            // GENRES handling:
+            // - if override has "genre": use that
+            // - if override exists but no "genre": keep applied genres
+            // - if no override: use the live checkbox selection
+            let nextGenres = overrideQuery
+                ? (Object.prototype.hasOwnProperty.call(overrideQuery, "genre")
+                    ? [...(overrideQuery.genre || [])]
+                    : [...appliedGenres])
+                : [...selectedGenres];
+
+            // ACTORS handling:
+            // - merge previously applied actors with what's typed ONLY for normal searches
+            // - skip merge when removal came from a chip (so last actor stays gone)
+            const skipActorMerge = opts.fromChip === true;
+            if (!skipActorMerge && hasSearched) {
+                nextParams.actor = mergeCommaLists(appliedParams.actor, nextParams.actor);
+            }
+
+            // clean actor string (remove extra spaces/commas)
+            if (typeof nextParams.actor === "string") {
+                nextParams.actor = nextParams.actor
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .join(", ");
+            }
+
+            // final query object (only include genre if we have at least one)
+            const query = {
+                ...nextParams,
+                ...(nextGenres.length ? { genre: nextGenres } : {})
+            };
+
+            // ask backend for results
+            const data = await fetchMovies(query);
+
+            // Merging from the other doSearch function -YS
+            const noSearch =
+                (!nextParams.actor || !nextParams.actor.trim()) &&
+                (!nextParams.director || !nextParams.director.trim()) &&
+                (!nextParams.title || !nextParams.title.trim()) &&
+                !nextGenres.length &&
+                !nextParams.year_min &&
+                !nextParams.year_max &&
+                !nextParams.rating_min &&
+                !nextParams.rating_max;
+
+
+            setMovies(noSearch ? shuffleArray(data) : data);
+            //if no parmas shuuffle else use the filer params
+
+            setStatus(data.length ? "" : "No results found.");
+
+
+            setAppliedParams(nextParams);
+            setAppliedGenres(nextGenres);
+            setHasSearched(true);
+        } catch (err) {
+            console.error(err);
+            setStatus("");
+            setErrorMsg(err.message);
+        }
+    }
+
+
+    function handleRemoveChip(chip) {
         // start from the applied filters, this matches what's on screen
         const baseParams = { ...appliedParams };
         let baseGenres = [...appliedGenres];
@@ -520,7 +626,8 @@ async function doSearch() {
             baseParams.actor = removeFromCommaList(baseParams.actor, chip.value); // drop one actor
             break;
             case "director":
-            baseParams.director = ""; // single-value field, just clear it           
+            baseParams.director = ""; // single-value field, just clear it
+            break;
             case "title":
             baseParams.title = ""; // clear title
             break;
