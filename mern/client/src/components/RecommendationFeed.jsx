@@ -1,5 +1,5 @@
 // src/components/RecommendationFeed.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
@@ -34,13 +34,15 @@ function loadArrayFromStorage(key) {
 
 export default function RecommendationFeed() {
   // Movies the user has marked as watched (by internal DB id)
-  const watchedIds = useMemo(() => loadSetFromStorage("watched"), []);
+  const [watchedIds, setWatchedIds] = useState(() =>
+    loadSetFromStorage("watched")
+  );
 
-  // Disliked / liked TMDB ids – read-only here
-  const [dislikedTmdbIds] = useState(() =>
+  // Disliked / liked TMDB ids
+  const [dislikedTmdbIds, setDislikedTmdbIds] = useState(() =>
     loadArrayFromStorage("dislikedTmdbIds")
   );
-  const [likedTmdbIds] = useState(() =>
+  const [likedTmdbIds, setLikedTmdbIds] = useState(() =>
     loadArrayFromStorage("likedTmdbIds")
   );
 
@@ -102,7 +104,16 @@ export default function RecommendationFeed() {
   }
 
   async function buildRecommendations() {
-    if (watchedIds.size === 0) {
+    const freshWatched = loadSetFromStorage("watched");
+    const freshLiked = loadArrayFromStorage("likedTmdbIds");
+    const freshDisliked = loadArrayFromStorage("dislikedTmdbIds");
+
+    // Update state so UI badges and details are in sync
+    setWatchedIds(freshWatched);
+    setLikedTmdbIds(freshLiked);
+    setDislikedTmdbIds(freshDisliked);
+
+    if (freshWatched.size === 0) {
       setStatus(
         "Your watched list is empty — watch a few movies to seed recommendations."
       );
@@ -114,8 +125,9 @@ export default function RecommendationFeed() {
 
     try {
       const body = {
-        watchedIds: Array.from(watchedIds),
-        likedTmdbIds, // backend still uses likes as a strong signal
+        watchedIds: Array.from(freshWatched),
+        likedTmdbIds: freshLiked,
+        dislikedTmdbIds: freshDisliked,
         limit: Math.max(1, Number(limit) || DEFAULT_LIMIT),
       };
 
@@ -130,12 +142,12 @@ export default function RecommendationFeed() {
       const json = await resp.json();
       const items = Array.isArray(json?.items) ? json.items : [];
 
-      // Hide any movies the user has disliked (based on TMDB id, numeric)
+      // Hide any movies the user has disliked (based on TMDB id)
       const filtered = items.filter((item) => {
         if (item.tmdbId == null) return true;
         const idNum = Number(item.tmdbId);
         if (!Number.isFinite(idNum)) return true;
-        return !dislikedTmdbIds.includes(idNum);
+        return !freshDisliked.includes(idNum);
       });
 
       setRecs(filtered);
@@ -154,6 +166,7 @@ export default function RecommendationFeed() {
   // Initial build
   useEffect(() => {
     buildRecommendations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -336,4 +349,3 @@ export default function RecommendationFeed() {
     </>
   );
 }
-

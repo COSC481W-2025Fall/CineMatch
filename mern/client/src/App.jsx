@@ -85,11 +85,11 @@ function App() {
     loadSetFromStorage("to-watch")
   );
 
-  // liked/disliked arrays – read-only in Search page
-  const [likedTmdbIds] = useState(() => getLikedTmdbIds());
-  const [dislikedTmdbIds] = useState(() => getDislikedTmdbIds());
+  // liked/disliked arrays  (read-only) 
+  const [likedTmdbIds, setLikedTmdbIds] = useState(() => getLikedTmdbIds());
+  const [dislikedTmdbIds, setDislikedTmdbIds] = useState(() => getDislikedTmdbIds());
 
-  // record id - TMDB id map (shared with WatchList via localStorage)
+  // record id - TMDB id map 
   const [recordTmdbMap, setRecordTmdbMap] = useState(() =>
     loadMapFromStorage("recordTmdbMap")
   );
@@ -410,12 +410,15 @@ function App() {
     [details, dislikedTmdbIds]
   );
 
-  // Mark watched / unwatched from Search - This does NOT touch like/dislike (read-only here).
+  // Mark watched / unwatched from Search 
   const onMarkWatched = () => {
     if (!details) return;
 
     const id = Number(details.id);
+    const tmdbId = details.tmdbId != null ? Number(details.tmdbId) : null;
+    const wasWatched = watched.has(id);
 
+    // Toggle watched
     setWatched((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -425,6 +428,21 @@ function App() {
       }
       return next;
     });
+
+    // If removed from watched list, clear like/dislike for this TMDB id
+    if (wasWatched && tmdbId != null && Number.isFinite(tmdbId)) {
+      setLikedTmdbIds((prev) => {
+        const next = prev.filter((x) => x !== tmdbId);
+        localStorage.setItem("likedTmdbIds", JSON.stringify(next));
+        return next;
+      });
+
+      setDislikedTmdbIds((prev) => {
+        const next = prev.filter((x) => x !== tmdbId);
+        localStorage.setItem("dislikedTmdbIds", JSON.stringify(next));
+        return next;
+      });
+    }
   };
 
   const onAddToWatch = () => {

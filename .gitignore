@@ -3,3 +3,4 @@ config.env
 node_modules/
 .idea
 .env
+auth.env

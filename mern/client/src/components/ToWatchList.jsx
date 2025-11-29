@@ -41,6 +41,27 @@ function loadArrayFromStorage(key) {
   }
 }
 
+// recordId - tmdbId map (from Search page)
+function loadMapFromStorage(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    const out = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      const idNum = Number(k);
+      const tmdbNum = Number(v);
+      if (Number.isFinite(idNum) && Number.isFinite(tmdbNum)) {
+        out[idNum] = tmdbNum;
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 export default function ToWatchListPage() {
   const [watched, setWatched] = useState(() =>
     loadSetFromStorage("watched")
@@ -55,12 +76,17 @@ export default function ToWatchListPage() {
     [toWatch]
   );
 
-  // liked / disliked TMDB ids – READ-ONLY here
-  const [likedTmdbIds] = useState(() =>
+  // liked / disliked TMDB ids – cleared when removed from watched list
+  const [likedTmdbIds, setLikedTmdbIds] = useState(() =>
     loadArrayFromStorage("likedTmdbIds")
   );
-  const [dislikedTmdbIds] = useState(() =>
+  const [dislikedTmdbIds, setDislikedTmdbIds] = useState(() =>
     loadArrayFromStorage("dislikedTmdbIds")
+  );
+
+  // recordId - tmdbId map
+  const [recordTmdbMap, setRecordTmdbMap] = useState(() =>
+    loadMapFromStorage("recordTmdbMap")
   );
 
   useEffect(() => {
@@ -70,6 +96,10 @@ export default function ToWatchListPage() {
   useEffect(() => {
     localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
   }, [toWatch]);
+
+  useEffect(() => {
+    localStorage.setItem("recordTmdbMap", JSON.stringify(recordTmdbMap));
+  }, [recordTmdbMap]);
 
   const [details, setDetails] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -199,6 +229,19 @@ export default function ToWatchListPage() {
         ...patch,
       });
       setShowDetails(true);
+
+      // cache TMDB id on list and map- similar to search
+      if (finalTmdbId != null) {
+        setMovies((prev) =>
+          prev.map((m) =>
+            m.id === movie.id ? { ...m, tmdbId: finalTmdbId ?? m.tmdbId } : m
+          )
+        );
+        setRecordTmdbMap((prev) => ({
+          ...prev,
+          [movie.id]: finalTmdbId,
+        }));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -252,9 +295,18 @@ export default function ToWatchListPage() {
 
       const data = await fetchWatchlistSubset(params);
 
-      setMovies(data);
+      // Attach known TMDB ids from recordTmdbMap 
+      const withTmdb = data.map((m) => {
+        const mapped = recordTmdbMap[m.id];
+        if (mapped && m.tmdbId == null) {
+          return { ...m, tmdbId: mapped };
+        }
+        return m;
+      });
+
+      setMovies(withTmdb);
       setStatus(
-        data.length
+        withTmdb.length
           ? ""
           : "Your to-watch list is empty or no matches for this search."
       );
@@ -266,6 +318,7 @@ export default function ToWatchListPage() {
 
   useEffect(() => {
     doSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleChange(e) {
@@ -285,12 +338,12 @@ export default function ToWatchListPage() {
     [details, toWatch]
   );
 
-  // derive liked / disliked for the currently opened details (read-only)
+  // Movie like/dislike (read-only)
   const isLiked = useMemo(
     () =>
       details &&
       details.tmdbId != null &&
-      likedTmdbIds.includes(details.tmdbId),
+      likedTmdbIds.includes(Number(details.tmdbId)),
     [details, likedTmdbIds]
   );
 
@@ -298,18 +351,43 @@ export default function ToWatchListPage() {
     () =>
       details &&
       details.tmdbId != null &&
-      dislikedTmdbIds.includes(details.tmdbId),
+      dislikedTmdbIds.includes(Number(details.tmdbId)),
     [details, dislikedTmdbIds]
   );
 
+  // Toggle watched
   const onMarkWatched = () => {
     if (!details) return;
     const id = Number(details.id);
+    const tmdbId =
+      details.tmdbId != null ? Number(details.tmdbId) : null;
+
+    const wasWatched = watched.has(id);
+
     setWatched((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
+
+    // If removed from watched list, clear like/dislike for this TMDB id
+    if (wasWatched && tmdbId != null && Number.isFinite(tmdbId)) {
+      setLikedTmdbIds((prev) => {
+        const next = prev.filter((x) => x !== tmdbId);
+        localStorage.setItem("likedTmdbIds", JSON.stringify(next));
+        return next;
+      });
+
+      setDislikedTmdbIds((prev) => {
+        const next = prev.filter((x) => x !== tmdbId);
+        localStorage.setItem("dislikedTmdbIds", JSON.stringify(next));
+        return next;
+      });
+    }
   };
 
   const onAddToWatch = () => {
@@ -435,10 +513,13 @@ export default function ToWatchListPage() {
           </div>
           <div id="results" className="movie-grid">
             {movies.map((m, idx) => {
+              const tmdbIdNum =
+                m.tmdbId != null ? Number(m.tmdbId) : null;
+
               const likedFlag =
-                m.tmdbId != null && likedTmdbIds.includes(m.tmdbId);
+                tmdbIdNum != null && likedTmdbIds.includes(tmdbIdNum);
               const dislikedFlag =
-                m.tmdbId != null && dislikedTmdbIds.includes(m.tmdbId);
+                tmdbIdNum != null && dislikedTmdbIds.includes(tmdbIdNum);
 
               return (
                 <article

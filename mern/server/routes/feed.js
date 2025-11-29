@@ -8,220 +8,211 @@ const router = Router();
 const TMDB_API_KEY = process.env.VITE_TMDB_API_KEY;
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
-//Normalize Title
-const DIACRITICS = /\p{M}/gu;
-const PUNCT = /['".,:;!?()[\]{}\/&\\\-–—_]/g;
-const MULTI = /\s+/g;
+// Weights
+const WATCHED_WEIGHT   = 1;
+const LIKED_WEIGHT     = 10;
+const DISLIKED_WEIGHT  = -15; 
 
-function normalizeTitle(t = "") {
-  let out = String(t).toLowerCase();
-  out = out.normalize("NFKD").replace(DIACRITICS, "");
-  out = out.replace(PUNCT, " ").replace(MULTI, " ").trim();
-  return out;
-}
-
-// Convert DB movie to TMDB id 
-async function findTmdbIdByTitleYear(title, year) {
-  if (!title || year == null || !TMDB_API_KEY) return null;
-
-  const url = new URL(`${TMDB_BASE_URL}/search/movie`);
-  url.searchParams.set("api_key", TMDB_API_KEY);
-  url.searchParams.set("query", title);
-  url.searchParams.set("year", String(year));
-
-  const resp = await fetch(url.toString(), {
-    headers: { accept: "application/json" }
-  });
-  if (!resp.ok) return null;
-
-  const data = await resp.json();
-  const results = Array.isArray(data?.results) ? data.results : [];
-
-  const y = String(year);
-  const norm = normalizeTitle(title);
-  const filtered = results.filter(r => (r.release_date || "").startsWith(y));
-
-  if (!filtered.length) return null;
-
-  let best = null;
-  let bestScore = -Infinity;
-
-  for (const r of filtered) {
-    const t1 = normalizeTitle(r.title || "");
-    let score = 0;
-
-    if (t1 === norm) score = 1000;
-    else if (t1.startsWith(norm)) score = 600;
-
-    score += (r.popularity || 0) / 10;
-
-    if (score > bestScore) {
-      best = r;
-      bestScore = score;
-    }
-  }
-
-  return best?.id ?? null;
-}
-
-// Fetch genres for a TMDB movie
+// Fetch genres helper 
 async function fetchGenres(tmdbId) {
-  if (!tmdbId) return [];
+  if (!tmdbId || !TMDB_API_KEY) return [];
 
   const url = new URL(`${TMDB_BASE_URL}/movie/${tmdbId}`);
   url.searchParams.set("api_key", TMDB_API_KEY);
 
   const resp = await fetch(url.toString(), {
-    headers: { accept: "application/json" }
+    headers: { accept: "application/json" },
   });
-
   if (!resp.ok) return [];
 
-  const data = await resp.json();
-  return (data.genres || []).map(g => Number(g.id)).filter(n => Number.isFinite(n));
+  const json = await resp.json();
+  const genres = Array.isArray(json?.genres) ? json.genres : [];
+  return genres
+    .map((g) => Number(g.id))
+    .filter((n) => Number.isFinite(n) && n > 0);
 }
 
-// MAIN FEED ROUTE
 router.post("/", async (req, res) => {
   try {
-    if (!TMDB_API_KEY)
-      return res.status(500).json({ error: "TMDB key missing on server" });
+    if (!TMDB_API_KEY) {
+      return res
+        .status(500)
+        .json({ error: "TMDB key missing on server" });
+    }
 
-    const watchedDbIds = Array.isArray(req.body?.watchedIds)
+    const watchedIds = Array.isArray(req.body?.watchedIds)
       ? req.body.watchedIds
       : [];
 
     const likedTmdbIds = Array.isArray(req.body?.likedTmdbIds)
-      ? req.body.likedTmdbIds.map(Number).filter(n => n > 0)
+      ? req.body.likedTmdbIds
       : [];
 
-    const limit = Math.max(1, Math.min(50, Number(req.body?.limit) || 20));
+    const dislikedTmdbIds = Array.isArray(req.body?.dislikedTmdbIds)
+      ? req.body.dislikedTmdbIds
+      : [];
 
-    if (!watchedDbIds.length && !likedTmdbIds.length)
+    const limit = Math.max(
+      1,
+      Math.min(50, Number(req.body?.limit) || 20)
+    );
+
+    // Return empty array if nothing in arrays 
+    if (
+      !watchedIds.length &&
+      !likedTmdbIds.length &&
+      !dislikedTmdbIds.length
+    ) {
       return res.json({ items: [] });
-
-    const moviesCol = db.collection("movies");
-
-    // Seed TMDB IDs
-    const seeds = new Map(); // tmdbId - weight
-    const exclude = new Set(); // watched TMDB movies
-
-    // 1. Watched movies - weight 1
-    for (const dbId of watchedDbIds) {
-      const movie = await moviesCol.findOne(
-        { id: Number(dbId) },
-        { projection: { name: 1, date: 1 } }
-      );
-      if (!movie?.name || !movie?.date) continue;
-
-      const tmdb = await findTmdbIdByTitleYear(movie.name, movie.date);
-      if (!tmdb) continue;
-
-      seeds.set(tmdb, (seeds.get(tmdb) || 0) + 1);
-      exclude.add(tmdb);
     }
 
-    // 2. Liked movies - weight 3
-    for (const tmdbId of likedTmdbIds) {
-      seeds.set(tmdbId, (seeds.get(tmdbId) || 0) + 3);
-      // We DO NOT exclude liked movies
-    }
+    // Normalizes all ids to numbers and sets
+    const watchedSet = new Set(
+      watchedIds
+        .map(Number)
+        .filter((n) => Number.isFinite(n) && n > 0)
+    );
+    const likedSet = new Set(
+      likedTmdbIds
+        .map(Number)
+        .filter((n) => Number.isFinite(n) && n > 0)
+    );
+    const dislikedSet = new Set(
+      dislikedTmdbIds
+        .map(Number)
+        .filter((n) => Number.isFinite(n) && n > 0)
+    );
 
-    if (!seeds.size) return res.json({ items: [] });
+    const agg = new Map();
+    const exclude = new Set();
 
-    //  Build genre profile
-    const genreWeight = new Map();
+    // Watched and disliked movies excluded from feed
+    for (const id of watchedSet) exclude.add(id);
+    for (const id of dislikedSet) exclude.add(id);
 
-    for (const [tmdbId, weight] of seeds.entries()) {
+    // Disliked movies genre list 
+    const dislikedGenreSets = [];
+    for (const tmdbId of dislikedSet) {
       const genres = await fetchGenres(tmdbId);
-      for (const g of genres) {
-        genreWeight.set(g, (genreWeight.get(g) || 0) + weight);
+      if (genres.length) {
+        dislikedGenreSets.push(new Set(genres));
       }
     }
 
-    // Aggregate TMDB recs
-    const agg = new Map(); // tmdbId -> { sample, scoreComponents }
+    // Union of all seeded movies
+    const seedIds = new Set([
+      ...watchedSet,
+      ...likedSet,
+      ...dislikedSet,
+    ]);
 
-    async function addRecsFrom(tmdbId, seedWeight) {
-      const url = new URL(`${TMDB_BASE_URL}/movie/${tmdbId}/recommendations`);
+    // Helper to add weights to seeded id's
+    async function addRecsFromSeed(tmdbId, seedWeight) {
+      const url = new URL(
+        `${TMDB_BASE_URL}/movie/${tmdbId}/recommendations`
+      );
       url.searchParams.set("api_key", TMDB_API_KEY);
 
       const resp = await fetch(url.toString(), {
-        headers: { accept: "application/json" }
+        headers: { accept: "application/json" },
       });
       if (!resp.ok) return;
 
-      const data = await resp.json();
-      const recs = Array.isArray(data?.results) ? data.results : [];
+      const json = await resp.json();
+      const results = Array.isArray(json?.results)
+        ? json.results
+        : [];
 
-      for (const rec of recs) {
-        if (!rec?.id || rec.id === tmdbId) continue;
-
+      for (const rec of results) {
+        if (typeof rec?.id !== "number") continue;
         const key = rec.id;
-        const rating = Number(rec.vote_average) || 0;
-        const pop = Number(rec.popularity) || 0;
-        const genres = rec.genre_ids || [];
+        const rating = Number(rec?.vote_average) || 0;
+        const genres = Array.isArray(rec?.genre_ids)
+          ? rec.genre_ids.map(Number).filter((n) => Number.isFinite(n))
+          : [];
 
-        if (!agg.has(key)) {
+        if (agg.has(key)) {
+          const entry = agg.get(key);
+          entry.score += seedWeight;
+          entry.count += 1;
+          if (rating > entry.rating) entry.rating = rating;
+        } else {
           agg.set(key, {
             id: key,
-            sample: rec,
-            hits: 0,
+            score: seedWeight,
+            count: 1,
             rating,
-            popularity: pop,
-            genres
+            genres,
+            sample: rec,
           });
         }
-
-        const entry = agg.get(key);
-        entry.hits += seedWeight;
       }
     }
 
-    // Call TMDB recs for all seed movies
-    for (const [tmdbId, weight] of seeds.entries()) {
-      await addRecsFrom(tmdbId, weight);
+    // Contribute positive or negative weights 
+    for (const id of seedIds) {
+      const tmdbId = Number(id);
+      if (!tmdbId || isNaN(tmdbId)) continue;
+
+      let weight = 0;
+      if (watchedSet.has(tmdbId))   weight += WATCHED_WEIGHT;
+      if (likedSet.has(tmdbId))     weight += LIKED_WEIGHT;
+      if (dislikedSet.has(tmdbId))  weight += DISLIKED_WEIGHT;
+
+      // Skip if no weight
+      if (weight === 0) continue;
+
+      await addRecsFromSeed(tmdbId, weight);
     }
 
-    // Score
-    function genreScore(genres) {
-      let score = 0;
-      for (const g of genres) {
-        score += genreWeight.get(g) || 0;
+    // Disliked movie check 
+    function tooCloseToDisliked(entry) {
+      if (!dislikedGenreSets.length) return false;
+      const recGenres = entry.genres || [];
+      if (!recGenres.length) return false;
+
+      // Exlude recommendations with 2 or more matching genres to a disliked movie 
+      for (const dSet of dislikedGenreSets) {
+        let overlap = 0;
+        for (const g of recGenres) {
+          if (dSet.has(g)) {
+            overlap += 1;
+            if (overlap >= 2) {
+              return true;
+            }
+          }
+        }
       }
-      return score;
+      return false;
     }
 
-    const scored = Array.from(agg.values())
-      .filter(rec => !exclude.has(rec.id))
-      .map(rec => {
-        rec.score =
-          rec.hits * 10 +               // strong weight from seeds  
-          // rec.rating * 1.5 +         // rating excluded 
-          rec.popularity * 0.05 +       // trending  
-          genreScore(rec.genres) * 2;   // genre matching  
+    const sorted = Array.from(agg.values())
+      // Filter recommended movies the user has watched, explicitly disliked, and is similar to disliked
+      .filter((x) => !exclude.has(x.id) && !tooCloseToDisliked(x))
+      // Sort by total score then rating 
+      .sort(
+        (a, b) =>
+          b.score - a.score ||
+          b.rating - a.rating
+      )
+      .slice(0, limit)
+      .map((x) => x.sample);
 
-        return rec;
-      })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
-
-    // Format 
-    const items = scored.map(r => ({
+    const items = sorted.map((r) => ({
       tmdbId: r.id,
-      title: r.sample.title || r.sample.name || "Untitled",
-      year: (r.sample.release_date || "").slice(0, 4),
-      rating: r.sample.vote_average
-        ? Number(r.sample.vote_average.toFixed(1))
-        : null,
-      overview: r.sample.overview || "",
-      posterPath: r.sample.poster_path || null
+      title: r.title || r.name || "Untitled",
+      year: (r.release_date || "").slice(0, 4) || null,
+      rating:
+        typeof r.vote_average === "number"
+          ? Number(r.vote_average.toFixed(1))
+          : null,
+      overview: r.overview || "",
+      posterPath: r.poster_path || null,
     }));
 
     res.json({ items });
-
   } catch (err) {
-    console.error("feed error:", err);
+    console.error("POST /feed error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
