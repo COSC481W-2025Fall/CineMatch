@@ -17,7 +17,7 @@ body {
 }
 
 .navigation-top {
-    display:flex; 
+    display:flex;
     justify-content: space-between;
     align-items:center;
     padding:15px 30px;
@@ -107,8 +107,8 @@ body {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,.4);
 }
-.navigation-button.active { 
-    background:linear-gradient(45deg,#f7e135,#cc8800); 
+.navigation-button.active {
+    background:linear-gradient(45deg,#f7e135,#cc8800);
     transform: translateY(-2px);
 } */
 
@@ -194,8 +194,8 @@ body {
     padding: 10px 8px;
     overflow-y: auto; /* scroll inside sidebar if content is taller */
     transition:
-    width 1.2s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            width 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+            opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* hide sidebar
@@ -209,22 +209,22 @@ body {
 
 /* collapsed state */
 .main-container.sidebar-collapsed .sidebar {
-  width: 0;
-  opacity: 0;
-  overflow: hidden;
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
 }
 
 /* movie cards */
 .content-area {
-  flex: 1;
-  transition:
-    all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    flex: 1;
+    transition:
+            all 1.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 
 /* transition movies and sidebar together */
 .main-container.sidebar-collapsed .content-area {
-  margin-left: 0;
+    margin-left: 0;
 }
 
 .sidebar-footer-credit {
@@ -524,27 +524,27 @@ body {
 /* Chrome, Edge, Safari, Opera (WebKit browsers) */
 .rating-bubbles input[type="number"]::-webkit-inner-spin-button,
 .rating-bubbles input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;  /* hide spinner controls */
-  margin: 0;
+    -webkit-appearance: none;  /* hide spinner controls */
+    margin: 0;
 }
 
 /* Firefox */
 .rating-bubbles input[type="number"] {
-  -moz-appearance: textfield;  /* remove spinners */
-  text-align: center;          /* ensure placeholder + value stay centered */
+    -moz-appearance: textfield;  /* remove spinners */
+    text-align: center;          /* ensure placeholder + value stay centered */
 }
 
 /* Chrome, Edge, Safari, Opera (WebKit browsers) */
 .year-bubbles input[type="number"]::-webkit-inner-spin-button,
 .year-bubbles input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;  /* hide spinner controls */
-  margin: 0;
+    -webkit-appearance: none;  /* hide spinner controls */
+    margin: 0;
 }
 
 /* Firefox */
 .year-bubbles input[type="number"] {
-  -moz-appearance: textfield;  /* remove spinners */
-  text-align: center;          /* ensure placeholder + value stay centered */
+    -moz-appearance: textfield;  /* remove spinners */
+    text-align: center;          /* ensure placeholder + value stay centered */
 }
 
 /* .nav-links {
@@ -648,17 +648,17 @@ body {
     .menu-buttons {
         margin-top: 100px;
     }
-    
+
     .menu-button {
         padding: 18px;
         font-size: 16px;
     }
-    
+
     .menu-logo {
         font-size: 36px;
         bottom: 30px;
     }
-    
+
     .menu-close {
         width: 90%;
         padding: 12px;
@@ -756,12 +756,12 @@ body {
     .content-area {
         overflow-x: hidden !important;
     }
-/***
-    /* show two movie cards side by side*/
+    /***
+        /* show two movie cards side by side*/
     .content-area {
         display: flex;
         flex-direction: column;
-        align-items: center;  
+        align-items: center;
         padding: 15px;
         padding-top: 90px;
         margin: 0;
@@ -838,7 +838,7 @@ body {
     .movie-grid {
         gap: 10px;
     }
-    
+
     .dropdown-menu {
         min-width: 140px;
     }
@@ -847,83 +847,83 @@ body {
         padding: 8px 12px;
         font-size: 12px;
     }
-    
+
 }
 
-        /* container that holds all chips above the results grid */
-        .active-filters {
-        display: flex;
-        flex-wrap: wrap;     /* wrap onto new lines if needed */
-        gap: 8px;            /* space between chips */
-        margin: 0 0 12px 0;  /* add a little space below */
-        }
+/* container that holds all chips above the results grid */
+.active-filters {
+    display: flex;
+    flex-wrap: wrap;     /* wrap onto new lines if needed */
+    gap: 8px;            /* space between chips */
+    margin: 0 0 12px 0;  /* add a little space below */
+}
 
-        /* the chip (pill) itself */
-        .chip {
-        display: inline-flex;
-        align-items: center;               /* center text + X vertically */
-        gap: 8px;                          /* space between text and X */
-        padding: 6px 12px 6px 10px;       
-        border-radius: 999px;              /* pill shape */
-        border: 1px solid #555;            /* matches sidebar border */
-        background: linear-gradient(45deg,#dd4444,#aa3333); /* same red as .filter-item */
-        color: #fff;
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: .5px;
-        box-shadow: 0 2px 4px rgba(0,0,0,.35);  
-        cursor: pointer;
-        transition: background .15s ease, transform .05s ease,
-                    box-shadow .15s ease, border-color .15s ease; 
-        }
+/* the chip (pill) itself */
+.chip {
+    display: inline-flex;
+    align-items: center;               /* center text + X vertically */
+    gap: 8px;                          /* space between text and X */
+    padding: 6px 12px 6px 10px;
+    border-radius: 999px;              /* pill shape */
+    border: 1px solid #555;            /* matches sidebar border */
+    background: linear-gradient(45deg,#dd4444,#aa3333); /* same red as .filter-item */
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,.35);
+    cursor: pointer;
+    transition: background .15s ease, transform .05s ease,
+    box-shadow .15s ease, border-color .15s ease;
+}
 
-        
-        .chip:hover {
-        background: linear-gradient(45deg,#ff5555,#cc4444);
-        box-shadow: 0 3px 6px rgba(0,0,0,.45);
-        border-color: #666;
-        }
 
-        /* active press = push down */
-        .chip:active {
-        transform: translateY(1px) scale(0.99);
-        }
+.chip:hover {
+    background: linear-gradient(45deg,#ff5555,#cc4444);
+    box-shadow: 0 3px 6px rgba(0,0,0,.45);
+    border-color: #666;
+}
 
-        /* gold (matches site accents) */
-        .chip:focus-visible {
-        outline: 2px solid #f7e135;
-        outline-offset: 2px;
-        }
+/* active press = push down */
+.chip:active {
+    transform: translateY(1px) scale(0.99);
+}
 
-        
-        .chip-text {
-        max-width: 36ch;     /* don't let it get too long */
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        }
+/* gold (matches site accents) */
+.chip:focus-visible {
+    outline: 2px solid #f7e135;
+    outline-offset: 2px;
+}
 
-        /* the small “×” button on the right */
-        .chip-x {
-        display: grid;
-        place-items: center; /* center the × */
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        font-weight: 900;
-        line-height: 1;
-        background: #2a2a2a;  /* same dark as bar */
-        border: 1px solid #555;
-        color: #f7e135;       /* gold accent */
-        transition: background .15s ease, color .15s ease, border-color .15s ease;
-        }
 
-        /* hover style just for the × */
-        .chip:hover .chip-x {
-        background: #222;
-        border-color: #666;
-        color: #ffdf6a;       /* lighter gold on hover */
-        }
+.chip-text {
+    max-width: 36ch;     /* don't let it get too long */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* the small “×” button on the right */
+.chip-x {
+    display: grid;
+    place-items: center; /* center the × */
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-weight: 900;
+    line-height: 1;
+    background: #2a2a2a;  /* same dark as bar */
+    border: 1px solid #555;
+    color: #f7e135;       /* gold accent */
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+
+/* hover style just for the × */
+.chip:hover .chip-x {
+    background: #222;
+    border-color: #666;
+    color: #ffdf6a;       /* lighter gold on hover */
+}
 
 /* Avatar button (mobile account icon) */
 .nav-avatar-btn {
@@ -972,7 +972,49 @@ body {
     left: auto;
 }
 
-.dropdown-item {
+/* Dropdown container */
+.nav-auth-dropdown {
+    position: relative;
+}
+
+/* ACCOUNT button looks like any nav button */
+.nav-auth-toggle {
+    /* inherits .navigation-button styles */
+}
+
+/* Dropdown panel (now controlled by React, not :hover) */
+.nav-auth-menu {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: #222;
+    border-radius: 8px;
+    padding: 6px 0;
+    box-shadow: 0 6px 18px rgba(0,0,0,.45);
+    min-width: 170px;
+    z-index: 20;
+}
+
+/* Remove the old hover rule:
+   .nav-auth-dropdown:hover .nav-auth-menu { display: block; }
+*/
+
+/* Greeting inside dropdown */
+.nav-auth-greeting,
+.dropdown-greeting {
+    padding: 8px 14px;
+    font-size: 0.9rem;
+    color: #eee;
+    white-space: nowrap;
+    border-bottom: 1px solid #333;
+    font-weight: 600;
+    cursor: default;
+}
+
+/* Links/buttons inside the dropdown */
+.dropdown-item,
+.nav-auth-link {
     display: block;
     width: 100%;
     padding: 8px 14px;
@@ -986,18 +1028,12 @@ body {
     font-family: inherit;
 }
 
-.dropdown-item:hover {
+.dropdown-item:hover,
+.nav-auth-link:hover {
     background: #333;
 }
 
-.dropdown-greeting {
-    border-bottom: 1px solid #333;
-    font-weight: 600;
-    cursor: default;
-}
-
-.dropdown-logout {
+.dropdown-logout,
+.nav-auth-logout {
     color: #ff7777;
 }
-
-

@@ -4,12 +4,8 @@ import { Link } from "react-router-dom";
 import Navigation from "./Navigation.jsx";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
-import {
-    addLikedTmdbId,
-    addDislikedTmdbId,
-    getLikedTmdbIds,
-    getDislikedTmdbIds,
-} from "./likeDislikeStorage";
+import { authedFetch, refresh, fetchReactions, updateReaction } from "../auth/api.js";
+import { useAuth } from "../auth/AuthContext.jsx";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
@@ -89,12 +85,11 @@ function loadMapFromStorage(key) {
 }
 
 export default function WatchListPage() {
-    const [watched, setWatched] = useState(() =>
-        loadSetFromStorage("watched")
-    );
-    const [toWatch, setWatchlist] = useState(() =>
-        loadSetFromStorage("to-watch")
-    );
+    const { user } = useAuth();
+    const canModifyLists = !!user;
+
+    const [watched, setWatched] = useState(new Set());
+    const [toWatch, setToWatch] = useState(new Set());
 
     // for this page, watchlist = watched movie ids (by DB id)
     const watchlist = useMemo(() => new Set([...watched]), [watched]);
@@ -103,14 +98,10 @@ export default function WatchListPage() {
 
     // Liked/disliked (by TMDB id) – watchlist is editable
     const [likedTmdbIds, setLikedTmdbIds] = useState(() =>
-        getLikedTmdbIds().length
-            ? getLikedTmdbIds()
-            : loadArrayFromStorage("likedTmdbIds")
+        loadArrayFromStorage("likedTmdbIds")
     );
     const [dislikedTmdbIds, setDislikedTmdbIds] = useState(() =>
-        getDislikedTmdbIds().length
-            ? getDislikedTmdbIds()
-            : loadArrayFromStorage("dislikedTmdbIds")
+        loadArrayFromStorage("dislikedTmdbIds")
     );
 
     // Map of DB record id - TMDB id, shared with Search page via localStorage
@@ -125,14 +116,6 @@ export default function WatchListPage() {
             setDislikedTmdbIds([]);
         }
     }, [watched]);
-
-    useEffect(() => {
-        localStorage.setItem("watched", JSON.stringify([...watched]));
-    }, [watched]);
-
-    useEffect(() => {
-        localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
-    }, [toWatch]);
 
     // Keep liked/disliked in sync with localStorage
     useEffect(() => {
@@ -154,7 +137,7 @@ export default function WatchListPage() {
     }, [recordTmdbMap]);
 
     const [details, setDetails] = useState(null);
-    const [showDetails, setShowDetails] = useState(false);
+    const [showDetails, setShowDetails] = useState(false);   //state hooks for the movie modal
 
     async function openDetails(movie) {
         try {
@@ -271,6 +254,7 @@ export default function WatchListPage() {
         }
     }
 
+    // Filters
     const [params, setParams] = useState({
         actor: "",
         director: "",
@@ -282,11 +266,46 @@ export default function WatchListPage() {
 
     const [movies, setMovies] = useState([]);
     const [status, setStatus] = useState("Loading…");
+    const [loaded, setLoaded] = useState(false); // guard
+
+    // Helper for stable string of watched set for effect deps
+    const watchedKey = useMemo(() => JSON.stringify(Array.from(watched).sort()), [watched]);
+
+    // Function to fetch authoritative lists from the server
+    async function loadLists() {
+        const res = await authedFetch("/api/me/lists");
+        if (res.status === 401) {
+            throw new Error("Not authenticated (401). Open /login first.");
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const raw = await res.json();
+        console.log("[/api/me/lists] payload ->", raw);
+
+
+        const w = Array.isArray(raw.watchedIds)   ? raw.watchedIds
+            : Array.isArray(raw.watched)      ? raw.watched
+                : [];
+        const t = Array.isArray(raw.toWatchIds)   ? raw.toWatchIds
+            : Array.isArray(raw.toWatch)      ? raw.toWatch
+                : Array.isArray(raw["to-watch"])  ? raw["to-watch"]
+                    : [];
+
+        const watchedIds = w.map(Number);
+        const toWatchIds = t.map(Number);
+        // Update state with the newly fetched Sets
+        setWatched(new Set(watchedIds));
+        setToWatch(new Set(toWatchIds));
+        setLoaded(true);
+
+        console.log("toWatch set after loadLists ->", toWatchIds);
+        return { watchedIds, toWatchIds };
+    }
 
     // use /record/bulk to fetch only watched movies
-    async function fetchWatchlistSubset(p = {}) {
+    async function fetchWatchlistSubset(ids, p = {}) {
         const body = {
-            ids: Array.from(watchlist),
+            ids,
             params: {
                 actor: p.actor || "",
                 director: p.director || "",
@@ -307,17 +326,21 @@ export default function WatchListPage() {
         return res.json();
     }
 
-    async function doSearch() {
+    async function doSearch(idsOverride) {
         setStatus("Loading…");
 
         try {
-            if (watchlist.size === 0) {
+            const ids = Array.isArray(idsOverride)
+                ? idsOverride
+                : Array.from(watchlist);
+
+            if (ids.length === 0) {
                 setMovies([]);
                 setStatus("Your watch list is empty.");
                 return;
             }
 
-            const data = await fetchWatchlistSubset(params);
+            const data = await fetchWatchlistSubset(ids, params);
 
             // Attach tmdbId from our persisted map, if we know it
             const withTmdb = data.map((m) => {
@@ -341,8 +364,34 @@ export default function WatchListPage() {
     }
 
     useEffect(() => {
-        doSearch();
+        (async () => {
+            try {
+                await refresh().catch(() => {});   //refresh token in needed
+                const { watchedIds } = await loadLists();
+                console.log("watched set after loadLists ->", watchedIds);
+
+                const {
+                    likedTmdbIds: srvLiked,
+                    dislikedTmdbIds: srvDisliked,
+                } = await fetchReactions().catch(() => ({ likedTmdbIds: [], dislikedTmdbIds: [] }));
+                setLikedTmdbIds(srvLiked.map(Number));
+                setDislikedTmdbIds(srvDisliked.map(Number));
+
+                await doSearch(watchedIds); // perfoms intail search using  new ids
+            } catch (e) {
+                console.error("initial load failed:", e);
+                setStatus(e.message || "Error loading lists.");
+            }
+        })();
+
     }, []);
+
+    //  Effect for filter Changes
+    useEffect(() => {
+        if (!loaded) return;
+        doSearch();
+
+    }, [params, watchedKey, loaded]);
 
     function handleChange(e) {
         const { id, value } = e.target;
@@ -352,14 +401,16 @@ export default function WatchListPage() {
         }));
     }
 
-    const isWatched = useMemo(
-        () => details && watched.has(details.id),
-        [details, watched]
-    );
-    const inToWatch = useMemo(
-        () => details && toWatch.has(details.id),
-        [details, toWatch]
-    );
+    const isWatched = useMemo(() => {
+        if (!details || details.id == null) return false;
+        const idNum = Number(details.id);
+        return watched.has(idNum);
+    }, [details, watched]);
+    const inToWatch = useMemo(() => {
+        if (!details || details.id == null) return false;
+        const idNum = Number(details.id);
+        return toWatch.has(idNum);
+    }, [details, toWatch]);
 
     // liked/disliked for the movie in the modal
     const isLiked = useMemo(
@@ -378,75 +429,87 @@ export default function WatchListPage() {
         [details, dislikedTmdbIds]
     );
 
-    // If removing from watched, also clear likes/dislikes for that TMDB id
-    const onMarkWatched = () => {
-        if (!details) return;
+    async function toggleList(list, id) { // Handles the server-side API call to toggle a movie's status
+        const res = await authedFetch(`/api/me/lists/${list}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: (list === "watched" && watched.has(id)) || (list === "to-watch" && toWatch.has(id)) ? "remove" : "add", id }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+
+        const { watchedIds } = await loadLists();
+        await doSearch(watchedIds);
+    }
+
+    function applyLocalReaction(tmdbIdNum, reaction) {
+        if (!Number.isFinite(tmdbIdNum)) return;
+
+        setLikedTmdbIds((prev) => {
+            const set = new Set(prev);
+            set.delete(tmdbIdNum);
+            if (reaction === "like") set.add(tmdbIdNum);
+            return Array.from(set);
+        });
+
+        setDislikedTmdbIds((prev) => {
+            const set = new Set(prev);
+            set.delete(tmdbIdNum);
+            if (reaction === "dislike") set.add(tmdbIdNum);
+            return Array.from(set);
+        });
+    }
+
+    const onMarkWatched = async () => {
+        if (!details || !canModifyLists) return;
 
         const id = Number(details.id);
         const tmdbIdNum =
             details.tmdbId != null ? Number(details.tmdbId) : null;
+        const wasWatched = watched.has(id);
 
-        setWatched((prev) => {
-            const next = new Set(prev);
+        try {
+            await toggleList("watched", id);
 
-            if (next.has(id)) {
-                // Removing from watched list - clear likes/dislikes for this movie
-                next.delete(id);
-
-                if (tmdbIdNum != null && Number.isFinite(tmdbIdNum)) {
-                    setLikedTmdbIds((prevLiked) =>
-                        prevLiked.filter((x) => x !== tmdbIdNum)
-                    );
-                    setDislikedTmdbIds((prevDisliked) =>
-                        prevDisliked.filter((x) => x !== tmdbIdNum)
-                    );
-                }
-            } else {
-                // Adding to Watched
-                next.add(id);
+            if (wasWatched && tmdbIdNum != null && Number.isFinite(tmdbIdNum)) {
+                const reaction = "clear";
+                applyLocalReaction(tmdbIdNum, reaction);
+                updateReaction(tmdbIdNum, reaction).catch(console.error);
             }
-
-            return next;
-        });
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     const onAddToWatch = () => {
-        if (!details) return;
+        if (!details || !canModifyLists) return;
         const id = Number(details.id);
-        setWatchlist((prev) => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-        });
+        toggleList("to-watch", id);
     };
 
     // Only place where like/dislike is changed (editable)
-    function handleLike() {
-        if (!details?.tmdbId) return;
+    async function handleLike() {
+        if (!details?.tmdbId || !canModifyLists) return;
         const tmdbIdNum = Number(details.tmdbId);
         if (!Number.isFinite(tmdbIdNum)) return;
 
-        addLikedTmdbId(tmdbIdNum);
-        setLikedTmdbIds((prev) =>
-            prev.includes(tmdbIdNum) ? prev : [...prev, tmdbIdNum]
-        );
-        setDislikedTmdbIds((prev) =>
-            prev.filter((id) => id !== tmdbIdNum)
-        );
+        const currentlyLiked = likedTmdbIds.includes(tmdbIdNum);
+        const reaction = currentlyLiked ? "clear" : "like";
+
+        applyLocalReaction(tmdbIdNum, reaction);
+        updateReaction(tmdbIdNum, reaction).catch(console.error);
     }
 
-    function handleDislike() {
-        if (!details?.tmdbId) return;
+    async function handleDislike() {
+        if (!details?.tmdbId || !canModifyLists) return;
         const tmdbIdNum = Number(details.tmdbId);
         if (!Number.isFinite(tmdbIdNum)) return;
 
-        addDislikedTmdbId(tmdbIdNum);
-        setDislikedTmdbIds((prev) =>
-            prev.includes(tmdbIdNum) ? prev : [...prev, tmdbIdNum]
-        );
-        setLikedTmdbIds((prev) =>
-            prev.filter((id) => id !== tmdbIdNum)
-        );
+        const currentlyDisliked = dislikedTmdbIds.includes(tmdbIdNum);
+        const reaction = currentlyDisliked ? "clear" : "dislike";
+
+        applyLocalReaction(tmdbIdNum, reaction);
+        updateReaction(tmdbIdNum, reaction).catch(console.error);
     }
 
     function clearFilters() {

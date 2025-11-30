@@ -1,9 +1,11 @@
-// src/components/WatchList.jsx
+// src/components/ToWatchList.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Navigation from "./Navigation.jsx";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
+import { authedFetch, refresh } from "../auth/api.js";
+import { useAuth } from "../auth/AuthContext.jsx";
 
 const API_BASE = "";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
@@ -14,7 +16,7 @@ const GENRES = [
     "Science Fiction", "Thriller", "War", "Western"
 ];
 
-const CAST_LIMIT = 7;
+const CAST_LIMIT = 7; // cast limit
 
 // localStorage helpers
 function loadSetFromStorage(key) {
@@ -63,12 +65,11 @@ function loadMapFromStorage(key) {
 }
 
 export default function ToWatchListPage() {
-    const [watched, setWatched] = useState(() =>
-        loadSetFromStorage("watched")
-    );
-    const [toWatch, setWatchlist] = useState(() =>
-        loadSetFromStorage("to-watch")
-    );
+    const { user } = useAuth();
+    const canModifyLists = !!user;
+
+    const [watched, setWatched] = useState(new Set());
+    const [toWatch, setToWatch] = useState(new Set());
 
     // for this page, watchlist = to-watch movie ids, derived from state
     const watchlist = useMemo(
@@ -93,14 +94,6 @@ export default function ToWatchListPage() {
 
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
-
-    useEffect(() => {
-        localStorage.setItem("watched", JSON.stringify([...watched]));
-    }, [watched]);
-
-    useEffect(() => {
-        localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
-    }, [toWatch]);
 
     useEffect(() => {
         localStorage.setItem("recordTmdbMap", JSON.stringify(recordTmdbMap));
@@ -240,10 +233,48 @@ export default function ToWatchListPage() {
     const [selectedGenres, setSelectedGenres] = useState([]);
     const [genreDropdownOpen, setGenreDropdownOpen] = useState(false);
 
+    const [loaded, setLoaded] = useState(false);
+
+    // Re-search when the **toWatch** set changes
+    const toWatchKey = useMemo(
+        () => JSON.stringify(Array.from(toWatch).sort()),
+        [toWatch]
+    );
+
+    // Function to fetch authoritative lists from the server
+    async function loadLists() {
+        const res = await authedFetch("/api/me/lists");
+        if (res.status === 401) {
+            throw new Error("Not authenticated (401). Open /login first.");
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const raw = await res.json();
+        console.log("[/api/me/lists] payload ->", raw);
+
+        const w = Array.isArray(raw.watchedIds)   ? raw.watchedIds
+            : Array.isArray(raw.watched)      ? raw.watched
+                : [];
+        const t = Array.isArray(raw.toWatchIds)   ? raw.toWatchIds
+            : Array.isArray(raw.toWatch)      ? raw.toWatch
+                : Array.isArray(raw["to-watch"])  ? raw["to-watch"]
+                    : [];
+
+        const watchedIds = w.map(Number);
+        const toWatchIds = t.map(Number);
+        // Update state with the newly fetched Sets
+        setWatched(new Set(watchedIds));
+        setToWatch(new Set(toWatchIds));
+        setLoaded(true);
+
+        console.log("toWatch set after loadLists ->", toWatchIds);
+        return { watchedIds, toWatchIds };
+    }
+
     // use /record/bulk to fetch only to-watch movies
-    async function fetchWatchlistSubset(p = {}) {
+    async function fetchWatchlistSubset(ids, p = {}) {
         const body = {
-            ids: Array.from(watchlist),
+            ids,
             params: {
                 actor: p.actor || "",
                 director: p.director || "",
@@ -264,17 +295,21 @@ export default function ToWatchListPage() {
         return res.json();
     }
 
-    async function doSearch() {
+    async function doSearch(idsOverride) {
         setStatus("Loading…");
 
         try {
-            if (watchlist.size === 0) {
+            const ids = Array.isArray(idsOverride)
+                ? idsOverride
+                : Array.from(watchlist);
+
+            if (ids.length === 0) {
                 setMovies([]);
                 setStatus("Your to-watch list is empty.");
                 return;
             }
 
-            const data = await fetchWatchlistSubset(params);
+            const data = await fetchWatchlistSubset(ids, params);
 
             // Attach known TMDB ids from recordTmdbMap
             const withTmdb = data.map((m) => {
@@ -297,10 +332,25 @@ export default function ToWatchListPage() {
         }
     }
 
+    // initial load
     useEffect(() => {
-        doSearch();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        (async () => {
+            try {
+                await refresh().catch(() => {}); // ok if it fails
+                const { toWatchIds } = await loadLists();
+                await doSearch(toWatchIds);      // search using fresh IDs
+            } catch (e) {
+                console.error("initial load failed:", e);
+                setStatus(e.message || "Error loading lists.");
+            }
+        })();
     }, []);
+
+    // Reruns search when filters or list change
+    useEffect(() => {
+        if (!loaded) return;
+        doSearch();
+    }, [params, toWatchKey, loaded]);
 
     function handleChange(e) {
         const { id, value } = e.target;
@@ -310,14 +360,17 @@ export default function ToWatchListPage() {
         }));
     }
 
-    const isWatched = useMemo(
-        () => details && watched.has(details.id),
-        [details, watched]
-    );
-    const inToWatch = useMemo(
-        () => details && toWatch.has(details.id),
-        [details, toWatch]
-    );
+    const isWatched = useMemo(() => {
+        if (!details || details.id == null) return false;
+        const idNum = Number(details.id);
+        return watched.has(idNum);
+    }, [details, watched]);
+
+    const inToWatch = useMemo(() => {
+        if (!details || details.id == null) return false;
+        const idNum = Number(details.id);
+        return toWatch.has(idNum);
+    }, [details, toWatch]);
 
     // Movie like/dislike (read-only)
     const isLiked = useMemo(
@@ -336,49 +389,61 @@ export default function ToWatchListPage() {
         [details, dislikedTmdbIds]
     );
 
+    // Update lists server-side then refresh and re-searches
+    async function toggleList(list, id) {
+        const res = await authedFetch(`/api/me/lists/${list}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                action:
+                    (list === "watched"  && watched.has(id)) ||
+                    (list === "to-watch" && toWatch.has(id))
+                        ? "remove"
+                        : "add",
+                id,
+            }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const { toWatchIds } = await loadLists();
+        await doSearch(toWatchIds);
+    }
+
     // Toggle watched
-    const onMarkWatched = () => {
-        if (!details) return;
+    const onMarkWatched = async () => {
+        if (!details || !canModifyLists) return;
         const id = Number(details.id);
         const tmdbId =
             details.tmdbId != null ? Number(details.tmdbId) : null;
 
         const wasWatched = watched.has(id);
 
-        setWatched((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) {
-                next.delete(id);
-            } else {
-                next.add(id);
+        try {
+            await toggleList("watched", id);
+
+            // If removed from watched list, clear like/dislike for this TMDB id
+            if (wasWatched && tmdbId != null && Number.isFinite(tmdbId)) {
+                setLikedTmdbIds((prev) => {
+                    const next = prev.filter((x) => x !== tmdbId);
+                    localStorage.setItem("likedTmdbIds", JSON.stringify(next));
+                    return next;
+                });
+
+                setDislikedTmdbIds((prev) => {
+                    const next = prev.filter((x) => x !== tmdbId);
+                    localStorage.setItem("dislikedTmdbIds", JSON.stringify(next));
+                    return next;
+                });
             }
-            return next;
-        });
-
-        // If removed from watched list, clear like/dislike for this TMDB id
-        if (wasWatched && tmdbId != null && Number.isFinite(tmdbId)) {
-            setLikedTmdbIds((prev) => {
-                const next = prev.filter((x) => x !== tmdbId);
-                localStorage.setItem("likedTmdbIds", JSON.stringify(next));
-                return next;
-            });
-
-            setDislikedTmdbIds((prev) => {
-                const next = prev.filter((x) => x !== tmdbId);
-                localStorage.setItem("dislikedTmdbIds", JSON.stringify(next));
-                return next;
-            });
+        } catch (e) {
+            console.error(e);
         }
     };
 
     const onAddToWatch = () => {
-        if (!details) return;
+        if (!details || !canModifyLists) return;
         const id = Number(details.id);
-        setWatchlist((prev) => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-        });
+        toggleList("to-watch", id);
     };
 
     function clearFilters() {

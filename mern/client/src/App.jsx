@@ -8,6 +8,8 @@ import {
     getLikedTmdbIds,
     getDislikedTmdbIds,
 } from "./components/likeDislikeStorage";
+import { authedFetch, refresh } from "./auth/api.js";
+import { useAuth } from "./auth/AuthContext.jsx";
 
 const API_BASE = "";
 
@@ -111,23 +113,6 @@ function ActiveFilterBar({ params, selectedGenres, visible, onRemove }) {
     );
 }
 
-function loadSetFromStorage(key) {
-    try {
-        const raw = localStorage.getItem(key);
-        if (!raw) return new Set();
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return new Set();
-        return new Set(
-            parsed
-                .map((x) => Number(x))
-                .filter((n) => Number.isFinite(n))
-        );
-    } catch {
-        return new Set();
-    }
-}
-
-// recordId - tmdbId map
 function loadMapFromStorage(key) {
     try {
         const raw = localStorage.getItem(key);
@@ -152,8 +137,11 @@ function loadMapFromStorage(key) {
 // App component
 // ----------------------------------------------------
 function App() {
-    const [watched, setWatched] = useState(() => loadSetFromStorage("watched"));
-    const [toWatch, setWatchlist] = useState(() => loadSetFromStorage("to-watch"));
+    const { user } = useAuth();
+    const canModifyLists = !!user;
+
+    const [watched, setWatched] = useState(() => new Set());
+    const [toWatch, setToWatch] = useState(() => new Set());
 
     // liked/disliked arrays  (read-only in Search)
     const [likedTmdbIds, setLikedTmdbIds] = useState(() => getLikedTmdbIds());
@@ -169,16 +157,56 @@ function App() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
     useEffect(() => {
-        localStorage.setItem("watched", JSON.stringify([...watched]));
-    }, [watched]);
-
-    useEffect(() => {
-        localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
-    }, [toWatch]);
-
-    useEffect(() => {
         localStorage.setItem("recordTmdbMap", JSON.stringify(recordTmdbMap));
     }, [recordTmdbMap]);
+
+    async function loadListsIntoApp() {
+        try {
+            // Ensure we have an access token if the refresh cookie exists
+            await refresh().catch(() => {});
+
+            const res = await authedFetch("/api/me/lists");
+            if (!res.ok) {
+                console.warn("loadListsIntoApp failed", res.status);
+                return;
+            }
+
+            const raw = await res.json();
+            // Accept either {watchedIds,toWatchIds} or {watched,toWatch}
+            const w = Array.isArray(raw.watchedIds) ? raw.watchedIds
+                : Array.isArray(raw.watched)       ? raw.watched
+                    : [];
+
+            const t = Array.isArray(raw.toWatchIds)    ? raw.toWatchIds
+                : Array.isArray(raw.toWatch)           ? raw.toWatch
+                    : Array.isArray(raw["to-watch"])       ? raw["to-watch"]  //  add this
+                        : [];
+
+            setWatched(new Set(w.map(Number)));
+            setToWatch(new Set(t.map(Number)));
+        } catch (e) {
+            console.warn("loadListsIntoApp error:", e);
+        }
+    }
+
+    useEffect(() => {
+        if (!user) {
+            // logged out- clear client-side sets
+            setWatched(new Set());
+            setToWatch(new Set());
+            return;
+        }
+        loadListsIntoApp();
+    }, [user]);
+
+
+    useEffect(() => {
+        function handleListsChanged() {
+            if (user) loadListsIntoApp();
+        }
+        window.addEventListener("lists:changed", handleListsChanged);
+        return () => window.removeEventListener("lists:changed", handleListsChanged);
+    }, [user]);
 
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
@@ -606,11 +634,11 @@ function App() {
     // Derived state: watched / to-watch / likes / dislikes
     // ----------------------------------------------------
     const isWatched = useMemo(
-        () => details && watched.has(details.id),
+        () => details && watched.has(Number(details.id)),
         [details, watched]
     );
     const inToWatch = useMemo(
-        () => details && toWatch.has(details.id),
+        () => details && toWatch.has(Number(details.id)),
         [details, toWatch]
     );
 
@@ -631,6 +659,45 @@ function App() {
         [details, dislikedTmdbIds]
     );
 
+    async function toggleList(list, hasIt) {
+        if (!details) return;
+        const id = Number(details.id);
+        const action = hasIt ? "remove" : "add";
+
+        // Call API (requires logged-in user, authedFetch sets Authorization if you’ve logged in)
+        try {
+            const res = await authedFetch(`/api/me/lists/${list}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action, id }),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        } catch (e) {
+            console.error(e);
+            // don’t update local state if server failed
+            setErrorMsg(e.message || "Failed to update list.");
+            return;
+        }
+
+        // Local mirror so existing WatchList page still works
+        if (list === "watched") {
+            setWatched(prev => {
+                const next = new Set(prev);
+                next.has(id) ? next.delete(id) : next.add(id);
+                return next;
+            });
+        } else {
+            setToWatch(prev => {
+                const next = new Set(prev);
+                next.has(id) ? next.delete(id) : next.add(id);
+                return next;
+            });
+        }
+
+        // Let other pages refresh if they care
+        window.dispatchEvent(new CustomEvent("lists:changed", { detail: { list, action, id } }));
+    }
+
     // Mark watched / unwatched from Search
     const onMarkWatched = () => {
         if (!details) return;
@@ -640,15 +707,9 @@ function App() {
         const wasWatched = watched.has(id);
 
         // Toggle watched
-        setWatched((prev) => {
-            const next = new Set(prev);
-            if (next.has(id)) {
-                next.delete(id);
-            } else {
-                next.add(id);
-            }
-            return next;
-        });
+        if (canModifyLists) {
+            toggleList("watched", isWatched);
+        }
 
         // If removed from watched list, clear like/dislike for this TMDB id
         if (wasWatched && tmdbId != null && Number.isFinite(tmdbId)) {
@@ -667,13 +728,8 @@ function App() {
     };
 
     const onAddToWatch = () => {
-        if (!details) return;
-        const id = Number(details.id);
-        setWatchlist((prev) => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-        });
+        if (!details || !canModifyLists) return;
+        toggleList("to-watch", inToWatch);
     };
 
     // ----------------------------------------------------

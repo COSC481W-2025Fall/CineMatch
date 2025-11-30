@@ -1,3 +1,4 @@
+// src/components/Help.jsx
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import "./Help.css";
@@ -7,26 +8,23 @@ export default function Help() {
     // Help button state
     const [activeButton, setActiveButton] = useState(null);
 
-
     // Top navigation menu states
     const [searchMenuOpen, setSearchMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
     const activeStyle = {
         background: "linear-gradient(45deg,#f7e135,#cc8800)"
-    }
+    };
 
     function renderInfo() {
         switch (activeButton) {
             case "search":
                 return (
-                
                     <p className="help-info">
                         To find exactly what you're looking for, use the search page to
                         filter movies by actor, genre, year, or rating. Click a title to
                         see details or add it to your lists.
                     </p>
-                   
                 );
             case "watchlist":
                 return (
@@ -53,6 +51,7 @@ export default function Help() {
                 return null;
         }
     }
+
     return (
         <div id="main-wrapper">
             {/* ================= TOP NAVIGATION ================= */}
@@ -60,7 +59,6 @@ export default function Help() {
                 sidebarCollapsed={sidebarCollapsed}
                 setSidebarCollapsed={setSidebarCollapsed}
             />
-
 
             {/* ================= SEARCH MENU ================= */}
             {searchMenuOpen && (
@@ -191,4 +189,3 @@ export default function Help() {
         </div>
     );
 }
-
