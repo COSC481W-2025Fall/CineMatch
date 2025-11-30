@@ -8,8 +8,7 @@
     "build": "vite build",
     "test": "vitest",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "test": "vitest"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@fortawesome/free-regular-svg-icons": "^7.1.0",

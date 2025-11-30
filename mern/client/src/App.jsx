@@ -800,7 +800,7 @@ function clearFilters() {
                     />
 
                     <div className={`main-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>                        <aside className="sidebar">
->>>>>>> origin/56-mobile-dev
+
                             {/*  Simple text boxes that we will take as input  */}
                             <ul className="search-filters">
 

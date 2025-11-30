@@ -3,9 +3,5 @@ config.env
 node_modules/
 .idea
 .env
-<<<<<<< HEAD
 auth.env
-=======
 *.env
-
->>>>>>> origin/56-mobile-dev
