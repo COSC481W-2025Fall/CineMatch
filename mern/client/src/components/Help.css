@@ -1,67 +1,107 @@
+
+/* General Styles */
 .help-header {
-  padding-top: 10px;
-  text-align: center;
+padding-top: 10px;
+text-align: center;
 }
 
 .help-button {
-  font-family: 'Tomorrow', sans-serif;
-  padding: 15px 30px;
-  font-size: 16px;
-  border: none;
-  border-radius: 8px;
-  background: linear-gradient(45deg, #ff4444, #cc3333);
-  color: white;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+font-family: 'Tomorrow', sans-serif;
+padding: 15px 30px;
+font-size: 16px;
+border: none;
+border-radius: 8px;
+background: linear-gradient(45deg, #ff4444, #cc3333);
+color: white;
+cursor: pointer;
+transition: background-color 0.3s ease;
 }
 
 .help-button:hover {
-  background-color: #005A9E;
+background-color: #005A9E;
 }
 
 #help-container {
-  display: flex;
-  align-items: flex-start;
-  gap: 40px;
-  padding: 40px;
-  width: 100%;
+display: flex;
+flex-wrap: wrap; /* allows content to wrap on smaller screens */
+align-items: flex-start;
+gap: 40px;
+padding: 40px;
+width: 100%;
 }
 
-/* Left column buttons */
 #help-body {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  width: 240px; /* keeps them aligned in a column */
+display: flex;
+flex-direction: column;
+gap: 15px;
+width: 240px;
 }
 
-/* Text content on the right */
 #info-box {
-  flex: 1;
-  padding: 20px;
-  text-align: center;
- background: linear-gradient(45deg,#f7e135,#cc8800);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+flex: 1;
+padding: 20px;
+text-align: center;
+background: linear-gradient(45deg,#f7e135,#cc8800);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
 }
 
 .help-info {
-  max-width: 600px;
-  font-size: 16px;
-  line-height: 1.6;
+max-width: 600px;
+font-size: 16px;
+line-height: 1.6;
+}
+.hamburger-menu
+{
+  display:none !important;
 }
 
-
-hr {
-  position: absolute;
-  left: 0;
-  right: 0;
-  margin: 0 auto;
-  width: 100%;
-  margin-bottom: 50px;
-  top: 75vh;
-
-  border: none; /* remove default grey line */
-  height: 4px; /* thickness */
-  background: linear-gradient(45deg,#f7e135,#cc8800);
+/* Logo & Navigation */
+.menu-logo {
+font-size: 24px;
 }
+.navigation-top {
+height: 90px;
+padding-bottom: 30px;
+}
+
+/* Centering wrapper */
+#parent-container {
+display: flex;
+justify-content: center;
+align-items: center;
+height: 100px;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+#help-container {
+flex-direction: column; /* stack buttons and text vertically */
+padding: 20px;
+gap: 20px;
+}
+
+#help-body {
+width: 100%; /* take full width on small screens */
+align-items: center; /* center buttons horizontally */
+}
+
+.help-info {
+max-width: 90%; /* text fills more of the screen */
+font-size: 14px; /* slightly smaller on mobile */
+}
+
+.help-button {
+width: 80%; /* buttons fill most of the container */
+padding: 12px 20px;
+font-size: 15px;
+}
+}
+
+@media (min-width: 769px) and (max-width: 1200px) {
+#help-container {
+gap: 30px;
+padding: 30px;
+}
+}
+

@@ -3,7 +3,7 @@ import React, {useState, useEffect, useMemo} from "react";
 import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx"
 import ErrorModal from "./components/ErrorModal.jsx";
-
+import Navigation from "./components/Navigation.jsx";
 import { Link } from "react-router-dom";
 
 const API_BASE = "";
@@ -113,7 +113,7 @@ function App() {
 
     // Creates error state message
     const [errorMsg, setErrorMsg] = useState("");
-
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
     
     useEffect(() => {
         localStorage.setItem("watched", JSON.stringify([...watched]));
@@ -122,24 +122,33 @@ function App() {
         localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
     }, [toWatch]);
 
-    // sidebar functionality
-    useEffect(() => {
-    const toggleButton = document.getElementById("sidebarToggle");
-    const mainContainer = document.querySelector(".main-container");
+    // sidebar toggle functionality
+    // useEffect(() => {
+    //     const toggleButton = document.getElementById("sidebarToggle");
+    //     const mainContainer = document.querySelector(".main-container");
 
-    if (!toggleButton || !mainContainer) return;
+    //     if (toggleButton && mainContainer) {
+    //         const toggleSidebar = () => {
+    //             mainContainer.classList.toggle("sidebar-collapsed");
+    //         };
+    //         toggleButton.addEventListener("click", toggleSidebar);
+    //         return () => toggleButton.removeEventListener("click", toggleSidebar);
+    //     }
+    // }, []);
+    // mobile navbar toggle functionality
+    // useEffect(() => {
+    //     const mobileNavToggle = document.getElementById("mobileNavToggle");
+    //     const navLinks = document.getElementById("navLinks");
 
-    const toggleSidebar = () => {
-        mainContainer.classList.toggle("sidebar-collapsed");
-    };
+    //     if (!mobileNavToggle || !navLinks) return;
 
-    toggleButton.addEventListener("click", toggleSidebar);
-    return () => toggleButton.removeEventListener("click", toggleSidebar);
-    }, []);
+    //     const toggleMobileNav = () => {
+    //         navLinks.classList.toggle("open");
+    //     };
 
-
-
-
+    //     mobileNavToggle.addEventListener("click", toggleMobileNav);
+    //     return () => mobileNavToggle.removeEventListener("click", toggleMobileNav);
+    // }, []);
 
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
@@ -412,6 +421,7 @@ function App() {
         return merged.join(", ");                                   // return as "a, b, c"
         }*/
 
+
         /*async function doSearch(overrideQuery, opts = {}) {
         // sometimes onClick passes the click event as the first arg
         // if that happens, ignore it so we don't treat it like overrides
@@ -426,68 +436,85 @@ function App() {
         // Inline helper: same idea as above
         const mergeCommaLists = (prev = "", curr = "") => {
             const toList = (s) =>
+
+ async function doSearch(overrideQuery, opts = {}) {
+    if (
+        overrideQuery &&
+        typeof overrideQuery === "object" &&
+        ("nativeEvent" in overrideQuery || "target" in overrideQuery || "preventDefault" in overrideQuery)
+    ) {
+        overrideQuery = undefined; 
+    }
+     // helper function that merge two comma-separated actor lists case-insensitively
+    const mergeCommaLists = (prev = "", curr = "") => {
+        const toList = (s) =>
+
             (s || "")
-                .split(",")
-                .map((x) => x.trim())
-                .filter(Boolean);
-            const prevList = toList(prev);
-            const currList = toList(curr);
-            const seen = new Set(prevList.map((x) => x.toLowerCase()));
-            const merged = [...prevList];
-            for (const x of currList) {
+            .split(",")
+            .map((x) => x.trim())
+            .filter(Boolean);
+        const prevList = toList(prev); // previous search actors
+        const currList = toList(curr);
+        const seen = new Set(prevList.map((x) => x.toLowerCase()));
+        const merged = [...prevList];
+        for (const x of currList) {
             const low = x.toLowerCase();
             if (!seen.has(low)) {
                 seen.add(low);
                 merged.push(x);
             }
-            }
-            return merged.join(", ");
-        };
+        }
+        return merged.join(", ");
+    };
+    //shows loading on screen
+    setStatus("Loading…");
 
-        setStatus("Loading…"); // show loading message while we fetch
-        try {
-            // start from current inputs unless we received an override (chip removal, etc.)
-            let nextParams = overrideQuery ? { ...params, ...overrideQuery } : { ...params };
+    try {
+        let nextParams = overrideQuery ? { ...params, ...overrideQuery } : { ...params };
 
-            // GENRES handling:
-            // - if override has "genre": use that 
-            // - if override exists but no "genre": keep applied genres
-            // - if no override: use the live checkbox selection
-            let nextGenres = overrideQuery
+        // Determine genres
+        let nextGenres = overrideQuery
             ? (Object.prototype.hasOwnProperty.call(overrideQuery, "genre")
                 ? [...(overrideQuery.genre || [])]
                 : [...appliedGenres])
             : [...selectedGenres];
 
-            // ACTORS handling:
-            // - merge previously applied actors with what's typed ONLY for normal searches
-            // - skip merge when removal came from a chip (so last actor stays gone)
-            const skipActorMerge = opts.fromChip === true;
-            if (!skipActorMerge && hasSearched) {
+        // Skip merging if removing a chip OR clearing everything
+        const skipActorMerge = opts.fromChip === true || opts.isClear === true;
+        if (!skipActorMerge && hasSearched) {
             nextParams.actor = mergeCommaLists(appliedParams.actor, nextParams.actor);
-            }
+        }
 
-            // clean actor string (remove extra spaces/commas)
-            if (typeof nextParams.actor === "string") {
+        // Clean actor string
+        if (typeof nextParams.actor === "string") {
             nextParams.actor = nextParams.actor
                 .split(",")
                 .map((s) => s.trim())
                 .filter(Boolean)
                 .join(", ");
-            }
+        }
 
-            // final query object (only include genre if we have at least one)
-            const query = {
+        const query = {
             ...nextParams,
             ...(nextGenres.length ? { genre: nextGenres } : {})
-            };
+        };
 
-            // ask backend for results
-            const data = await fetchMovies(query);
+        const data = await fetchMovies(query);
 
-            // update UI
-            setMovies(data);
-            setStatus(data.length ? "" : "No results found.");
+        setMovies(data);
+        setStatus(data.length ? "" : "No results found.");
+
+        // Freeze applied filters
+        setAppliedParams(nextParams);
+        setAppliedGenres(nextGenres);
+        if (!opts.isClear) setHasSearched(true); // only show chips if not clearing
+    } catch (err) {
+        console.error(err);
+        setStatus("");
+        setErrorMsg(err.message);
+    }
+}
+
 
             // freeze what we actually searched (chips use these so they don't change while typing)
             setAppliedParams(nextParams);
@@ -512,6 +539,7 @@ function App() {
         ) {
             overrideQuery = undefined;
         }
+
 
         // Inline helper to merge comma-separated actor lists without duplicates
         const mergeCommaLists = (prev = "", curr = "") => {
@@ -704,22 +732,75 @@ function App() {
                     return next;
                 });
             };
+function clearFilters() {
+    const emptyParams = {
+        actor: "",
+        director: "",
+        title: "",
+        year_min: "",
+        year_max: "",
+        rating_min: "",
+        rating_max: ""
+    };
+
+    // Reset all states
+    setParams(emptyParams);
+    setSelectedGenres([]);
+    setAppliedParams(emptyParams);
+    setAppliedGenres([]);
+
+    // Run search with empty filters
+    doSearch({ ...emptyParams, genre: [] }, { fromChip: true, isClear: true });
+}
+
+
+
 
             return (
                 <>
-                    <div className="navigation-top">
-                        <button className="navigation-button" id="sidebarToggle" aria-label="Toggle Sidebar">☰</button>
-                        <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button active">SEARCH</Link>
-                        <div className="logo">cineMatch</div>
-                        <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
-                        <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
-                        <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
-                        <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
 
-                    </div>
+                    {/*<div className="navigation-top">
+                        <button className="navigation-button" id="sidebarToggle" aria-label="Toggle Sidebar">☰</button>
+                        <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button active">SEARCH</Link> */}
+
+                    {/* <div className="navigation-top">
+                        <button className="navigation-button" id="sidebarToggle">☰</button>
+
+>>>>>>> origin/56-mobile-dev
+                        <div className="logo">cineMatch</div>
+
+                        
+                        <button
+                            className="navigation-button"
+                            id="mobileNavToggle"
+                            style={{ marginLeft: "auto" }}
+                        >
+                            ▼
+                        </button>
+
 
                     <div className="main-container" data-testid="main-container">
                         <aside className="sidebar" data-testid="sidebar">
+
+                        
+                        <div className="nav-links" id="navLinks">
+
+                            <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button active">SEARCH</Link>
+                            <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
+                            <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
+                            <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
+                            <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
+
+                        </div>
+                    </div> */}
+
+                    <Navigation 
+                    sidebarCollapsed={sidebarCollapsed}
+                    setSidebarCollapsed={setSidebarCollapsed}
+                    />
+
+                    <div className={`main-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>                        <aside className="sidebar">
+>>>>>>> origin/56-mobile-dev
                             {/*  Simple text boxes that we will take as input  */}
                             <ul className="search-filters">
 
@@ -874,6 +955,10 @@ function App() {
                             <button className="go-btn" onClick={() => doSearch()}>SEARCH</button>
                             {/* The button to actually search, this one is permanent */}
 
+                            <button className="go-btn"onClick={clearFilters}>CLEAR</button>
+                             {/* This button clears the filter */}
+
+
                             <footer className="sidebar-footer-credit">
                                 <p>
                                     Source of data:{" "}
@@ -899,7 +984,16 @@ function App() {
                             </footer>
                         </aside>
 
+
                         {/* remove using the index, not needed for key since moivie ID is being used now */}
+
+                        {!sidebarCollapsed && (
+                        <div
+                            className="sidebar-overlay"
+                            onClick={() => setSidebarCollapsed(true)}
+                        />
+                        )}
+
                         <main className="content-area">
 
                         <ActiveFilterBar

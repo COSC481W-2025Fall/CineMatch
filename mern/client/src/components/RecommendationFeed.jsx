@@ -1,6 +1,7 @@
 // src/components/RecommendationFeed.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import Navigation from "./Navigation.jsx";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
 
@@ -31,6 +32,7 @@ export default function RecommendationFeed() {
 
     const [recs, setRecs] = useState([]);
     const [status, setStatus] = useState("Loading…");
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
@@ -131,18 +133,64 @@ export default function RecommendationFeed() {
 
     return (
         <>
-            <div className="navigation-top">
+            {/* <div className="navigation-top">
                 <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
-                <div className="logo">cineMatch</div>
+                <Link to="/" className="logo"><div className="logo">cineMatch</div></Link>  
                 <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
                 <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button active">FEED</Link>
                 <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
                 <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
-            </div>
+            </div> */}
 
-            <div className="main-container" style={{ marginLeft: 0, width: '100%' }}>
-        
-                <main className="content-area" style={{ marginLeft: 0, width: '100%' }}>
+            <Navigation sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed} />
+
+
+            <div className="main-container">
+                <aside className="sidebar">
+                    <ul className="search-filters">
+                        <li className="filter-item" key="Limit">
+                            <div className="filter-link">
+                                <input
+                                    id="qLimit"
+                                    className="filter-input"
+                                    placeholder="LIMIT…"
+                                    type="number"
+                                    min="1"
+                                    max="50"
+                                    value={limit}
+                                    onChange={(e) => setLimit(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && buildRecommendations()}
+                                />
+                            </div>
+                        </li>
+                    </ul>
+                    <button className="go-btn" onClick={buildRecommendations}>REBUILD FEED</button>
+
+                    <footer className="sidebar-footer-credit">
+                        <p>
+                            Source of data:{" "}
+                            <a href="https://www.themoviedb.org/">
+                                TMDB{" "}
+                                <img
+                                    src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"
+                                    style={{ height: "10px", width: "auto", verticalAlign: "middle", marginLeft: "6px" }}
+                                    alt="TMDB logo"
+                                />
+                            </a>
+                        </p>
+                        <p>This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.</p>
+                    </footer>
+                </aside>
+
+                {!sidebarCollapsed && (
+                        <div
+                            className="sidebar-overlay"
+                            onClick={() => setSidebarCollapsed(true)}
+                        />
+                        )}
+
+                <main className="content-area">
+
                     <div id="status" className="muted">{status}</div>
                     <div id="results" className="movie-grid">
                         {recs.map((r, idx) => {

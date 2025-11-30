@@ -3,90 +3,206 @@ import { Link } from "react-router-dom";
 import "./Help.css";
 
 export default function Help() {
-    {/* Theses are for the buttons useState when pressed and the style */}
+    // Help button state
     const [activeButton, setActiveButton] = useState(null);
 
+
+    // Top navigation menu states
+    const [searchMenuOpen, setSearchMenuOpen] = useState(false);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
+
     const activeStyle = {
-        background: "linear-gradient(45deg,#f7e135,#cc8800)",
-    };
-    {/* If specifc button is press give one of these statemates  */}
+        background: "linear-gradient(45deg,#f7e135,#cc8800)"
+    }
+
     function renderInfo() {
         switch (activeButton) {
             case "search":
-                return <p className="help-info" >To find exactly what you're looking for,
-                    use the search page to filter movies by fields like actor, genre, year, or rating (between 0 and 10).
-                    Once you find a movie, simply click on its title to see a full description. The pop-up also gives
-                    you the option to save it to your personal Watched List or To-Watch List.</p>;
-            case "feed":
-                return <p className="help-info">The main feed provides personalized movie recommendations. These
-                    suggestions are generated based on the current contents of your Watched List. To start receiving
-                    personalized recommendations, you must first add movies to your
-                    list by clicking on a movie on the search page.</p>;
+                return (
+                
+                    <p className="help-info">
+                        To find exactly what you're looking for, use the search page to
+                        filter movies by actor, genre, year, or rating. Click a title to
+                        see details or add it to your lists.
+                    </p>
+                   
+                );
             case "watchlist":
-                return <p className="help-info">Your Watched List helps you keep a running
-                    history of all the films you have watched,
-                    ensuring you never forget which ones you've seen. The information in this section will be used for your 
-                    recommendations in the feed </p>;
+                return (
+                    <p className="help-info">
+                        The Watched List keeps track of movies you've seen and helps
+                        personalize your recommendations.
+                    </p>
+                );
             case "to-watch":
-                return <p className="help-info" >Use the To-Watch List as a bookmark for all the movies you want to see.</p>;
+                return (
+                    <p className="help-info">
+                        Save movies you plan to watch later in the To-Watch List.
+                    </p>
+                );
             case "login/signup":
-                return <p className="help-info"> To acces your feed, To-Watch List and Watched list you'll be required to login or signup.
-                Once logged in, your To-watch List and Watched list movies will be stored in our database where you can access from any where.
-                </p>
+                return (
+                    <p className="help-info">
+                        To access your feed and lists, you must log in or sign up. Your
+                        lists sync across devices.
+                    </p>
+                );
+
             default:
                 return null;
         }
     }
     return (
-        <>
+        <div id="main-wrapper">
+            {/* ================= TOP NAVIGATION ================= */}
             <div className="navigation-top">
-                <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
-                <div className="logo">cineMatch</div>
-                <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button active">HELP</Link>
-                <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
-                <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
-                <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
+                <button
+                    className="nav-icon-btn"
+                    onClick={() => setSearchMenuOpen(true)}
+                    aria-label="Open search menu"
+                >
+                    🔍
+                </button>
+                <div id= "parent-container" ><Link className="logo" to= "/"><div className="menu-logo">cinematch</div></Link></div>
+
+                <button
+                    id="profile"
+                    className="nav-icon-btn"
+                    onClick={() => setUserMenuOpen(true)}
+                    aria-label="Open user menu"
+                >
+                    👤
+                </button>
             </div>
 
-           <div id="help-container">
-    <div id="help-body">
-        <button
-            onClick={() => setActiveButton("search")}
-            style={activeButton === "search" ? activeStyle : undefined}
-            className="help-button">
-            Search
-        </button>
 
-        
-        <button
-            onClick={() => setActiveButton("watchlist")}
-            style={activeButton === "watchlist" ? activeStyle : undefined}
-            className="help-button">
-            Watchlist
-        </button>
+            {/* ================= SEARCH MENU ================= */}
+            {searchMenuOpen && (
+                <div className="fullscreen-menu">
+                    <button
+                        className="menu-close-x"
+                        onClick={() => setSearchMenuOpen(false)}
+                        aria-label="Close menu"
+                    >
+                        ✕
+                    </button>
 
-        <button
-            onClick={() => setActiveButton("to-watch")}
-            style={activeButton === "to-watch" ? activeStyle : undefined}
-            className="help-button">
-            To-Watch List
-        </button>
+                    <div className="menu-buttons">
+                        <Link
+                            to="/feed"
+                            className="menu-button menu-button-red"
+                            onClick={() => setSearchMenuOpen(false)}
+                        >
+                            FEED
+                        </Link>
 
-        <button
-            onClick={() => setActiveButton("login/signup")}
-            style={activeButton === "login/signup" ? activeStyle : undefined}
-            className="help-button">
-            Logging in / Signing up
-        </button>
-    </div>
+                        <Link
+                            to="/watchlist"
+                            className="menu-button menu-button-red"
+                            onClick={() => setSearchMenuOpen(false)}
+                        >
+                            WATCHED LIST
+                        </Link>
 
-    {/* ⬇ THIS MUST MOVE INSIDE help-container */}
-    <div id="info-box">
-        {renderInfo()}
-    </div>
-    <hr></hr>
-</div>
+                        <Link
+                            to="/to-watch-list"
+                            className="menu-button menu-button-red"
+                            onClick={() => setSearchMenuOpen(false)}
+                        >
+                            TO-WATCH LIST
+                        </Link>
 
-        </>
+                        <div className="menu-logo">cinematch</div>
+                    </div>
+                </div>
+            )}
+
+            {/* ================= USER MENU ================= */}
+            {userMenuOpen && (
+                <div className="fullscreen-menu">
+                    <button
+                        className="menu-close-x"
+                        onClick={() => setUserMenuOpen(false)}
+                        aria-label="Close menu"
+                    >
+                        ✕
+                    </button>
+
+                    <div className="menu-buttons">
+                        <button
+                            className="menu-button menu-button-red"
+                            onClick={() => {
+                                console.log("Login");
+                                setUserMenuOpen(false);
+                            }}
+                        >
+                            LOGIN
+                        </button>
+
+                        <button
+                            className="menu-button menu-button-red"
+                            onClick={() => {
+                                console.log("Register");
+                                setUserMenuOpen(false);
+                            }}
+                        >
+                            REGISTER
+                        </button>
+
+                        <button
+                            className="menu-button menu-button-red"
+                            onClick={() => {
+                                console.log("Personalization");
+                                setUserMenuOpen(false);
+                            }}
+                        >
+                            PERSONALIZATION
+                        </button>
+
+                        <div className="menu-logo">cinematch</div>
+                    </div>
+                </div>
+            )}
+
+            {/* ================= HELP CONTENT ================= */}
+            <div id="help-container">
+                <div id="help-body">
+                    <button
+                        onClick={() => setActiveButton("search")}
+                        style={activeButton === "search" ? activeStyle : undefined}
+                        className="help-button"
+                    >
+                        Search
+                    </button>
+
+                    <button
+                        onClick={() => setActiveButton("watchlist")}
+                        style={activeButton === "watchlist" ? activeStyle : undefined}
+                        className="help-button"
+                    >
+                        Watchlist
+                    </button>
+
+                    <button
+                        onClick={() => setActiveButton("to-watch")}
+                        style={activeButton === "to-watch" ? activeStyle : undefined}
+                        className="help-button"
+                    >
+                        To-Watch List
+                    </button>
+
+                    <button
+                        onClick={() => setActiveButton("login/signup")}
+                        style={activeButton === "login/signup" ? activeStyle : undefined}
+                        className="help-button"
+                    >
+                        Logging In / Signing Up
+                    </button>
+                </div>
+
+                <div id="info-box">{renderInfo()}</div>
+            </div>
+        </div>
     );
 }
+
