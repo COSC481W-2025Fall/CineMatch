@@ -7,16 +7,48 @@ import MovieDetails from "./MovieDetails";
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
 
-const DEFAULT_LIMIT = 20; 
+const DEFAULT_LIMIT = 20;
 
 const CAST_LIMIT = 7
 
+function loadSetFromStorage(key) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return new Set();
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return new Set();
+        return new Set(parsed.map(Number));
+    } catch {
+        return new Set();
+    }
+}
+
+function loadArrayFromStorage(key) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(Number);
+    } catch {
+        return [];
+    }
+}
+
+
+
 export default function RecommendationFeed() {
-    const watchedIds = useMemo(
-        () => new Set(JSON.parse(localStorage.getItem("watched") || "[]")),
-        []
+    const [watchedIds, setWatchedIds] = useState(() =>
+        loadSetFromStorage("watched")
     );
 
+    // Disliked / liked TMDB ids
+    const [dislikedTmdbIds, setDislikedTmdbIds] = useState(() =>
+        loadArrayFromStorage("dislikedTmdbIds")
+    );
+    const [likedTmdbIds, setLikedTmdbIds] = useState(() =>
+        loadArrayFromStorage("likedTmdbIds")
+    );
 
     const [watched, setWatched] = useState(() => new Set(JSON.parse(localStorage.getItem("watched") || "[]")));
     const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("to-watch") || "[]")));
@@ -28,49 +60,117 @@ export default function RecommendationFeed() {
     }, [toWatch]);
 
 
-    const [limit, setLimit] = useState(DEFAULT_LIMIT); // THIS ISN'T BEING USED, PENDING REMOVAL DURING CODE CLEANUP -YS
+    const [limit] = useState(DEFAULT_LIMIT); // THIS ISN'T BEING USED, PENDING REMOVAL DURING CODE CLEANUP -YS
 
     const [recs, setRecs] = useState([]);
     const [status, setStatus] = useState("Loading…");
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
 
+    // Rewrote openDetails in feed because old one is excruciatingly slow...
     async function openDetails(rec) {
         try {
-            const title = rec?.title ?? "";
-            const year = rec?.year ? String(rec.year) : "";
-            const qs = new URLSearchParams();
-            if (title) qs.set("name", title);
-            if (year) qs.set("year", year);
-            const searchRes = await fetch(`/record?${qs.toString()}`);
-            let movieId = null;
-            if (searchRes.ok) {
-                const hits = await searchRes.json();
-                if (Array.isArray(hits) && hits.length && hits[0]?.id != null) {
-                    movieId = hits[0].id;
-                }
-            }
+            const movieId = rec.tmdbId ?? rec.id;
 
-            if (movieId != null) {
-                const res = await fetch(`/record/details/${movieId}`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                setDetails({ id: movieId, ...data });
+            if (movieId == null) {
+                const title = rec?.title ?? "";
+                setDetails({
+                    id: null,
+                    tmdbId: null,
+                    title,
+                    year: rec?.year ?? null,
+                    rating: rec?.rating ?? null,
+                    posterUrl: rec?.posterPath ? `${TMDB_IMG}${rec.posterPath}` : null,
+                    description: rec?.overview || "",
+                    genres: [],
+                    topCast: [],
+                });
                 setShowDetails(true);
                 return;
             }
 
+            const res = await fetch(`/record/details/${movieId}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            const tmdbId = movieId;
+            console.log("[TMDB] Using ID:", tmdbId);
+
+            let patch = {};
+
+            if (tmdbId !== null && tmdbId !== undefined) {
+                const numOfActors = CAST_LIMIT;
+                const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
+                url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
+                url.searchParams.set("append_to_response", "credits,watch/providers");
+
+                const tmdbRes = await fetch(url.toString(), { headers: { accept: "application/json" } });
+                if (tmdbRes.ok) {
+                    const tmdb = await tmdbRes.json();
+
+                    let tmdbCast = [];
+                    if (tmdb && tmdb.credits && tmdb.credits.cast && Array.isArray(tmdb.credits.cast)) {
+                        tmdbCast = tmdb.credits.cast;
+                    }
+
+                    tmdbCast.sort(function (a, b) {
+                        let ao = 999;
+                        let bo = 999;
+                        if (a && typeof a.order === "number") ao = a.order;
+                        if (b && typeof b.order === "number") bo = b.order;
+                        return ao - bo;
+                    });
+
+                    const topActors = tmdbCast.slice(0, numOfActors);
+                    const topCast = [];
+                    for (let i = 0; i < topActors.length; i++) {
+                        const person = topActors[i];
+                        if (person && typeof person.name === "string" && person.name.length > 0) {
+                            topCast.push(person.name);
+                        }
+                    }
+
+                    let runtime = null;
+                    if (tmdb && typeof tmdb.runtime === "number") {
+                        runtime = tmdb.runtime;
+                    }
+
+                    let watchProviders = [];
+                    if (
+                        tmdb &&
+                        tmdb["watch/providers"] &&
+                        tmdb["watch/providers"].results &&
+                        tmdb["watch/providers"].results.US &&
+                        tmdb["watch/providers"].results.US.flatrate
+                    ) {
+                        watchProviders = tmdb["watch/providers"].results.US.flatrate;
+                    }
+
+                    patch.tmdbId = tmdbId;
+                    if (topCast.length > 0) {
+                        patch.topCast = topCast;
+                    }
+                    if (runtime !== null) {
+                        patch.runtime = runtime;
+                    }
+                    if (watchProviders.length > 0) {
+                        patch.watchProviders = watchProviders;
+                    }
+
+                    console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime, "providers:", watchProviders.length);
+                }
+            }
+
+            const posterUrl =
+                data.posterUrl || (rec?.posterPath ? `${TMDB_IMG}${rec.posterPath}` : null);
+
             setDetails({
-                id: null,
-                title,
-                year: rec?.year ?? null,
-                rating: rec?.rating ?? null,
-                posterUrl: rec?.posterPath ? `${TMDB_IMG}${rec.posterPath}` : null,
-                description: rec?.overview || "",
-                genres: [],
-                topCast: [],
+                id: movieId,
+                tmdbId: patch.tmdbId ?? movieId,
+                ...data,
+                ...patch,
+                posterUrl,
             });
             setShowDetails(true);
         } catch (e) {
@@ -78,28 +178,61 @@ export default function RecommendationFeed() {
         }
     }
 
+
+
     async function buildRecommendations() {
-        if (watchedIds.size === 0) {
-            setStatus("Your watched list is empty — watch a few movies to seed recommendations.");
+        const freshWatched = loadSetFromStorage("watched");
+        const freshLiked = loadArrayFromStorage("likedTmdbIds");
+        const freshDisliked = loadArrayFromStorage("dislikedTmdbIds");
+
+        // Update state so UI badges and details are in sync
+        setWatchedIds(freshWatched);
+        setLikedTmdbIds(freshLiked);
+        setDislikedTmdbIds(freshDisliked);
+
+        if (freshWatched.size === 0) {
+            setStatus(
+                "Your watched list is empty — watch a few movies to seed recommendations."
+            );
             setRecs([]);
             return;
         }
+
         setStatus("Building your feed…");
+
         try {
             const body = {
-                watchedIds: Array.from(watchedIds),
-                limit: DEFAULT_LIMIT,
+                watchedIds: Array.from(freshWatched),
+                likedTmdbIds: freshLiked,
+                dislikedTmdbIds: freshDisliked,
+                limit: Math.max(1, Number(limit) || DEFAULT_LIMIT),
             };
+
             const resp = await fetch("/feed", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
             });
+
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
             const json = await resp.json();
             const items = Array.isArray(json?.items) ? json.items : [];
-            setRecs(items);
-            setStatus(items.length ? "" : "No recommendations yet. Try watching a few more movies.");
+
+            // Hide any movies the user has disliked (based on TMDB id)
+            const filtered = items.filter((item) => {
+                if (item.tmdbId == null) return true;
+                const idNum = Number(item.tmdbId);
+                if (!Number.isFinite(idNum)) return true;
+                return !freshDisliked.includes(idNum);
+            });
+
+            setRecs(filtered);
+            setStatus(
+                filtered.length
+                    ? ""
+                    : "No recommendations yet. Try watching or liking a few more movies."
+            );
         } catch (e) {
             console.error("Feed error:", e);
             setStatus("Error building your feed.");
@@ -133,64 +266,11 @@ export default function RecommendationFeed() {
 
     return (
         <>
-            {/* <div className="navigation-top">
-                <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
-                <Link to="/" className="logo"><div className="logo">cineMatch</div></Link>  
-                <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
-                <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button active">FEED</Link>
-                <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
-                <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
-            </div> */}
-
             <Navigation sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed} />
 
+            <div className="main-container" style={{ marginLeft: 0, width: '100%' }}>
 
-            <div className="main-container">
-                <aside className="sidebar">
-                    <ul className="search-filters">
-                        <li className="filter-item" key="Limit">
-                            <div className="filter-link">
-                                <input
-                                    id="qLimit"
-                                    className="filter-input"
-                                    placeholder="LIMIT…"
-                                    type="number"
-                                    min="1"
-                                    max="50"
-                                    value={limit}
-                                    onChange={(e) => setLimit(e.target.value)}
-                                    onKeyDown={(e) => e.key === "Enter" && buildRecommendations()}
-                                />
-                            </div>
-                        </li>
-                    </ul>
-                    <button className="go-btn" onClick={buildRecommendations}>REBUILD FEED</button>
-
-                    <footer className="sidebar-footer-credit">
-                        <p>
-                            Source of data:{" "}
-                            <a href="https://www.themoviedb.org/">
-                                TMDB{" "}
-                                <img
-                                    src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"
-                                    style={{ height: "10px", width: "auto", verticalAlign: "middle", marginLeft: "6px" }}
-                                    alt="TMDB logo"
-                                />
-                            </a>
-                        </p>
-                        <p>This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.</p>
-                    </footer>
-                </aside>
-
-                {!sidebarCollapsed && (
-                        <div
-                            className="sidebar-overlay"
-                            onClick={() => setSidebarCollapsed(true)}
-                        />
-                        )}
-
-                <main className="content-area">
-
+                <main className="content-area" style={{ marginLeft: 0, width: '100%' }}>
                     <div id="status" className="muted">{status}</div>
                     <div id="results" className="movie-grid">
                         {recs.map((r, idx) => {
@@ -213,27 +293,27 @@ export default function RecommendationFeed() {
                     </div>
                 </main>
             </div>
-            
-             <footer style={{ 
-                        marginTop: '2rem', 
-                        padding: '1rem', 
-                        textAlign: 'center', 
-                        fontSize: '0.85rem', 
-                        color: '#999' 
-                    }}>
-                        <p>
-                            Source of data:{" "}
-                            <a href="https://www.themoviedb.org/">
-                                TMDB{" "}
-                                <img
-                                    src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"
-                                    style={{ height: "10px", width: "auto", verticalAlign: "middle", marginLeft: "6px" }}
-                                    alt="TMDB logo"
-                                />
-                            </a>
-                        </p>
-                        <p>This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.</p>
-                    </footer>
+
+            <footer style={{
+                marginTop: '2rem',
+                padding: '1rem',
+                textAlign: 'center',
+                fontSize: '0.85rem',
+                color: '#999'
+            }}>
+                <p>
+                    Source of data:{" "}
+                    <a href="https://www.themoviedb.org/">
+                        TMDB{" "}
+                        <img
+                            src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"
+                            style={{ height: "10px", width: "auto", verticalAlign: "middle", marginLeft: "6px" }}
+                            alt="TMDB logo"
+                        />
+                    </a>
+                </p>
+                <p>This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.</p>
+            </footer>
 
 
             {showDetails && details && (

@@ -23,6 +23,10 @@ export default function Navigation({ sidebarCollapsed, setSidebarCollapsed }) {
   };
 
   const isHome = location.pathname === "/";
+  const showSearchToggle =
+      location.pathname === "/" ||
+      location.pathname === "/watchlist" ||
+      location.pathname === "/to-watch-list";
   const btnClass = (path) =>
       `nav-icon-btn desktop-only${location.pathname === path ? " active" : ""}`;
 
@@ -42,8 +46,10 @@ export default function Navigation({ sidebarCollapsed, setSidebarCollapsed }) {
           <button
               type="button"
               className="nav-icon-btn mobile-only"
-              onClick={toggleSidebar}
+              onClick={showSearchToggle ? toggleSidebar : undefined}
               aria-label="Toggle search filters"
+              style={{ visibility: showSearchToggle ? "visible" : "hidden" }}
+              disabled={!showSearchToggle}
           >
             <FontAwesomeIcon icon={faMagnifyingGlass} />
           </button>
@@ -60,6 +66,13 @@ export default function Navigation({ sidebarCollapsed, setSidebarCollapsed }) {
             </button>
             {listsOpen && (
                 <div className="dropdown-menu">
+                  <Link
+                      to="/"
+                      className="dropdown-item"
+                      onClick={() => setListsOpen(false)}
+                  >
+                    Search (Main page)
+                  </Link>
                   <Link
                       to="/feed"
                       className="dropdown-item"
@@ -92,9 +105,7 @@ export default function Navigation({ sidebarCollapsed, setSidebarCollapsed }) {
         {/* RIGHT: desktop text buttons / mobile icons + avatar */}
         <div className="nav-right">
           {/* Desktop nav buttons */}
-          <Link to="/help" className={btnClass("/help")}>
-            HELP
-          </Link>
+
           <Link to="/feed" className={btnClass("/feed")}>
             FEED
           </Link>
@@ -105,10 +116,10 @@ export default function Navigation({ sidebarCollapsed, setSidebarCollapsed }) {
             TO-WATCH LIST
           </Link>
 
-          {/* Mobile: HELP icon button */}
+          {/* Both: HELP icon button */}
           <Link
               to="/help"
-              className="nav-icon-btn mobile-only"
+              className="nav-icon-btn"
               aria-label="Help"
           >
             <FontAwesomeIcon icon={faCircleInfo} />

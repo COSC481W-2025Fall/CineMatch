@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import "./Help.css";
+import Navigation from "./Navigation.jsx";
 
 export default function Help() {
     // Help button state
@@ -10,7 +11,7 @@ export default function Help() {
     // Top navigation menu states
     const [searchMenuOpen, setSearchMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
-
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
     const activeStyle = {
         background: "linear-gradient(45deg,#f7e135,#cc8800)"
     }
@@ -55,25 +56,10 @@ export default function Help() {
     return (
         <div id="main-wrapper">
             {/* ================= TOP NAVIGATION ================= */}
-            <div className="navigation-top">
-                <button
-                    className="nav-icon-btn"
-                    onClick={() => setSearchMenuOpen(true)}
-                    aria-label="Open search menu"
-                >
-                    🔍
-                </button>
-                <div id= "parent-container" ><Link className="logo" to= "/"><div className="menu-logo">cinematch</div></Link></div>
-
-                <button
-                    id="profile"
-                    className="nav-icon-btn"
-                    onClick={() => setUserMenuOpen(true)}
-                    aria-label="Open user menu"
-                >
-                    👤
-                </button>
-            </div>
+            <Navigation
+                sidebarCollapsed={sidebarCollapsed}
+                setSidebarCollapsed={setSidebarCollapsed}
+            />
 
 
             {/* ================= SEARCH MENU ================= */}
