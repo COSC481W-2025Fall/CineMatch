@@ -1,4 +1,4 @@
-/ src/components/MovieDetails.jsx
+// src/components/MovieDetails.jsx
 import React from "react";
 
 function formatRuntime(minutes)

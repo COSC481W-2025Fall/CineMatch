@@ -1,4 +1,4 @@
-/ src/auth/api.js
+// src/auth/api.js
 
 
 let currentUser = null;
