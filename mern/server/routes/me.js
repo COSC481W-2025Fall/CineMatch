@@ -114,4 +114,67 @@ router.patch("/lists/:list", verifyAccess, async (req, res) => {
     return res.status(204).end();
 });
 
+// Return liked/disliked
+router.get("/reactions", verifyAccess, async (req, res) => {
+    const _id = toObjectId(req.user.id);
+
+    const doc = await Users.findOne(
+        { _id },
+        { projection: { _id: 0, likedTmdbIds: 1, dislikedTmdbIds: 1 } }
+    );
+
+    return res.json({
+        likedTmdbIds: asNumberArray(doc?.likedTmdbIds),
+        dislikedTmdbIds: asNumberArray(doc?.dislikedTmdbIds),
+    });
+});
+
+// Update a reaction for a single TMDB id
+// body: { tmdbId, reaction: "like" | "dislike" | "clear" }
+router.patch("/reactions/tmdb", verifyAccess, async (req, res) => {
+    const _id = toObjectId(req.user.id);
+    const idNum = Number(req.body?.tmdbId);
+    const reaction = req.body?.reaction;
+
+    if (!Number.isFinite(idNum) || idNum < 0) {
+        return res.status(400).json({ error: "Invalid tmdbId" });
+    }
+
+    let update;
+    if (reaction === "like") {
+        update = {
+            $addToSet: { likedTmdbIds: idNum },
+            $pull: { dislikedTmdbIds: idNum },
+        };
+    } else if (reaction === "dislike") {
+        update = {
+            $addToSet: { dislikedTmdbIds: idNum },
+            $pull: { likedTmdbIds: idNum },
+        };
+    } else if (reaction === "clear") {
+        update = {
+            $pull: { likedTmdbIds: idNum, dislikedTmdbIds: idNum },
+        };
+    } else {
+        return res
+            .status(400)
+            .json({ error: "reaction must be like, dislike, or clear" });
+    }
+
+    const result = await Users.findOneAndUpdate(
+        { _id },
+        update,
+        {
+            returnDocument: "after",
+            upsert: true,
+            projection: { _id: 0, likedTmdbIds: 1, dislikedTmdbIds: 1 },
+        }
+    );
+
+    return res.json({
+        likedTmdbIds: asNumberArray(result.value?.likedTmdbIds),
+        dislikedTmdbIds: asNumberArray(result.value?.dislikedTmdbIds),
+    });
+});
+
 export default router;

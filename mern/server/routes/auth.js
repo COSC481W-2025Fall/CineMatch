@@ -414,7 +414,7 @@ async function queueVerifyEmail(user) {
 }
 
 // Quick endpoint to test email is sending from the server
-router.post("/test-email", async (req, res) => {
+/*router.post("/test-email", async (req, res) => {
     try {
         const info = await sendMail({
             to: req.body.to || process.env.SMTP_USER,
@@ -426,6 +426,6 @@ router.post("/test-email", async (req, res) => {
         console.error(e);
         return res.status(500).json({ error: String(e?.message || e) });
     }
-});
+});*/
 
 export default router;
