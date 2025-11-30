@@ -1,11 +1,13 @@
-// App.jsx (replacement)
+// src/App.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx";
 import ErrorModal from "./components/ErrorModal.jsx";
 import { findTmdbIdByTitleYear } from "./components/converter.js";
-import { Link } from "react-router-dom";
-import { authedFetch } from "./auth/api.js"; // <-- use your auth helper
+import { Link, useNavigate } from "react-router-dom";
+import { authedFetch, refresh } from "./auth/api.js";
+import { useAuth } from "./auth/AuthContext.jsx";
+import NotificationModal from "./components/NotificationModal.jsx";
 
 const API_BASE = "";
 
@@ -22,14 +24,78 @@ const GENRES = [
 ];
 
 function App() {
-    // keep localStorage for now so WatchList page (current impl) still works
-    const [watched, setWatched]   = useState(() => new Set(JSON.parse(localStorage.getItem("watched")   || "[]")));
-    const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("to-watch") || "[]")));
+    const { user, logout } = useAuth();
+    const canModifyLists = !!user;
+    const [authMenuOpen, setAuthMenuOpen] = useState(false);
+    const [notificationMsg, setNotificationMsg] = useState("");
+    const [watched, setWatched] = useState(new Set());
+    const [toWatch, setToWatch] = useState(new Set());
+    const navigate = useNavigate();
+    async function handleLogoutClick() {
+        try {
+            await logout();
+            setNotificationMsg("You have been logged out.");
+            navigate("/", { replace: true });
+        } catch (e) {
+            console.error("logout failed", e);
+            setNotificationMsg(e?.message || "Failed to log out.");
+        } finally {
+            setAuthMenuOpen(false);
+        }
+    }
+    function closeAuthMenu() {
+        setAuthMenuOpen(false);
+    }
 
     const [errorMsg, setErrorMsg] = useState("");
 
-    useEffect(() => { localStorage.setItem("watched",   JSON.stringify([...watched])); }, [watched]);
-    useEffect(() => { localStorage.setItem("to-watch",  JSON.stringify([...toWatch])); }, [toWatch]);
+    async function loadListsIntoApp() {
+        try {
+            // Ensure we have an access token if the refresh cookie exists
+            await refresh().catch(() => {});
+
+            const res = await authedFetch("/api/me/lists");
+            if (!res.ok) {
+                console.warn("loadListsIntoApp failed", res.status);
+                return;
+            }
+
+            const raw = await res.json();
+            // Accept either {watchedIds,toWatchIds} or {watched,toWatch}
+            const w = Array.isArray(raw.watchedIds) ? raw.watchedIds
+                : Array.isArray(raw.watched)       ? raw.watched
+                    : [];
+
+            const t = Array.isArray(raw.toWatchIds)    ? raw.toWatchIds
+                : Array.isArray(raw.toWatch)           ? raw.toWatch
+                    : Array.isArray(raw["to-watch"])       ? raw["to-watch"]  //  add this
+                        : [];
+
+            setWatched(new Set(w.map(Number)));
+            setToWatch(new Set(t.map(Number)));
+        } catch (e) {
+            console.warn("loadListsIntoApp error:", e);
+        }
+    }
+
+    useEffect(() => {
+        if (!user) {
+            // logged out- clear client-side sets
+            setWatched(new Set());
+            setToWatch(new Set());
+            return;
+        }
+        loadListsIntoApp();
+    }, [user]);
+
+
+    useEffect(() => {
+        function handleListsChanged() {
+            if (user) loadListsIntoApp();
+        }
+        window.addEventListener("lists:changed", handleListsChanged);
+        return () => window.removeEventListener("lists:changed", handleListsChanged);
+    }, [user]);
 
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
@@ -80,7 +146,17 @@ function App() {
                 }
             }
 
-            setDetails({ id: movie.id, ...data, ...patch });
+            //setDetails({ id: movie.id, ...data, ...patch });
+            const numericId =
+                movie?.id != null
+                    ? Number(movie.id)
+                    : (data?.id != null ? Number(data.id) : null);
+
+            setDetails({
+                ...data,
+                ...patch,
+                id: numericId, // ensure this is a number and applied last
+            });
             setShowDetails(true);
         } catch (e) {
             console.error(e);
@@ -88,7 +164,7 @@ function App() {
         }
     }
 
-    // --- search UI state ---
+    // Search UI state 
     const [params, setParams] = useState({
         actor: "", director: "", genre: "", title: "",
         year_min: "", year_max: "", rating_min: "", rating_max: ""
@@ -121,7 +197,7 @@ function App() {
     async function fetchMovies(p = {}) {
         const res = await fetch(API_BASE + buildQuery(p));
         let payload;
-        try { payload = await res.json(); } catch {}
+        try { payload = await res.json(); } catch { /* empty */ }
         if (!res.ok) {
             const msg = payload?.error || `Error loading results (HTTP ${res.status}).`;
             throw new Error(msg);
@@ -153,9 +229,19 @@ function App() {
         }));
     }
 
-    // --- Watched / To-Watch toggle with API + localStorage ---
-    const isWatched  = useMemo(() => details && watched.has(details.id), [details, watched]);
-    const inToWatch  = useMemo(() => details && toWatch.has(details.id), [details, toWatch]);
+    //  Watched / To-Watch toggle with API and localStorage 
+    //const isWatched  = useMemo(() => details && watched.has(details.id), [details, watched]);
+    const isWatched = useMemo(() => {
+        if (!details || details.id == null) return false;
+        const idNum = Number(details.id);
+        return watched.has(idNum);
+    }, [details, watched]);
+    //const inToWatch  = useMemo(() => details && toWatch.has(details.id), [details, toWatch]);
+    const inToWatch = useMemo(() => {
+        if (!details || details.id == null) return false;
+        const idNum = Number(details.id);
+        return toWatch.has(idNum);
+    }, [details, toWatch]);
 
     async function toggleList(list, hasIt) {
         if (!details) return;
@@ -185,7 +271,7 @@ function App() {
                 return next;
             });
         } else {
-            setWatchlist(prev => {
+            setToWatch(prev => {
                 const next = new Set(prev);
                 next.has(id) ? next.delete(id) : next.add(id);
                 return next;
@@ -196,21 +282,75 @@ function App() {
         window.dispatchEvent(new CustomEvent("lists:changed", { detail: { list, action, id } }));
     }
 
-    const onMarkWatched = () => toggleList("watched", !!isWatched);
-    const onAddToWatch  = () => toggleList("to-watch", !!inToWatch);
+    const onMarkWatched = () => {
+        if (!details || !canModifyLists) return;
+        toggleList("watched", isWatched);
+    };
+    const onAddToWatch = () => {
+        if (!details || !canModifyLists) return;
+        toggleList("to-watch", inToWatch);
+    };
+
 
     return (
         <>
             <div className="navigation-top">
                 <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button active">SEARCH</Link>
                 <div className="logo">cineMatch</div>
-                <Link to="/register" style={{ textDecoration: "none" }} className="navigation-button">REGISTER</Link>
-                <Link to="/login" style={{ textDecoration: "none" }} className="navigation-button">LOGIN</Link>
                 <Link to="/help" style={{ textDecoration: "none" }} className="navigation-button">HELP</Link>
                 <Link to="/feed" style={{ textDecoration: "none" }} className="navigation-button">FEED</Link>
                 <Link to="/watchlist" style={{ textDecoration: "none" }} className="navigation-button">WATCHED LIST</Link>
                 <Link to="/to-watch-list" style={{ textDecoration: "none" }} className="navigation-button">TO-WATCH LIST</Link>
+                <div className="nav-auth-dropdown">
+                    <button
+                        type="button"
+                        className="navigation-button nav-auth-toggle"
+                        onClick={() => setAuthMenuOpen(open => !open)}
+                    >
+                        ACCOUNT ▾
+                    </button>
+
+                    {authMenuOpen && (
+                        <div className="nav-auth-menu">
+                            {user ? (
+                                <>
+                                    <div className="nav-auth-greeting">
+                                        Welcome,&nbsp;
+                                        {user.displayName || user.email?.split("@")[0] || "friend"}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="nav-auth-link nav-auth-logout"
+                                        onClick={handleLogoutClick}
+                                    >
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <Link
+                                        to="/login"
+                                        className="nav-auth-link"
+                                        onClick={closeAuthMenu}
+                                    >
+                                        Log in
+                                    </Link>
+                                    <Link
+                                        to="/register"
+                                        className="nav-auth-link"
+                                        onClick={closeAuthMenu}
+                                    >
+                                        Register
+                                    </Link>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
+
+
+
 
             <div className="main-container">
                 <aside className="sidebar">
@@ -363,12 +503,14 @@ function App() {
                         inToWatch={!!inToWatch}
                         onMarkWatched={onMarkWatched}
                         onAddToWatch={onAddToWatch}
+                        canModifyLists={canModifyLists}
                         castLimit={CAST_LIMIT}
                         runtime={typeof details?.runtime === "number" ? details.runtime : null}
                     />
                 )}
 
                 <ErrorModal message={errorMsg} onClose={() => setErrorMsg("")} />
+                <NotificationModal message={notificationMsg} onClose={() => setNotificationMsg("")} />
             </div>
         </>
     );

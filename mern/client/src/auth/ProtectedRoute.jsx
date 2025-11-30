@@ -1,13 +1,16 @@
+// src/auth/ProtectedRoute.jsx
 import React from "react";
+import { useAuth } from "./AuthContext.jsx";
 import { Navigate, useLocation } from "react-router-dom";
-import { getAccessToken } from "./api";
-
 export default function ProtectedRoute({ children }) {
-    const token = getAccessToken();
+    const { user, status } = useAuth();
     const location = useLocation();
 
-    if (!token) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
+    if (status === "loading") {
+        return <div>Loading…</div>;
+    }
+    if (!user) {
+        return (<Navigate to="/login" replace state={{ from: location }}/>);
     }
     return children;
 }

@@ -9,7 +9,7 @@ body {
 
 .navigation-top {
     display:flex; align-items:center;
-    padding:10px 20px;
+    padding:6px 12px;
     background-color:#2a2a2a;
     border-bottom:2px solid #444;
     position:sticky;top: 0;
@@ -330,3 +330,79 @@ body {
   -moz-appearance: textfield;  /* remove spinners */
   text-align: center;          /* ensure placeholder + value stay centered */
 }
+.navigation-top {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+}
+
+.navigation-top .logo {
+    margin: 0 auto;
+}
+
+/* Right strip of buttons */
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;          /* spacing between HELP / FEED / WATCHED / TO-WATCH / ACCOUNT */
+}
+
+/* Dropdown container */
+.nav-auth-dropdown {
+    position: relative;
+}
+
+/* ACCOUNT button looks like any nav button */
+.nav-auth-toggle {
+    /* inherits .navigation-button styles */
+}
+
+/* Dropdown panel (now controlled by React, not :hover) */
+.nav-auth-menu {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: #222;
+    border-radius: 8px;
+    padding: 6px 0;
+    box-shadow: 0 6px 18px rgba(0,0,0,.45);
+    min-width: 170px;
+    z-index: 20;
+}
+
+/* Remove the old hover rule:
+   .nav-auth-dropdown:hover .nav-auth-menu { display: block; }
+*/
+
+/* Greeting inside dropdown */
+.nav-auth-greeting {
+    padding: 8px 14px;
+    font-size: 0.9rem;
+    color: #eee;
+    white-space: nowrap;
+    border-bottom: 1px solid #333;
+}
+
+/* Links/buttons inside the dropdown */
+.nav-auth-link {
+    display: block;
+    width: 100%;
+    padding: 8px 14px;
+    color: #eee;
+    text-decoration: none;
+    text-align: left;
+    font-size: 0.9rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.nav-auth-link:hover {
+    background: #333;
+}
+
+.nav-auth-logout {
+    color: #ff7777;
+}
+

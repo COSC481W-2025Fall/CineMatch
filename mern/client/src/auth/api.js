@@ -1,121 +1,149 @@
-// client/src/auth/api.js
-// Minimal auth client for JWT access/refresh flow
+/ src/auth/api.js
 
+
+let currentUser = null;
+const RAW_BASE = import.meta.env.VITE_API_BASE ?? "";
+export const API_BASE = RAW_BASE.replace(/\/+$/, ""); // strip trailing slashes
+
+const api = (path) =>
+    `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 let accessToken = null;
 
-// Normalize base ('' for same-origin, or e.g. 'https://api.example.com')
-const RAW_BASE = import.meta.env.VITE_API_BASE ?? "";
-const API_BASE = RAW_BASE.replace(/\/+$/, ""); // strip trailing slashes
-const api = (path) => `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+export function setAccessToken(token) {
+    accessToken = token;
+}
 
 export function getAccessToken() {
     return accessToken;
 }
 
-async function parseError(res) {
-    let message = `HTTP ${res.status}`;
-    try {
-        const data = await res.json();
-        if (data?.error) message = data.error;
-        else if (data?.message) message = data.message;
-    } catch {}
-    return new Error(message);
+export function getCurrentUser() {
+    return currentUser;
 }
 
-/** REGISTER */
-export async function register({ name, email, password }) {
-    const body = {
-        // if your server expects displayName, keep both:
-        name,
-        displayName: name,
-        email,
-        password,
-    };
-
-    const res = await fetch(api("/auth/register"), {
+// Refresh
+export async function refresh() {
+    const res = await fetch(api("/auth/refresh"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(body),
     });
 
-    if (!res.ok) throw await parseError(res);
-    // some APIs return the created user; we don’t need it here
-    return await res.json().catch(() => ({}));
+    const text = await res.text();
+    let data = {};
+    if (text) {
+        try { data = JSON.parse(text); } catch { /* non-JSON, ignore */ }
+    }
+
+    if (!res.ok) {
+        const msg = data.error || `HTTP ${res.status}`;
+        throw new Error(msg);
+    }
+
+    if (data.accessToken) accessToken = data.accessToken;
+    return data;
 }
 
-///loogin send a post request
+// Authorization fetch 
+export async function authedFetch(path, init = {}) {
+    const headers = new Headers(init.headers || {});
+    if (accessToken) {
+        headers.set("Authorization", `Bearer ${accessToken}`);
+    }
+
+    let res = await fetch(api(path), {
+        ...init,
+        headers,
+        credentials: "include",
+    });
+
+    // Try one refresh on 401
+    if (res.status === 401) {
+        try {
+            await refresh();
+            const retryHeaders = new Headers(init.headers || {});
+            if (accessToken) retryHeaders.set("Authorization", `Bearer ${accessToken}`);
+            return fetch(api(path), {
+                ...init,
+                headers: retryHeaders,
+                credentials: "include",
+            });
+        } catch {
+            // give up and return original 401
+        }
+    }
+
+    return res;
+}
+
+// Helpers
+// Login
 export async function login({ email, password }) {
-    const res = await fetch(`${API_BASE}/auth/login`, {
+    const res = await fetch(api("/auth/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ email, password }),
     });
 
+    const text = await res.text();
     let data = null;
-    try { data = await res.json(); } catch { /* empty */ }
+    try {
+        data = text ? JSON.parse(text) : null;
+    } catch {
+        // ignore parse errors
+    }
 
     if (!res.ok) {
-        throw new Error(data?.error || `HTTP ${res.status}`);
+        throw new Error(data?.error || `Login failed (HTTP ${res.status})`);
     }
 
-    if (!data?.accessToken) {
-        // Important: if the server didn’t return an access token, treat as error.
-        throw new Error("Login succeeded but no access token was returned.");
+    if (data?.accessToken) {
+        accessToken = data.accessToken;
     }
+    currentUser = data?.user || null;
 
-    accessToken = data.accessToken;
-    return data;
+    return data; // { accessToken, user }
 }
 
-
-//LOGOUT
-export async function logout() {
-    await fetch(api("/auth/logout"), {
+// Register
+export async function register({ displayName, email, password }) {
+    const res = await fetch(api("/auth/register"), {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({
+            email,
+            password,
+            displayName,
+        }),
     });
-    accessToken = null;
-}
 
-// rotate access token using refresh cookie
-export async function refresh() {
-    const res = await fetch(api("/auth/refresh"), {
-        method: "POST",
-        credentials: "include",
-    });
-    if (!res.ok) throw await parseError(res);
-    const data = await res.json();
-    accessToken = data?.accessToken || null;
-    return data;
-}
-
-/** Helper to call protected APIs; auto-refreshes once on 401 */
-export async function authedFetch(url, options = {}) {
-    const headers = new Headers(options.headers || {});
-    if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-
-    let res = await fetch(api(url), {
-        ...options,
-        headers,
-        credentials: "include",
-    });
-    if (res.status !== 401) return res;
-
-    // one retry after refresh
+    const text = await res.text();
+    let data = null;
     try {
-        await refresh();
-        const headers2 = new Headers(options.headers || {});
-        if (accessToken) headers2.set("Authorization", `Bearer ${accessToken}`);
-        res = await fetch(api(url), {
-            ...options,
-            headers: headers2,
+        data = text ? JSON.parse(text) : null;
+    } catch {
+        // ignore parse errors
+    }
+
+    if (!res.ok) {
+        throw new Error(data?.error || `Registration failed (HTTP ${res.status})`);
+    }
+
+    // backend returns { ok: true, userId: "..." }
+    return data;
+}
+
+// Logout
+export async function logout() {
+    try {
+        await fetch(api("/auth/logout"), {
+            method: "POST",
             credentials: "include",
         });
-        return res;
     } catch {
-        accessToken = null;
-        throw new Error("Session expired. Please log in again.");
+        // ignore network failures on logout
     }
+    accessToken = null;
+    currentUser = null;
 }

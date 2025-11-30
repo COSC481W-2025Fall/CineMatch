@@ -1,6 +1,6 @@
 // server/security/rateLimit.js
 import { RateLimiterMongo } from 'rate-limiter-flexible';
-import usersDb from '../db/usersConnection.js';
+import usersDb from '../db/usersConnections.js';
 import rateLimit from "express-rate-limit";
 
 const mongo = usersDb; // Connect to the User's database 

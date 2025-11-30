@@ -56,7 +56,7 @@ router.get("/lists", verifyAccess, async (req, res) => {
 router.post("/lists/merge", verifyAccess, async (req, res) => {
     const _id = toObjectId(req.user.id);
     const bodyWatched = asNumberArray(req.body?.watched);
-    const bodyToWatch = asNumberArray(req.body?.toWatch ?? req.body?.["to-watch"]);
+    const bodyToWatch = asNumberArray(req.body?.toWatchIds ?? req.body?.["to-watch"]);
 
     const doc = await Users.findOne(
         { _id },

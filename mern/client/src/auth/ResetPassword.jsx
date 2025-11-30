@@ -1,3 +1,4 @@
+// src/auth/ResetPassword.jsx
 import React, { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
@@ -7,7 +8,7 @@ export default function ResetPassword() {
     const navigate = useNavigate();
     const [sp] = useSearchParams();
 
-    // Read token & user from query; guard against null
+    // Read token & user from query- guarded against null
     const token = useMemo(() => sp.get("token") || "", [sp]);
     const u = useMemo(() => sp.get("u") || "", [sp]);
 
@@ -46,7 +47,6 @@ export default function ResetPassword() {
             }
 
             setDone(true);
-            // optional: small delay then go to login
             setTimeout(() => navigate("/login", { replace: true }), 1000);
         } catch (err) {
             setError(err?.message || "Reset failed. Request a new link and try again.");

@@ -120,31 +120,6 @@ const cookieOpts = {
 
 /* Routes */
 
-// Register
-/*router.post("/register", async (req, res) => {
-    try {
-        const { email, password, displayName } = req.body || {};
-        if (!email || !password) return res.status(400).json({ error: "Email and password required" });
-
-        const normalized = String(email).trim().toLowerCase();
-        const exists = await Users.findOne({ email: normalized });
-        if (exists) return res.status(409).json({ error: "Email already registered" });
-
-        const passwordHash = await bcrypt.hash(password, 12);
-        const { insertedId } = await Users.insertOne({
-            email: normalized,
-            displayName: displayName || normalized.split("@")[0],
-            passwordHash,
-            refreshTokens: [],
-            createdAt: new Date(),
-        });
-
-        return res.status(201).json({ ok: true, userId: String(insertedId) });
-    } catch (e) {
-        return res.status(500).json({ error: String(e?.message || e) });
-    }
-});*/
-
 // Register new user and send email verification link
 router.post('/register', async (req, res) => {
     try {
@@ -172,10 +147,12 @@ router.post('/register', async (req, res) => {
         const { insertedId } = await Users.insertOne(userDoc);
 
         // Queue email verification for new user
-        await queueVerifyEmail({
+        queueVerifyEmail({
             _id: insertedId,
             email: userDoc.email,
             displayName: userDoc.displayName,
+        }).catch(err => {
+            console.error("queueVerifyEmail failed:", err);
         });
 
         return res.status(201).json({
@@ -189,48 +166,54 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// Login (rate limited)
-/*router.post("/login", loginLimiter, async (req, res) => {
+router.post('/refresh', async (req, res) => {
     try {
-        const ip = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress;
-        const { email, password } = req.body || {};
-        if (!email || !password) return res.status(400).json({ error: "Email and password required" });
+        const token = req.cookies?.rt;
+        if (!token) return res.status(401).json({ error: 'Missing refresh cookie' });
 
-        const normalized = String(email).trim().toLowerCase();
-        await Promise.all([
-            ipLimiter.consume(ip).catch((rej) => { throw { rej }; }),
-            emailLimiter.consume(normalized).catch((rej) => { throw { rej }; }),
-        ]);
+        let payload;
+        try {
+            payload = verifyByKid(token);
+        } catch {
+            return res.status(401).json({ error: 'Invalid/expired refresh token' });
+        }
 
-        const user = await Users.findOne({ email: normalized });
-        if (!user) return res.status(401).json({ error: "Invalid credentials" });
+        const user = await Users.findOne(
+            { _id: usersDb.bson.ObjectId.createFromHexString(payload.sub) },
+            { projection: { email: 1, displayName: 1, refreshTokens: 1 } }
+        );
+        if (!user) return res.status(401).json({ error: 'User not found' });
 
-        const ok = await bcrypt.compare(password, user.passwordHash);
-        if (!ok) return res.status(401).json({ error: "Invalid credentials" });
+        // Ensure token matches a stored hashed one
+        let matched = false;
+        for (const r of user.refreshTokens || []) {
+            if (await bcrypt.compare(token, r.hash)) { matched = true; break; }
+        }
+        if (!matched) return res.status(401).json({ error: 'Refresh token not recognized' });
 
-        const access = signAccess(user);
-        const jti = crypto.randomUUID();
-        const refresh = signRefresh(user, jti);
-        await storeRefresh(user._id, jti, refresh);
+        // Rotate
+        await removeRefresh(user._id, token);
+        const newJti = crypto.randomUUID();
+        const newRefresh = signRefresh(user, newJti);
+        await storeRefresh(user._id, newJti, newRefresh);
 
-        await Promise.allSettled([ emailLimiter.delete(normalized), ipLimiter.delete(ip) ]);
+        const newAccess = signAccess(user);
+        res.cookie('rt', newRefresh, { ...cookieOpts, maxAge: 1000 * 60 * 60 * 24 * 30 });
 
-        res.cookie("rt", refresh, { ...cookieOpts, maxAge: 1000 * 60 * 60 * 24 * 30 });
         return res.json({
-            accessToken: access,
-            user: { id: String(user._id), email: user.email, displayName: user.displayName },
+            accessToken: newAccess,
+            user: {
+                id: String(user._id),
+                email: user.email,
+                displayName: user.displayName,
+            },
         });
     } catch (e) {
-        if (e?.rej?.msBeforeNext !== undefined) {
-            const secs = Math.ceil(e.rej.msBeforeNext / 1000);
-            return res.status(429).json({ error: `Too many attempts. Try again in ${secs}s.` });
-        }
-        return res.status(401).json({ error: "Invalid credentials" });
+        return res.status(500).json({ error: String(e?.message || e) });
     }
 });
-*/
 
-// Login (rate-limited)- requires verified email, issues access + refresh tokens
+// Login (rate-limited)- requires verified email, issues access and refresh tokens
 router.post('/login', async (req, res) => {
     try {
         const ip = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
@@ -287,42 +270,6 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// Exchange refresh token (cookie) for a new access token and refresh token
-router.post("/refresh", async (req, res) => {
-    try {
-        const token = req.cookies?.rt;
-        if (!token) return res.status(401).json({ error: "Missing refresh cookie" });
-
-        let payload;
-        try { payload = verifyByKid(token); }
-        catch { return res.status(401).json({ error: "Invalid/expired refresh token" }); }
-
-        const user = await Users.findOne(
-            { _id: usersDb.bson.ObjectId.createFromHexString(payload.sub) },
-            { projection: { email: 1, refreshTokens: 1 } }
-        );
-        if (!user) return res.status(401).json({ error: "User not found" });
-
-         // Check that this refresh token is one of the stored hashes
-        let matched = false;
-        for (const r of user.refreshTokens || []) {
-            if (await bcrypt.compare(token, r.hash)) { matched = true; break; }
-        }
-        if (!matched) return res.status(401).json({ error: "Refresh token not recognized" });
-
-        // Remove old refresh token, create new refresh token
-        await removeRefresh(user._id, token);
-        const newJti = crypto.randomUUID();
-        const newRefresh = signRefresh(user, newJti);
-        await storeRefresh(user._id, newJti, newRefresh);
-
-        const newAccess = signAccess(user);
-        res.cookie("rt", newRefresh, { ...cookieOpts, maxAge: 1000 * 60 * 60 * 24 * 30 });
-        return res.json({ accessToken: newAccess });
-    } catch (e) {
-        return res.status(500).json({ error: String(e?.message || e) });
-    }
-});
 
 // Logout
 router.post("/logout", async (req, res) => {
@@ -404,7 +351,7 @@ router.post("/forgot", authLimiter, async (req, res) => {
         url.searchParams.set("u", String(user._id));
         const link = url.toString();
 
-        await sendMail({
+        sendMail({
             to: user.email,
             subject: "Reset your CineMatch password",
             text: `Reset your password: ${link}`,

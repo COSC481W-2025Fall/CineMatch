@@ -1,15 +1,15 @@
-
+// src/components/VerifyPending.jsx
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 
 export default function VerifyPending() {
     const { search } = useLocation();
-    const params = new URLSearchParams(search);//<-- / Creating a URLSearchParams object for easy parse query parameters from the URL search
-    const email = params.get("email") || "";//Retrieve the value of the 'email' query parameter
+    const params = new URLSearchParams(search);// Creating a URLSearchParams object for parse query parameters from the URL search
+    const email = params.get("email") || "";   //Retrieve the value of the 'email' query parameter
 
     return (
         <div className="auth-page">
-            <div className="auth-card">
+            <div className="auth-card" style={{ minHeight: "10vh", display: "grid", placeItems: "center" }}>
                 <h1>Confirm your email</h1>
                 <p>
                     We&apos;ve sent a verification link

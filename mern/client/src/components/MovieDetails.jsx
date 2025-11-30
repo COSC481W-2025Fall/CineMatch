@@ -1,4 +1,4 @@
-// src/components/MovieDetails.jsx
+/ src/components/MovieDetails.jsx
 import React from "react";
 
 function formatRuntime(minutes)
@@ -14,7 +14,7 @@ function formatRuntime(minutes)
     return `${mins}m`;
 }
 
-export default function MovieDetails({ details, onClose, isWatched, inToWatch, onMarkWatched, onAddToWatch }) {
+export default function MovieDetails({ details, onClose, isWatched, inToWatch, onMarkWatched, onAddToWatch, canModifyLists = true,  }) {
     if (!details) return null; // If no movie details are provided, render nothing
 
     const {
@@ -80,16 +80,18 @@ export default function MovieDetails({ details, onClose, isWatched, inToWatch, o
                         {/* Buttons (swapped meanings) */}
                         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                             <button
-                                className="go-btn"
-                                onClick={onMarkWatched}
+                                className={`go-btn ${!canModifyLists ? "go-btn-disabled" : ""}`}
+                                onClick={canModifyLists ? onMarkWatched : undefined}
+                                disabled={!canModifyLists}
                                 aria-pressed={!!isWatched}
                             >
                                 {isWatched ? "Remove from Watched List" : "Add to Watched List"}
                             </button>
 
                             <button
-                                className="go-btn"
-                                onClick={onAddToWatch}
+                                className={`go-btn ${!canModifyLists ? "go-btn-disabled" : ""}`}
+                                onClick={canModifyLists ? onAddToWatch : undefined}
+                                disabled={!canModifyLists}
                                 aria-pressed={!!inToWatch}
                             >
                                 {inToWatch ? "Remove from To-Watch List" : "Save for Later"}

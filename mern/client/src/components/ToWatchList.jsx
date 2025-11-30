@@ -1,10 +1,12 @@
 // src/components/ToWatchList.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import "../App.css";
 import MovieDetails from "./MovieDetails.jsx";
 import { findTmdbIdByTitleYear } from "./converter.js";
 import { authedFetch, refresh } from "../auth/api.js";
+import {useAuth} from "../auth/AuthContext.jsx";
+import NotificationModal from "./NotificationModal.jsx";
 
 const GENRES = [
     "Action","Adventure","Animation","Comedy","Crime","Documentary","Drama",
@@ -12,12 +14,36 @@ const GENRES = [
     "Science Fiction","Thriller","War","Western"
 ];
 
-const CAST_LIMIT = 7; //cast limit
+const CAST_LIMIT = 7; // cast limit
 
 export default function ToWatchListPage() {
-   
-    const [watched, setWatched]   = useState(new Set());
-    const [toWatch, setToWatch]   = useState(new Set());
+
+    const { user, logout } = useAuth();
+    const canModifyLists = !!user;
+    const [authMenuOpen, setAuthMenuOpen] = useState(false);
+    const [notificationMsg, setNotificationMsg] = useState("");
+    const navigate = useNavigate();
+    async function handleLogoutClick() {
+        try {
+            navigate("/", { replace: true });
+            await logout();
+            setNotificationMsg("You have been logged out.");
+        } catch (e) {
+            console.error("logout failed", e);
+            setNotificationMsg(e?.message || "Failed to log out.");
+        } finally {
+            setAuthMenuOpen(false);
+        }
+    }
+
+    function closeAuthMenu() {
+        setAuthMenuOpen(false);
+    }
+
+
+
+    const [watched, setWatched] = useState(new Set());
+    const [toWatch, setToWatch] = useState(new Set());
 
     const [details, setDetails]   = useState(null);
     const [showDetails, setShowDetails] = useState(false);
@@ -30,36 +56,14 @@ export default function ToWatchListPage() {
     const [status, setStatus]   = useState("Loading…");
     const [loaded, setLoaded]   = useState(false);
 
-    // we want to re-search when the **toWatch** set changes
+    // Re-search when the **toWatch** set changes
     const toWatchKey = useMemo(
         () => JSON.stringify(Array.from(toWatch).sort()),
         [toWatch]
     );
 
-    // Checks for old local lists and sends in to the sever to merge
-    async function maybeMergeLocal() {
-        try {
-            if (localStorage.getItem("lists-merged") === "yes") return;
-            const oldWatched = (JSON.parse(localStorage.getItem("watched")   || "[]") || []).map(Number);
-            const oldToWatch = (JSON.parse(localStorage.getItem("to-watch") || "[]") || []).map(Number);
 
-            if (oldWatched.length || oldToWatch.length) {
-                const res = await authedFetch("/api/me/lists/merge", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ watchedIds: oldWatched, toWatchIds: oldToWatch }),
-                });
-                if (res.ok) {
-                    localStorage.setItem("lists-merged", "yes");
-                    localStorage.removeItem("watched");
-                    localStorage.removeItem("to-watch");
-                }
-            }
-        } catch (e) {
-            console.warn("merge local lists failed (non-fatal):", e);
-        }
-    }
-    //function to fetch authoritative lists from the server
+    // Function to fetch authoritative lists from the server
     async function loadLists() {
         const res = await authedFetch("/api/me/lists");
         if (res.status === 401) {
@@ -90,7 +94,7 @@ export default function ToWatchListPage() {
         return { watchedIds, toWatchIds };
     }
 
-    // lookup for a given set of IDs
+    // Lookup for a given set of IDs
     async function fetchListSubset(ids, p = {}) {
         const body = {
             ids,
@@ -117,7 +121,7 @@ export default function ToWatchListPage() {
         try {
             const ids = Array.isArray(idsOverride)
                 ? idsOverride
-                : Array.from(toWatch);   // <-- TO-WATCH set
+                : Array.from(toWatch);   // TO-WATCH set
 
             if (ids.length === 0) {
                 setMovies([]);
@@ -143,7 +147,6 @@ export default function ToWatchListPage() {
         (async () => {
             try {
                 await refresh().catch(() => {}); // ok if it fails
-                await maybeMergeLocal();
                 const { toWatchIds } = await loadLists();
                 await doSearch(toWatchIds);      // search using fresh IDs
             } catch (e) {
@@ -154,7 +157,7 @@ export default function ToWatchListPage() {
         
     }, []);
 
-    // reruns search when filters or list change 
+    // Reruns search when filters or list change 
     useEffect(() => {
         if (!loaded) return;
         doSearch();
@@ -171,7 +174,8 @@ export default function ToWatchListPage() {
 
   
     async function openDetails(movie) {
-        try {//fetching the backend details for the movie
+        try {
+            //Fetching the backend details for the movie
             const res = await fetch(`/record/details/${movie.id}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
@@ -196,7 +200,8 @@ export default function ToWatchListPage() {
                     headers: { accept: "application/json" },
                 });
                 if (tmdbRes.ok) {
-                    const tmdb = await tmdbRes.json();// Process cast list, sort by order, and limit
+                    const tmdb = await tmdbRes.json();
+                    // Process cast list, sort by order, and limit
                     let tmdbCast = Array.isArray(tmdb?.credits?.cast)
                         ? tmdb.credits.cast
                         : [];
@@ -209,7 +214,7 @@ export default function ToWatchListPage() {
                         .slice(0, CAST_LIMIT)
                         .map(p => p?.name)
                         .filter(Boolean);
-                    const runtime = typeof tmdb?.runtime === "number" ? tmdb.runtime : null; //gets runtime
+                    const runtime = typeof tmdb?.runtime === "number" ? tmdb.runtime : null; // gets runtime
 
                     patch.tmdbId = tmdbId;
                     if (topCast.length) patch.topCast = topCast;
@@ -217,23 +222,34 @@ export default function ToWatchListPage() {
                 }
             }
 
-            setDetails({ id: movie.id, ...data, ...patch });
+            //setDetails({ id: movie.id, ...data, ...patch });
+            const numericId =
+                movie?.id != null
+                    ? Number(movie.id)
+                    : (data?.id != null ? Number(data.id) : null);
+
+            setDetails({
+                ...data,
+                ...patch,
+                id: numericId, // ensure this is a number and applied last
+            });
             setShowDetails(true);
         } catch (e) {
             console.error(e);
         }
     }
-
-    const isWatched = useMemo(
-        () => details && watched.has(details.id),
-        [details, watched]
-    );
-    const inToWatch = useMemo(
-        () => details && toWatch.has(details.id),
-        [details, toWatch]
-    );
-
-    // update lists server-side then refresh + re-search
+    const isWatched = useMemo(() => {
+        if (!details || details.id == null) return false;
+        const idNum = Number(details.id);
+        return watched.has(idNum);
+    }, [details, watched]);
+    //const inToWatch  = useMemo(() => details && toWatch.has(details.id), [details, toWatch]);
+    const inToWatch = useMemo(() => {
+        if (!details || details.id == null) return false;
+        const idNum = Number(details.id);
+        return toWatch.has(idNum);
+    }, [details, toWatch]);
+    // Update lists server-side then refresh and re-searches
     async function toggleList(list, id) {
         const res = await authedFetch(`/api/me/lists/${list}`, {
             method: "PATCH",
@@ -254,24 +270,69 @@ export default function ToWatchListPage() {
     }
 
     const onMarkWatched = () => {
-        if (!details) return;
-        toggleList("watched", Number(details.id)).catch(console.error);
+        if (!details || !canModifyLists) return;
+        toggleList("watched", Number(details.id));
     };
-
     const onAddToWatch = () => {
-        if (!details) return;
-        toggleList("to-watch", Number(details.id)).catch(console.error);
+        if (!details || !canModifyLists) return;
+        toggleList("to-watch", Number(details.id));
     };
 
     return (
         <>
             <div className="navigation-top">
-                <Link to="/" className="navigation-button" style={{ color: "inherit", textDecoration: "none" }}>SEARCH</Link>
+                <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
                 <div className="logo">cineMatch</div>
-                <Link to="/help" className="navigation-button" style={{ textDecoration: "none" }}>HELP</Link>
-                <Link to="/feed" className="navigation-button" style={{ textDecoration: "none" }}>FEED</Link>
-                <Link to="/watchlist" className="navigation-button" style={{ textDecoration: "none" }}>WATCHED LIST</Link>
-                <Link to="/to-watch-list" className="navigation-button active" style={{ textDecoration: "none" }}>TO-WATCH LIST</Link>
+                <Link to="/help" style={{ textDecoration: "none" }} className="navigation-button">HELP</Link>
+                <Link to="/feed" style={{ textDecoration: "none" }} className="navigation-button">FEED</Link>
+                <Link to="/watchlist" style={{ textDecoration: "none" }} className="navigation-button">WATCHED LIST</Link>
+                <Link to="/to-watch-list" style={{ textDecoration: "none" }} className="navigation-button active">TO-WATCH LIST</Link>
+                <div className="nav-auth-dropdown">
+                    <button
+                        type="button"
+                        className="navigation-button nav-auth-toggle"
+                        onClick={() => setAuthMenuOpen(open => !open)}
+                    >
+                        ACCOUNT ▾
+                    </button>
+
+                    {authMenuOpen && (
+                        <div className="nav-auth-menu">
+                            {user ? (
+                                <>
+                                    <div className="nav-auth-greeting">
+                                        Welcome,&nbsp;
+                                        {user.displayName || user.email?.split("@")[0] || "friend"}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="nav-auth-link nav-auth-logout"
+                                        onClick={handleLogoutClick}
+                                    >
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <Link
+                                        to="/login"
+                                        className="nav-auth-link"
+                                        onClick={closeAuthMenu}
+                                    >
+                                        Log in
+                                    </Link>
+                                    <Link
+                                        to="/register"
+                                        className="nav-auth-link"
+                                        onClick={closeAuthMenu}
+                                    >
+                                        Register
+                                    </Link>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="main-container">
@@ -352,7 +413,7 @@ export default function ToWatchListPage() {
                 </main>
             </div>
 
-            {showDetails && details && (
+            {showDetails && (
                 <MovieDetails
                     details={details}
                     onClose={() => setShowDetails(false)}
@@ -360,8 +421,12 @@ export default function ToWatchListPage() {
                     inToWatch={!!inToWatch}
                     onMarkWatched={onMarkWatched}
                     onAddToWatch={onAddToWatch}
+                    canModifyLists={canModifyLists}
+                    castLimit={CAST_LIMIT}
+                    runtime={typeof details?.runtime === "number" ? details.runtime : null}
                 />
             )}
+            <NotificationModal message={notificationMsg} onClose={() => setNotificationMsg("")} />
         </>
     );
 }
