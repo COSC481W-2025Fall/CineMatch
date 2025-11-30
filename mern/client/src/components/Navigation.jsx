@@ -1,110 +1,162 @@
-// src/components/Navigation.jsx
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+// components/Navigation.jsx
+import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+
+// Font Awesome
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faMagnifyingGlass,
+  faClapperboard,
+  faCircleInfo,          
+} from "@fortawesome/free-solid-svg-icons";
+import { faUser } from "@fortawesome/free-regular-svg-icons";
 
 export default function Navigation({ sidebarCollapsed, setSidebarCollapsed }) {
-  const [searchMenuOpen, setSearchMenuOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const location = useLocation();
+
+  const [listsOpen, setListsOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => !prev);
+    setListsOpen(false);
+  };
+
+  const isHome = location.pathname === "/";
+  const btnClass = (path) =>
+      `nav-icon-btn desktop-only${location.pathname === path ? " active" : ""}`;
 
   return (
-    <>
-      <nav className="navigation-top">
+      <header className="navigation-top">
+        {/* LEFT: desktop search text / mobile search + lists icons */}
         <div className="nav-left">
-          <button 
-            className={`hamburger-menu ${!sidebarCollapsed ? 'open' : ''}`}
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            aria-label="Toggle sidebar"
+          {/* Desktop: SEARCH button (text) */}
+          <Link
+              to="/"
+              className={`nav-icon-btn desktop-only${isHome ? " active" : ""}`}
           >
-            <span className="hamburger-line"></span>
-            <span className="hamburger-line"></span>
-            <span className="hamburger-line"></span>
-          </button>
-
-          <button 
-            className="nav-icon-btn"
-            onClick={() => setSearchMenuOpen(true)}
-            aria-label="Open search menu"
-          >
-            🔍
-          </button>
-        </div>
-
-        <Link to="/" style={{ textDecoration: 'none' }}>
-          <div className="logo">cinematch</div>
-        </Link>
-
-        <div className="nav-right">
-          <Link to="/help" className="nav-icon-btn" aria-label="Help">
-            ❓
+            SEARCH
           </Link>
 
-          <button 
-            className="nav-icon-btn"
-            onClick={() => setUserMenuOpen(true)}
-            aria-label="Open user menu"
+          {/* Mobile: search icon -> open/close sidebar filters */}
+          <button
+              type="button"
+              className="nav-icon-btn mobile-only"
+              onClick={toggleSidebar}
+              aria-label="Toggle search filters"
           >
-            👤
+            <FontAwesomeIcon icon={faMagnifyingGlass} />
           </button>
-        </div>
-      </nav>
 
-      {/* SEARCH MENU */}
-      {searchMenuOpen && (
-        <div className="fullscreen-menu">
-          <button 
-            className="menu-close-x"
-            onClick={() => setSearchMenuOpen(false)}
-            aria-label="Close menu"
-          >
-            ✕
-          </button>
-          
-          <div className="menu-buttons">
-            <Link to="/feed" className="menu-button menu-button-red" onClick={() => setSearchMenuOpen(false)}>
-              FEED
-            </Link>
-            
-            <Link to="/watchlist" className="menu-button menu-button-red" onClick={() => setSearchMenuOpen(false)}>
-              WATCHED LIST
-            </Link>
-            
-            <Link to="/to-watch-list" className="menu-button menu-button-red" onClick={() => setSearchMenuOpen(false)}>
-              TO-WATCH LIST
-            </Link>
-            
-            <div className="menu-logo">cinematch</div>
+          {/* Mobile: movie list icon -> Feed / WatchList / To-Watch */}
+          <div className="nav-lists-wrapper mobile-only">
+            <button
+                type="button"
+                className="nav-icon-btn"
+                onClick={() => setListsOpen((o) => !o)}
+                aria-label="Open lists menu"
+            >
+              <FontAwesomeIcon icon={faClapperboard} />
+            </button>
+            {listsOpen && (
+                <div className="dropdown-menu">
+                  <Link
+                      to="/feed"
+                      className="dropdown-item"
+                      onClick={() => setListsOpen(false)}
+                  >
+                    Feed
+                  </Link>
+                  <Link
+                      to="/watchlist"
+                      className="dropdown-item"
+                      onClick={() => setListsOpen(false)}
+                  >
+                    WatchList
+                  </Link>
+                  <Link
+                      to="/to-watch-list"
+                      className="dropdown-item"
+                      onClick={() => setListsOpen(false)}
+                  >
+                    To-Watch List
+                  </Link>
+                </div>
+            )}
           </div>
         </div>
-      )}
 
-      {/* USER MENU */}
-      {userMenuOpen && (
-        <div className="fullscreen-menu">
-          <button 
-            className="menu-close-x"
-            onClick={() => setUserMenuOpen(false)}
-            aria-label="Close menu"
+        {/* CENTER: logo */}
+        <div className="logo">cineMatch</div>
+
+        {/* RIGHT: desktop text buttons / mobile icons + avatar */}
+        <div className="nav-right">
+          {/* Desktop nav buttons */}
+          <Link to="/help" className={btnClass("/help")}>
+            HELP
+          </Link>
+          <Link to="/feed" className={btnClass("/feed")}>
+            FEED
+          </Link>
+          <Link to="/watchlist" className={btnClass("/watchlist")}>
+            WATCHED LIST
+          </Link>
+          <Link to="/to-watch-list" className={btnClass("/to-watch-list")}>
+            TO-WATCH LIST
+          </Link>
+
+          {/* Mobile: HELP icon button */}
+          <Link
+              to="/help"
+              className="nav-icon-btn mobile-only"
+              aria-label="Help"
           >
-            ✕
-          </button>
-          
-          <div className="menu-buttons">
-            <button className="menu-button menu-button-red" onClick={() => { console.log('Login'); setUserMenuOpen(false); }}>
-              LOGIN
+            <FontAwesomeIcon icon={faCircleInfo} />
+          </Link>
+
+          {/* Account / avatar menu */}
+          <div className="nav-account-wrapper">
+            {/* Desktop: ACCOUNT text button */}
+            <button
+                type="button"
+                className="nav-icon-btn desktop-only"
+                onClick={() => setAccountOpen((o) => !o)}
+            >
+              ACCOUNT
             </button>
-            
-            <button className="menu-button menu-button-red" onClick={() => { console.log('Register'); setUserMenuOpen(false); }}>
-              REGISTER
+
+            {/* Mobile: user icon */}
+            <button
+                type="button"
+                className="nav-avatar-btn mobile-only"
+                onClick={() => setAccountOpen((o) => !o)}
+                aria-label="Open account menu"
+            >
+              <div className="nav-avatar-circle">
+                <FontAwesomeIcon icon={faUser} />
+              </div>
             </button>
-            
-            <button className="menu-button menu-button-red" onClick={() => { console.log('Personalization'); setUserMenuOpen(false); }}>
-              PERSONALIZATION
-            </button>
-            
-            <div className="menu-logo">cinematch</div>
+
+            {accountOpen && (
+                <div className="dropdown-menu dropdown-menu-right">
+                  <Link
+                      to="/login"
+                      className="dropdown-item"
+                      onClick={() => setAccountOpen(false)}
+                  >
+                    Login
+                  </Link>
+                  <Link
+                      to="/register"
+                      className="dropdown-item"
+                      onClick={() => setAccountOpen(false)}
+                  >
+                    Register
+                  </Link>
+                </div>
+            )}
           </div>
         </div>
-      )}
-    </>
+      </header>
   );
 }

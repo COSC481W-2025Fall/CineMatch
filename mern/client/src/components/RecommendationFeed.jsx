@@ -17,6 +17,7 @@ export default function RecommendationFeed() {
     const [limit, setLimit] = useState(DEFAULT_LIMIT);
     const [recs, setRecs] = useState([]);
     const [status, setStatus] = useState("Loading…");
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
@@ -104,7 +105,7 @@ export default function RecommendationFeed() {
                 <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
             </div> */}
 
-            <Navigation sidebarCollapsed={false} setSidebarCollapsed={() => {}} />
+            <Navigation sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed} />
 
             <div className="main-container">
                 <aside className="sidebar">
@@ -142,6 +143,13 @@ export default function RecommendationFeed() {
                         <p>This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.</p>
                     </footer>
                 </aside>
+
+                {!sidebarCollapsed && (
+                        <div
+                            className="sidebar-overlay"
+                            onClick={() => setSidebarCollapsed(true)}
+                        />
+                        )}
 
                 <main className="content-area">
                     <div id="status" className="muted">{status}</div>

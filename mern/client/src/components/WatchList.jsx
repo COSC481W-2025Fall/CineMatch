@@ -347,6 +347,13 @@ export default function WatchListPage() {
                     </footer>
                 </aside>
 
+                {!sidebarCollapsed && (
+                        <div
+                            className="sidebar-overlay"
+                            onClick={() => setSidebarCollapsed(true)}
+                        />
+                        )}
+
                 <main className="content-area">
                     <div id="status" className="muted">{status}</div>
                     <div id="results" className="movie-grid">

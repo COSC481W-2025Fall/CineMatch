@@ -806,6 +806,13 @@ function clearFilters() {
                             </footer>
                         </aside>
 
+                        {!sidebarCollapsed && (
+                        <div
+                            className="sidebar-overlay"
+                            onClick={() => setSidebarCollapsed(true)}
+                        />
+                        )}
+
                         <main className="content-area">
                         <ActiveFilterBar
                         params={appliedParams}        // use the last SUBMITTED filters (not what is currently being typing)

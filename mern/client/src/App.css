@@ -7,6 +7,15 @@ body {
     font-family:'Tomorrow', sans-serif;
 }
 
+/* Visibility helpers */
+.desktop-only {
+    display: inline-flex;
+}
+
+.mobile-only {
+    display: none;
+}
+
 .navigation-top {
     display:flex; 
     justify-content: space-between;
@@ -62,13 +71,13 @@ body {
     color: #222;
     padding: 8px 16px;
     min-width: 40px;
-    height: 40px;
+    height: 46px;
     border-radius: 6px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 20px;
     transition: all 0.3s ease;
     position: relative;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -628,6 +637,14 @@ body {
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
+    .desktop-only {
+        display: none !important;
+    }
+
+    .mobile-only {
+        display: inline-flex !important;
+    }
+
     .menu-buttons {
         margin-top: 100px;
     }
@@ -651,6 +668,13 @@ body {
 
 /* Mobile styling */
 @media (max-width: 768px) {
+    .desktop-only {
+        display: none !important;
+    }
+
+    .mobile-only {
+        display: inline-flex !important;
+    }
 
     .navigation-top {
         padding: 12px 20px;
@@ -667,8 +691,8 @@ body {
     }
 
     .nav-icon-btn {
-        width: 38px;
-        height: 38px;
+        width: 46px;
+        height: 46px;
         font-size: 16px;
     }
 
@@ -695,35 +719,35 @@ body {
         padding: 80px 15px 20px;
         overflow-y: auto;
         overflow-x: hidden;
-        transform: translateX(-100%);
+        transform: translateX(-100%); /* hidden by default */
         transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         box-shadow: 5px 0 20px rgba(0,0,0,0.5);
-    }
-
-    .main-container:not(.sidebar-collapsed) .sidebar {
-        transform: translateX(-100%);
         pointer-events: none;
     }
-
-    /* Overlay backdrop when sidebar is open */
-    .main-container:not(.sidebar-collapsed)::before {
-        content: '';
+    .sidebar-overlay {
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
         height: 100vh;
         background: rgba(0, 0, 0, 0.6);
-        z-index: 1050;
-        animation: fadeIn 0.3s ease;
-        pointer-events: auto; 
+        z-index: 1050; /* between nav (1000) and sidebar (1100) */
     }
 
-    /* hide sidebar fully when collapsed */
-    .main-container.sidebar-collapsed .sidebar {
+    /* Sidebar visible when NOT collapsed */
+    .main-container:not(.sidebar-collapsed) .sidebar {
         transform: translateX(0);
+        pointer-events: auto;
+    }
+
+
+
+    /* When collapsed on mobile, sidebar stays off-screen and no overlay */
+    .main-container.sidebar-collapsed .sidebar {
+        transform: translateX(-100%);
         pointer-events: none;
     }
+
 
     /* no horizontal scrolling */
     body,
@@ -802,9 +826,9 @@ body {
     }
 
     .nav-icon-btn {
-        width: 36px;
-        height: 36px;
-        font-size: 15px;
+        width: 46px;
+        height: 46px;
+        font-size: 20px;
     }
 
     .sidebar {
@@ -900,3 +924,80 @@ body {
         border-color: #666;
         color: #ffdf6a;       /* lighter gold on hover */
         }
+
+/* Avatar button (mobile account icon) */
+.nav-avatar-btn {
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+.nav-avatar-circle {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #444;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px;
+    box-shadow: 0 0 0 2px #cc3333;
+}
+
+/* Wrappers so dropdowns position correctly under the buttons */
+.nav-lists-wrapper,
+.nav-account-wrapper {
+    position: relative;
+}
+
+/* Generic dropdown panel */
+.dropdown-menu {
+    position: absolute;
+    top: 110%;
+    left: 0;
+    background: #222;
+    border-radius: 8px;
+    padding: 6px 0;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    min-width: 180px;
+    z-index: 1500;
+}
+
+/* Right-aligned dropdown (for account menu) */
+.dropdown-menu-right {
+    right: 0;
+    left: auto;
+}
+
+.dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 8px 14px;
+    color: #eee;
+    text-decoration: none;
+    font-size: 0.9rem;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.dropdown-item:hover {
+    background: #333;
+}
+
+.dropdown-greeting {
+    border-bottom: 1px solid #333;
+    font-weight: 600;
+    cursor: default;
+}
+
+.dropdown-logout {
+    color: #ff7777;
+}
+
+
