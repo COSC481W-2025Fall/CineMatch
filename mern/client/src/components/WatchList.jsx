@@ -1,11 +1,12 @@
 // src/components/WatchList.jsx
-import React, {useEffect, useMemo, useState} from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import {Link, useNavigate} from "react-router-dom";
 import "../App.css";
-import MovieDetails from "./MovieDetails";
-import {findTmdbIdByTitleYear} from "./converter.js";
-
-const API_BASE = "";
+import MovieDetails from "./MovieDetails.jsx";
+import { findTmdbIdByTitleYear } from "./converter.js";
+import { authedFetch, refresh } from "../auth/api.js";
+import {useAuth} from "../auth/AuthContext.jsx";
+import NotificationModal from "./NotificationModal.jsx"; // refresh helper 
 
 const GENRES = [
     "Action","Adventure","Animation","Comedy","Crime","Documentary","Drama",
@@ -13,133 +14,85 @@ const GENRES = [
     "Science Fiction","Thriller","War","Western"
 ];
 
-const CAST_LIMIT = 7
+const CAST_LIMIT = 7;
+
 export default function WatchListPage() {
 
-    const [watched, setWatched] = useState(() => new Set(JSON.parse(localStorage.getItem("watched") || "[]")));
-    const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("to-watch") || "[]")));
-    const watchlist = new Set((JSON.parse(localStorage.getItem("watched") || "[]") || []).map(Number));
-
-
-    useEffect(() => {
-        localStorage.setItem("watched", JSON.stringify([...watched]));
-    }, [watched]);
-    useEffect(() => {
-        localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
-    }, [toWatch]);
-
-    const [details, setDetails] = useState(null);
-    const [showDetails, setShowDetails] = useState(false);
-    async function openDetails(movie) {
+    const { user, logout } = useAuth();
+    const canModifyLists = !!user;
+    const [authMenuOpen, setAuthMenuOpen] = useState(false);
+    const [notificationMsg, setNotificationMsg] = useState("");
+    const navigate = useNavigate();
+    async function handleLogoutClick() {
         try {
-            const res = await fetch(`/record/details/${movie.id}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-
-            // grab title and year from database
-            let titleForLookup = "";
-            if (data && typeof data.title === "string" && data.title.length > 0) {
-                titleForLookup = data.title;
-            } else {
-                titleForLookup = movie.title;
-            }
-
-            let yearForLookup;
-            if (data && typeof data.year === "number") {
-                yearForLookup = data.year;
-            } else {
-                yearForLookup = movie.year;
-            }
-
-            // give converter title and year
-            const tmdbId = await findTmdbIdByTitleYear(titleForLookup, yearForLookup, {language: "en-US"}); // change to any if having issues with forign movies (forign movies might have different release date based on language if 2 versions exist)
-            console.log("[TMDB TEST] input:", {titleForLookup, yearForLookup}, "=> tmdbId:", tmdbId);
-
-            let patch = {}; // empty
-
-            // if found then pull actors and runtime from api
-            if (tmdbId !== null && tmdbId !== undefined) {
-                const numOfActors = CAST_LIMIT;
-                const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
-                url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
-                url.searchParams.set("append_to_response", "credits"); // include cast list
-
-                const tmdbRes = await fetch(url.toString(), {headers: {accept: "application/json"}});
-                if (tmdbRes.ok) {
-                    const tmdb = await tmdbRes.json();
-
-                    // get cast (actors) from tmdb.credits.cast
-                    // tmdbCast will be empty if invalid
-                    let tmdbCast = [];
-                    if (tmdb && tmdb.credits && tmdb.credits.cast && Array.isArray(tmdb.credits.cast)) {
-                        tmdbCast = tmdb.credits.cast;
-                    }
-
-                    // sort cast
-                    // ao/bo are order of ab, fixes an issue where cast is not grabbed in order
-                    tmdbCast.sort(function (a, b) // TMDB defines "order" (0 is the top credit). If missing, treat as very large (999).
-                    {
-                        let ao = 999;
-                        let bo = 999;
-                        if (a && typeof a.order === "number") ao = a.order;
-                        if (b && typeof b.order === "number") bo = b.order;
-                        return ao - bo;
-                    });
-
-                    // get the first X number of actors
-                    const topActors = tmdbCast.slice(0, numOfActors);
-
-                    // build an array of cast names with strings
-                    const topCast = [];
-                    for (let i = 0; i < topActors.length; i++) {
-                        const person = topActors[i];
-                        if (person && typeof person.name === "string" && person.name.length > 0) {
-                            topCast.push(person.name);
-                        }
-                    }
-
-                    // read runtime in min if it exists and is a number otherwise leave it as null
-                    let runtime = null;
-                    if (tmdb && typeof tmdb.runtime === "number") {
-                        runtime = tmdb.runtime;
-                    }
-
-                    // fill patch objects
-                    patch.tmdbId = tmdbId; // keep for debugging or other uses
-                    if (topCast.length > 0) {
-                        patch.topCast = topCast; // override DB actors with top billed tmdb list
-                    }
-                    if (runtime !== null) {
-                        patch.runtime = runtime; // add runtime (minutes) - convert this to hr/min on frontend
-                    }
-
-                    console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime);
-                }
-            }
-
-            setDetails({id: movie.id, ...data, ...patch});
-            setShowDetails(true);
+            navigate("/", { replace: true });
+            await logout();
+            setNotificationMsg("You have been logged out.");
         } catch (e) {
-            console.error(e);
+            console.error("logout failed", e);
+            setNotificationMsg(e?.message || "Failed to log out.");
+        } finally {
+            setAuthMenuOpen(false);
         }
     }
 
+    function closeAuthMenu() {
+        setAuthMenuOpen(false);
+    }
+
+    const [watched, setWatched] = useState(new Set());
+    const [toWatch, setToWatch] = useState(new Set());
+
+    const [details, setDetails] = useState(null);
+    const [showDetails, setShowDetails] = useState(false);   //state hooks for the movie modal
+
+    // Filters
     const [params, setParams] = useState({
-        actor: "",
-        director: "",
-        genre: "",
-        title: "",
-        year: "",
-        rating: ""
+        actor: "", director: "", genre: "", title: "", year: "", rating: ""
     });
 
     const [movies, setMovies] = useState([]);
     const [status, setStatus] = useState("Loading…");
+    const [loaded, setLoaded] = useState(false); // guard
 
-    // Since now we got the new /record/bulk backend, we can utilize it more efficiently
-    async function fetchWatchlistSubset(p = {}) {
+    // Helper for stable string of watched set for effect deps
+    const watchedKey = useMemo(() => JSON.stringify(Array.from(watched).sort()), [watched]);
+
+    // Function to fetch authoritative lists from the server
+    async function loadLists() {
+        const res = await authedFetch("/api/me/lists");
+        if (res.status === 401) {
+            throw new Error("Not authenticated (401). Open /login first.");
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const raw = await res.json();
+        console.log("[/api/me/lists] payload ->", raw);
+
+
+        const w = Array.isArray(raw.watchedIds)   ? raw.watchedIds
+            : Array.isArray(raw.watched)      ? raw.watched
+                : [];
+        const t = Array.isArray(raw.toWatchIds)   ? raw.toWatchIds
+            : Array.isArray(raw.toWatch)      ? raw.toWatch
+                : Array.isArray(raw["to-watch"])  ? raw["to-watch"]
+                    : [];
+
+        const watchedIds = w.map(Number);
+        const toWatchIds = t.map(Number);
+        // Update state with the newly fetched Sets
+        setWatched(new Set(watchedIds));
+        setToWatch(new Set(toWatchIds));
+        setLoaded(true);
+
+        console.log("toWatch set after loadLists ->", toWatchIds);
+        return { watchedIds, toWatchIds };
+    }
+
+    // Fetches movies for the WATCHED set
+    async function fetchWatchlistSubset(ids, p = {}) {
         const body = {
-            ids: Array.from(watchlist),
+            ids, // authoritative list from state
             params: {
                 actor: p.actor || "",
                 director: p.director || "",
@@ -149,46 +102,59 @@ export default function WatchListPage() {
                 rating: p.rating || ""
             }
         };
-
         const res = await fetch("/record/bulk", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body: JSON.stringify(body)
         });
-
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
     }
-
-    async function doSearch() {
+    // Function that handles search/filter
+    async function doSearch(idsOverride) {
         setStatus("Loading…");
-
         try {
-            if (watchlist.size === 0) {
+            const ids = Array.isArray(idsOverride)
+                ? idsOverride
+                : Array.from(watched);
+
+            if (ids.length === 0) {
                 setMovies([]);
                 setStatus("Your watch list is empty.");
                 return;
             }
-
-            const data = await fetchWatchlistSubset(params);
-
+            const data = await fetchWatchlistSubset(ids, params);
             setMovies(data);
-            setStatus(
-                data.length
-                    ? ""
-                    : "Your watch list is empty or no matches for this search."
-            );
-        } catch (err) {
-            console.error(err);
+            setStatus(data.length ? "" : "Your watch list is empty or no matches for this search.");
+        } catch (e) {
+            console.error(e);
             setStatus("Error loading results.");
         }
     }
 
-    useEffect(() => {
-        doSearch();
-        // eslint-disable-next-line
-    }, []);
 
+    useEffect(() => {
+        (async () => {
+            try {
+                await refresh().catch(() => {});   //refresh token in needed
+                const { watchedIds } = await loadLists();
+                console.log("watched set after loadLists ->", watchedIds);
+                await doSearch(watchedIds); // perfoms intail search using  new ids
+            } catch (e) {
+                console.error("initial load failed:", e);
+                setStatus(e.message || "Error loading lists.");
+            }
+        })();
+
+    }, []);
+    //  Effect for filter Changes
+    useEffect(() => {
+        if (!loaded) return;
+        doSearch();
+
+    }, [params, watchedKey, loaded]);
+
+    // Handler for filter input fields
     function handleChange(e) {
         const { id, value } = e.target;
         setParams(prev => ({
@@ -197,37 +163,146 @@ export default function WatchListPage() {
         }));
     }
 
-    const isWatched = useMemo(() => details && watched.has(details.id), [details, watched]);
-    const inToWatch = useMemo(() => details && toWatch.has(details.id), [details, toWatch]);
+
+    async function openDetails(movie) {
+        try {
+            // Fetching backend details for the movies
+            const res = await fetch(`/record/details/${movie.id}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            const titleForLookup = (data?.title && data.title.length > 0) ? data.title : movie.title;
+            const yearForLookup  = (typeof data?.year === "number") ? data.year : movie.year;
+
+            const tmdbId = await findTmdbIdByTitleYear(titleForLookup, yearForLookup, { language: "en-US" });
+            let patch = {};
+
+            if (tmdbId != null) {
+                const url = new URL(`https://api.themoviedb.org/3/movie/${tmdbId}`);
+                url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
+                url.searchParams.set("append_to_response", "credits");
+                const tmdbRes = await fetch(url.toString(), { headers: { accept: "application/json" } });
+                if (tmdbRes.ok) {
+                    const tmdb = await tmdbRes.json();
+                    let tmdbCast = Array.isArray(tmdb?.credits?.cast) ? tmdb.credits.cast : [];
+                    tmdbCast.sort((a, b) => (Number.isFinite(a?.order) ? a.order : 999) - (Number.isFinite(b?.order) ? b.order : 999));
+                    const topCast = tmdbCast.slice(0, CAST_LIMIT).map(p => p?.name).filter(Boolean);
+                    const runtime = (typeof tmdb?.runtime === "number") ? tmdb.runtime : null;
+                    patch.tmdbId = tmdbId;
+                    if (topCast.length) patch.topCast = topCast;
+                    if (runtime != null) patch.runtime = runtime;
+                }
+            }
+            // Combine backend data with TMDB data and open modal
+            //setDetails({ id: movie.id, ...data, ...patch });
+            const numericId =
+                movie?.id != null
+                    ? Number(movie.id)
+                    : (data?.id != null ? Number(data.id) : null);
+
+            setDetails({
+                ...data,
+                ...patch,
+                id: numericId, // ensure this is a number and applied last
+            });
+            setShowDetails(true);
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+
+
+    const isWatched = useMemo(() => {
+        if (!details || details.id == null) return false;
+        const idNum = Number(details.id);
+        return watched.has(idNum);
+    }, [details, watched]);
+    //const inToWatch  = useMemo(() => details && toWatch.has(details.id), [details, toWatch]);
+    const inToWatch = useMemo(() => {
+        if (!details || details.id == null) return false;
+        const idNum = Number(details.id);
+        return toWatch.has(idNum);
+    }, [details, toWatch]);
+    async function toggleList(list, id) { // Handles the server-side API call to toggle a movie's status
+        const res = await authedFetch(`/api/me/lists/${list}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: (list === "watched" && watched.has(id)) || (list === "to-watch" && toWatch.has(id)) ? "remove" : "add", id }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+
+        const { watchedIds } = await loadLists();
+        await doSearch(watchedIds);
+    }
 
     const onMarkWatched = () => {
-        if (!details) return;
-        const id = Number(details.id);
-        setWatched(prev => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-        });
+        if (!details || !canModifyLists) return;
+        toggleList("watched", Number(details.id));
     };
     const onAddToWatch = () => {
-        if (!details) return;
-        const id = Number(details.id);
-        setWatchlist(prev => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-        });
+        if (!details || !canModifyLists) return;
+        toggleList("to-watch", Number(details.id));
     };
+
+    console.log("watched set ->", Array.from(watched));
 
     return (
         <>
             <div className="navigation-top">
                 <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
                 <div className="logo">cineMatch</div>
-                <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
-                <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
-                <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button active">WATCHED LIST</Link>
-                <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
+                <Link to="/help" style={{ textDecoration: "none" }} className="navigation-button">HELP</Link>
+                <Link to="/feed" style={{ textDecoration: "none" }} className="navigation-button">FEED</Link>
+                <Link to="/watchlist" style={{ textDecoration: "none" }} className="navigation-button active">WATCHED LIST</Link>
+                <Link to="/to-watch-list" style={{ textDecoration: "none" }} className="navigation-button">TO-WATCH LIST</Link>
+                <div className="nav-auth-dropdown">
+                    <button
+                        type="button"
+                        className="navigation-button nav-auth-toggle"
+                        onClick={() => setAuthMenuOpen(open => !open)}
+                    >
+                        ACCOUNT ▾
+                    </button>
+
+                    {authMenuOpen && (
+                        <div className="nav-auth-menu">
+                            {user ? (
+                                <>
+                                    <div className="nav-auth-greeting">
+                                        Welcome,&nbsp;
+                                        {user.displayName || user.email?.split("@")[0] || "friend"}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="nav-auth-link nav-auth-logout"
+                                        onClick={handleLogoutClick}
+                                    >
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <Link
+                                        to="/login"
+                                        className="nav-auth-link"
+                                        onClick={closeAuthMenu}
+                                    >
+                                        Log in
+                                    </Link>
+                                    <Link
+                                        to="/register"
+                                        className="nav-auth-link"
+                                        onClick={closeAuthMenu}
+                                    >
+                                        Register
+                                    </Link>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="main-container">
@@ -263,8 +338,7 @@ export default function WatchListPage() {
                             </div>
                         </li>
                     </ul>
-
-                    <button className="go-btn" onClick={doSearch}>SEARCH</button>
+                    <button className="go-btn" onClick={() => doSearch()}>SEARCH</button>
 
                     <footer className="sidebar-footer-credit">
                         <p>
@@ -308,7 +382,7 @@ export default function WatchListPage() {
                 </main>
             </div>
 
-            {showDetails && details && (
+            {showDetails && (
                 <MovieDetails
                     details={details}
                     onClose={() => setShowDetails(false)}
@@ -316,8 +390,12 @@ export default function WatchListPage() {
                     inToWatch={!!inToWatch}
                     onMarkWatched={onMarkWatched}
                     onAddToWatch={onAddToWatch}
+                    canModifyLists={canModifyLists}
+                    castLimit={CAST_LIMIT}
+                    runtime={typeof details?.runtime === "number" ? details.runtime : null}
                 />
             )}
+            <NotificationModal message={notificationMsg} onClose={() => setNotificationMsg("")} />
         </>
     );
 }

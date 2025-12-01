@@ -1,6 +1,9 @@
+// src/components/Help.jsx
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import "./Help.css";
+import NotificationModal from "./NotificationModal.jsx";
+import {useAuth} from "../auth/AuthContext.jsx";
 
 export default function Help() {
     {/* Theses are for the buttons useState when pressed and the style */}
@@ -9,6 +12,30 @@ export default function Help() {
     const activeStyle = {
         background: "linear-gradient(45deg,#f7e135,#cc8800)",
     };
+
+
+    const { user, logout } = useAuth();
+    const [authMenuOpen, setAuthMenuOpen] = useState(false);
+    const [notificationMsg, setNotificationMsg] = useState("");
+    const navigate = useNavigate();
+    async function handleLogoutClick() {
+        try {
+            navigate("/", { replace: true });
+            await logout();
+            setNotificationMsg("You have been logged out.");
+        } catch (e) {
+            console.error("logout failed", e);
+            setNotificationMsg(e?.message || "Failed to log out.");
+        } finally {
+            setAuthMenuOpen(false);
+        }
+    }
+
+    function closeAuthMenu() {
+        setAuthMenuOpen(false);
+    }
+
+
 
     {/* If specifc button is press give one of these statemates  */}
     function renderInfo() {
@@ -45,10 +72,56 @@ export default function Help() {
             <div className="navigation-top">
                 <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
                 <div className="logo">cineMatch</div>
-                <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button active">HELP</Link>
-                <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
-                <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
-                <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
+                <Link to="/help" style={{ textDecoration: "none" }} className="navigation-button active">HELP</Link>
+                <Link to="/feed" style={{ textDecoration: "none" }} className="navigation-button">FEED</Link>
+                <Link to="/watchlist" style={{ textDecoration: "none" }} className="navigation-button">WATCHED LIST</Link>
+                <Link to="/to-watch-list" style={{ textDecoration: "none" }} className="navigation-button">TO-WATCH LIST</Link>
+                <div className="nav-auth-dropdown">
+                    <button
+                        type="button"
+                        className="navigation-button nav-auth-toggle"
+                        onClick={() => setAuthMenuOpen(open => !open)}
+                    >
+                        ACCOUNT ▾
+                    </button>
+
+                    {authMenuOpen && (
+                        <div className="nav-auth-menu">
+                            {user ? (
+                                <>
+                                    <div className="nav-auth-greeting">
+                                        Welcome,&nbsp;
+                                        {user.displayName || user.email?.split("@")[0] || "friend"}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="nav-auth-link nav-auth-logout"
+                                        onClick={handleLogoutClick}
+                                    >
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <Link
+                                        to="/login"
+                                        className="nav-auth-link"
+                                        onClick={closeAuthMenu}
+                                    >
+                                        Log in
+                                    </Link>
+                                    <Link
+                                        to="/register"
+                                        className="nav-auth-link"
+                                        onClick={closeAuthMenu}
+                                    >
+                                        Register
+                                    </Link>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="help-header">
@@ -92,6 +165,7 @@ export default function Help() {
             </div>
 
             <div id="info-box">{renderInfo()}</div>{/*The function for when a button is pressed */}
+            <NotificationModal message={notificationMsg} onClose={() => setNotificationMsg("")} />
         </>
     );
 }
