@@ -4,4 +4,4 @@ node_modules/
 .idea
 .env
 *.env
-
+auth.env
