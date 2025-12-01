@@ -1,4 +1,4 @@
-// server/db/usersConnection.js
+// server/db/usersConnections.js
 import { MongoClient } from 'mongodb';
 
 // A single MongoDB connection to your users database and exports for later use
