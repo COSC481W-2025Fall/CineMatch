@@ -1,11 +1,12 @@
 // src/components/RecommendationFeed.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import Navigation from "./Navigation.jsx";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
-const DEFAULT_LIMIT = 10;
+const DEFAULT_LIMIT = 20; // changing for testing, full change already made on feed cleanup
 
 export default function RecommendationFeed() {
     const watchedIds = useMemo(
@@ -16,6 +17,7 @@ export default function RecommendationFeed() {
     const [limit, setLimit] = useState(DEFAULT_LIMIT);
     const [recs, setRecs] = useState([]);
     const [status, setStatus] = useState("Loading…");
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
@@ -94,14 +96,16 @@ export default function RecommendationFeed() {
 
     return (
         <>
-            <div className="navigation-top">
+            {/* <div className="navigation-top">
                 <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
-                <div className="logo">cineMatch</div>
+                <Link to="/" className="logo"><div className="logo">cineMatch</div></Link>  
                 <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
                 <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button active">FEED</Link>
                 <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button">WATCHED LIST</Link>
                 <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
-            </div>
+            </div> */}
+
+            <Navigation sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={setSidebarCollapsed} />
 
             <div className="main-container">
                 <aside className="sidebar">
@@ -139,6 +143,13 @@ export default function RecommendationFeed() {
                         <p>This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.</p>
                     </footer>
                 </aside>
+
+                {!sidebarCollapsed && (
+                        <div
+                            className="sidebar-overlay"
+                            onClick={() => setSidebarCollapsed(true)}
+                        />
+                        )}
 
                 <main className="content-area">
                     <div id="status" className="muted">{status}</div>

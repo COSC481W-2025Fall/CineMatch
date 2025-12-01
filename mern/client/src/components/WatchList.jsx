@@ -1,9 +1,9 @@
 // src/components/WatchList.jsx
 import React, {useEffect, useMemo, useState} from "react";
 import { Link } from "react-router-dom";
+import Navigation from "./Navigation.jsx";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
-import {findTmdbIdByTitleYear} from "./converter.js";
 
 const API_BASE = "";
 
@@ -19,6 +19,7 @@ export default function WatchListPage() {
     const [watched, setWatched] = useState(() => new Set(JSON.parse(localStorage.getItem("watched") || "[]")));
     const [toWatch, setWatchlist] = useState(() => new Set(JSON.parse(localStorage.getItem("to-watch") || "[]")));
     const watchlist = new Set((JSON.parse(localStorage.getItem("watched") || "[]") || []).map(Number));
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
 
     useEffect(() => {
@@ -28,6 +29,38 @@ export default function WatchListPage() {
         localStorage.setItem("to-watch", JSON.stringify([...toWatch]));
     }, [toWatch]);
 
+
+    // sidebar toggle functionality
+    // useEffect(() => {
+    //     const toggleButton = document.getElementById("sidebarToggle");
+    //     const mainContainer = document.querySelector(".main-container");
+
+    //     if (toggleButton && mainContainer) {
+    //         const toggleSidebar = () => {
+    //             mainContainer.classList.toggle("sidebar-collapsed");
+    //         };
+    //         toggleButton.addEventListener("click", toggleSidebar);
+    //         return () => toggleButton.removeEventListener("click", toggleSidebar);
+    //     }
+    // }, []);
+
+    // mobile navbar toggle functionality
+    // useEffect(() => {
+    //     const mobileNavToggle = document.getElementById("mobileNavToggle");
+    //     const navLinks = document.getElementById("navLinks");
+
+    //     if (!mobileNavToggle || !navLinks) return;
+
+    //     const toggleMobileNav = () => {
+    //         navLinks.classList.toggle("open");
+    //     };
+
+    //     mobileNavToggle.addEventListener("click", toggleMobileNav);
+    //     return () => mobileNavToggle.removeEventListener("click", toggleMobileNav);
+    // }, []);
+    
+
+
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
     async function openDetails(movie) {
@@ -36,24 +69,9 @@ export default function WatchListPage() {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
-            // grab title and year from database
-            let titleForLookup = "";
-            if (data && typeof data.title === "string" && data.title.length > 0) {
-                titleForLookup = data.title;
-            } else {
-                titleForLookup = movie.title;
-            }
-
-            let yearForLookup;
-            if (data && typeof data.year === "number") {
-                yearForLookup = data.year;
-            } else {
-                yearForLookup = movie.year;
-            }
-
-            // give converter title and year
-            const tmdbId = await findTmdbIdByTitleYear(titleForLookup, yearForLookup, {language: "en-US"}); // change to any if having issues with forign movies (forign movies might have different release date based on language if 2 versions exist)
-            console.log("[TMDB TEST] input:", {titleForLookup, yearForLookup}, "=> tmdbId:", tmdbId);
+            // replace whole conversion call and check with this
+            const tmdbId = movie.id;
+            console.log("[TMDB] Using ID:", tmdbId);
 
             let patch = {}; // empty
 
@@ -102,6 +120,11 @@ export default function WatchListPage() {
                     let runtime = null;
                     if (tmdb && typeof tmdb.runtime === "number") {
                         runtime = tmdb.runtime;
+                    }
+
+                    let description = null;
+                    if (tmdb && typeof tmdb.overview === "string" && tmdb.overview.trim().length > 0) {
+                        description = tmdb.overview.trim();
                     }
 
                     // fill patch objects
@@ -218,19 +241,58 @@ export default function WatchListPage() {
             return next;
         });
     };
+    function clearFilters() {
+    // Reset all text + numeric filters
+    setParams({
+        actor: "",
+        director: "",
+        title: "",
+        year_min: "",
+        year_max: "",
+        rating_min: "",
+        rating_max: ""
+    });
+    setSelectedGenres([]);// Reset genres 
+    setGenreDropdownOpen(false); // Close genre dropdown (optional)
+    doSearch();// Re-run search with empty filters
+    
+}
+
 
     return (
         <>
-            <div className="navigation-top">
-                <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
-                <div className="logo">cineMatch</div>
-                <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
-                <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
-                <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button active">WATCHED LIST</Link>
-                <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
-            </div>
+            {/* <div className="navigation-top">
+                <button className="navigation-button" id="sidebarToggle">☰</button>
 
-            <div className="main-container">
+               <Link to="/" className="logo"><div className="logo">cineMatch</div></Link>  
+
+               
+                <button
+                    className="navigation-button"
+                    id="mobileNavToggle"
+                    style={{ marginLeft: "auto" }}
+                >
+                    ▼
+                </button>
+
+                
+                <div className="nav-links" id="navLinks">
+
+                    <Link to="/" style={{ color: "inherit", textDecoration: "none" }} className="navigation-button">SEARCH</Link>
+                    <Link to="/help" style={{ textDecoration: 'none' }} className="navigation-button">HELP</Link>
+                    <Link to="/feed" style={{ textDecoration: 'none' }} className="navigation-button">FEED</Link>
+                    <Link to="/watchlist" style={{ textDecoration: 'none' }} className="navigation-button active">WATCHED LIST</Link>
+                    <Link to="/to-watch-list" style={{ textDecoration: 'none' }} className="navigation-button">TO-WATCH LIST</Link>
+
+                </div>
+            </div> */}
+
+            <Navigation 
+                sidebarCollapsed={sidebarCollapsed}
+                setSidebarCollapsed={setSidebarCollapsed}
+            />
+            
+            <div className={`main-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
                 <aside className="sidebar">
                     <ul className="search-filters">
                         {["Actor", "Director", "Genre", "Title", "Year", "Rating"].map((label) => (
@@ -265,6 +327,9 @@ export default function WatchListPage() {
                     </ul>
 
                     <button className="go-btn" onClick={doSearch}>SEARCH</button>
+                     {/* The button to actually search, this one is permanent */}
+                    <button className="go-btn"onClick={clearFilters}>CLEAR</button>
+                      {/* This clear the search filters  */}
 
                     <footer className="sidebar-footer-credit">
                         <p>
@@ -281,6 +346,13 @@ export default function WatchListPage() {
                         <p>This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.</p>
                     </footer>
                 </aside>
+
+                {!sidebarCollapsed && (
+                        <div
+                            className="sidebar-overlay"
+                            onClick={() => setSidebarCollapsed(true)}
+                        />
+                        )}
 
                 <main className="content-area">
                     <div id="status" className="muted">{status}</div>

@@ -2,5 +2,8 @@
   "devDependencies": {
     "supertest": "^7.1.4",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "csv-parser": "^3.2.0"
   }
 }
