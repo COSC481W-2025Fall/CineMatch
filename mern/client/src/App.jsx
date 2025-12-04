@@ -472,8 +472,12 @@ function App() {
 
         setStatus("Loading…"); // show loading message while we fetch
         try {
+            // separate genre from other overrides
+            const { genre: overrideGenre, ...otherOverrides } = overrideQuery || {};
+
             // start from current inputs unless we received an override (chip removal, clear, etc.)
-            let nextParams = overrideQuery ? { ...params, ...overrideQuery } : { ...params };
+            // ghost fix: use otherOverrides instead of overrideQuery to keep genre out of nextParams
+            let nextParams = overrideQuery ? { ...params, ...otherOverrides } : { ...params };
 
             // GENRES handling:
             // - if override has "genre": use that
@@ -481,7 +485,7 @@ function App() {
             // - if no override: use the live checkbox selection
             let nextGenres = overrideQuery
                 ? Object.prototype.hasOwnProperty.call(overrideQuery, "genre")
-                    ? [...(overrideQuery.genre || [])]
+                    ? [...(overrideGenre || [])]
                     : [...appliedGenres]
                 : [...selectedGenres];
 
