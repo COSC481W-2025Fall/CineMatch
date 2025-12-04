@@ -1,6 +1,24 @@
 /*TODO: make top and sidebar "sticky" and add a footer padding */
 * { margin:0; padding:0; box-sizing:border-box; }
 
+/*Make filler text white to appease persona*/
+.filter-input::placeholder
+{
+    color: #b4b4b4;
+    opacity: 1;
+}
+
+/*Fixes an issue where the autofilled text has a weird background*/
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active
+{
+    transition: background-color 5000s ease-in-out 0s;
+    -webkit-text-fill-color: #fff;
+    caret-color: #fff;
+}
+
 body {
     background-color:#1a1a1a;
     color:#fff;
@@ -297,7 +315,7 @@ body {
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 1px;
-    color: #fff;
+    color: #b4b4b4;
 }
 
 .dropdown-arrow {
