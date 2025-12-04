@@ -416,7 +416,7 @@ body {
 }
 
 .modal {
-    background: #111; color: #fff; max-width: 800px; width: 92%;
+    background: #111; color: #fff; max-width: 1100px; width: 92%;
     border-radius: 12px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     animation: slideUp 0.3s ease;
 }
