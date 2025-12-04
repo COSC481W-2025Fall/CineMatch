@@ -51,6 +51,14 @@ input:-webkit-autofill:active
     transition: all 0.3s ease;
 }
 
+/* blur background when clicking on movie details */
+.modal-backdrop
+{
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px); /* safari support */
+    background: rgba(0, 0, 0, 0.5);
+}
+
 body {
     background-color:#1a1a1a;
     color:#fff;
