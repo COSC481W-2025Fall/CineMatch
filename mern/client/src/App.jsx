@@ -970,7 +970,7 @@ function App() {
                                             : m.genre || "—"}
                                     </div>
                                     {m.rating != null && (
-                                        <div className="movie-sub">⭐ {m.rating}</div>
+                                        <div className="movie-sub">⭐ {m.rating} {m.ageRating ? ` • ${m.ageRating}` : ""}</div>
                                     )}
                                 </article>
                             );

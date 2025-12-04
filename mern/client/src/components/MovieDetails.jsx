@@ -37,6 +37,7 @@ export default function MovieDetails({
         topCastCount,
         genres,
         runtime,
+        ageRating,
         directors,
         director,
         watchProviders,
@@ -121,6 +122,7 @@ export default function MovieDetails({
                             {year ?? "—"}
                             {rating != null ? ` • ⭐ ${rating}` : ""}
                             {runtimeText ? ` • ${runtimeText}` : ""}
+                            {ageRating ? ` • ${ageRating}` : ""}
                         </div>
 
                         {/* condensed logic, list none listed for cases of no director */}

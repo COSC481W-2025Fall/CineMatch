@@ -8,6 +8,16 @@ import { ObjectId } from "mongodb";
 const router = Router();
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
+// mapping
+const AGE_RATINGS = {
+    0: "Not Rated",
+    1: "G",
+    2: "PG",
+    3: "PG-13",
+    4: "R",
+    5: "NC-17"
+};
+
 // format doc to new general collection
 const formatMovie = (doc) => {
     // turn comma seperated into array
@@ -32,6 +42,7 @@ const formatMovie = (doc) => {
         genre: genreArray,
         description: doc.descriptions,
         runtime: doc.runtime || doc.minute,
+        ageRating: AGE_RATINGS[doc.age_rating] || null,
         // For details view specifically:
         topCast: doc.actors ? doc.actors.split(", ").slice(0, 50) : [],
         directors: doc.directors ? doc.directors.split(", ") : []
