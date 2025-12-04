@@ -69,6 +69,14 @@ function ActiveFilterBar({ params, selectedGenres, visible, onRemove }) {
             .forEach((name) => push("actor", name, `Actor: ${name}`));
     }
 
+    if (params.keyword?.trim()) {
+        params.keyword
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .forEach((k) => push("keyword", k, `Keyword: ${k}`));
+    }
+
     // Director — single chip only (no comma support)
     if (params.director?.trim()) {
         const d = params.director.trim();
@@ -216,6 +224,7 @@ function App() {
         actor: "",
         director: "",
         genre: "",
+        keyword: "",
         title: "",
         year_min: "",
         year_max: "",
@@ -495,11 +504,21 @@ function App() {
             const skipActorMerge = opts.fromChip === true || opts.isClear === true;
             if (!skipActorMerge && hasSearched) {
                 nextParams.actor = mergeCommaLists(appliedParams.actor, nextParams.actor);
+                nextParams.keyword = mergeCommaLists(appliedParams.keyword, nextParams.keyword); // added for keywords
             }
 
             // clean actor string (remove extra spaces/commas)
             if (typeof nextParams.actor === "string") {
                 nextParams.actor = nextParams.actor
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .join(", ");
+            }
+
+            // clean keywords
+            if (typeof nextParams.keyword === "string") {
+                nextParams.keyword = nextParams.keyword
                     .split(",")
                     .map((s) => s.trim())
                     .filter(Boolean)
@@ -529,6 +548,7 @@ function App() {
                 (!nextParams.actor || !nextParams.actor.trim()) &&
                 (!nextParams.director || !nextParams.director.trim()) &&
                 (!nextParams.title || !nextParams.title.trim()) &&
+                (!nextParams.keyword || !nextParams.keyword.trim()) &&
                 !nextGenres.length &&
                 !nextParams.year_min &&
                 !nextParams.year_max &&
@@ -573,6 +593,9 @@ function App() {
             case "title":
                 baseParams.title = "";
                 break;
+            case "keyword":
+                baseParams.keyword = removeFromCommaList(baseParams.keyword, chip.value);
+                break;
             case "year_min":
                 baseParams.year_min = "";
                 break;
@@ -613,6 +636,7 @@ function App() {
             actor: "",
             director: "",
             title: "",
+            keyword: "",
             year_min: "",
             year_max: "",
             rating_min: "",
@@ -750,10 +774,11 @@ function App() {
                 <aside className="sidebar">
                     {/* Simple text boxes that we will take as input */}
                     <ul className="search-filters">
-                        {["Actor", "Director", "Title"].map((label) => (
+                        {["Actor", "Director", "Title", "Keyword"].map((label) => (
                             <li className="filter-item" key={label}>
                                 <div className="filter-link">
                                     <input
+                                        // TODO: normalize text here when doing future searches for titles/people
                                         id={`q${label}`}
                                         className="filter-input"
                                         placeholder={`${label.toUpperCase()}...`}

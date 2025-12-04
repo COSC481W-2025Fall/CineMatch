@@ -45,7 +45,8 @@ const formatMovie = (doc) => {
         ageRating: AGE_RATINGS[doc.age_rating] || null,
         // For details view specifically:
         topCast: doc.actors ? doc.actors.split(", ").slice(0, 50) : [],
-        directors: doc.directors ? doc.directors.split(", ") : []
+        directors: doc.directors ? doc.directors.split(", ") : [],
+        keywords: doc.keywords ? doc.keywords.split(", ") : []
     };
 };
 
@@ -54,8 +55,8 @@ router.get("/", async (req, res) => {
     try {
         const collection = db.collection("general");
         const {
-            title, name,
-            director, actor, genre,
+            title, name, // these should be the same thing, will fix later
+            director, actor, genre, keyword,
             year_min, year_max,
             rating_min, rating_max
         } = req.query;
@@ -112,6 +113,17 @@ router.get("/", async (req, res) => {
                     filter.$and.push({ genres: { $regex: g.trim(), $options: "i" } });
                 }
             });
+        }
+
+        if (keyword) {
+            // use comma same as actors to search multiple
+            const keywordList = keyword.split(",").map(k => k.trim()).filter(Boolean);
+            if (keywordList.length > 0) {
+                filter.$and = filter.$and || [];
+                keywordList.forEach(k => {
+                    filter.$and.push({ keywords: { $regex: k, $options: "i" } });
+                });
+            }
         }
 
         // do querey
@@ -187,6 +199,8 @@ router.post("/bulk", async (req, res) => {
         if (actor) filter.actors = { $regex: actor, $options: "i" };
 
         if (genre) filter.genres = { $regex: genre, $options: "i" };
+
+        if (keyword) filter.keywords = { $regex: keyword, $options: "i" };
 
         const docs = await db.collection("general")
             .find(filter)
