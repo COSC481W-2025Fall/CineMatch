@@ -1097,3 +1097,12 @@ body {
 .nav-auth-logout {
     color: #ff7777;
 }
+
+/*makes the autofill for login information not white so it doesnt disappear against the background*/
+.auth-card input:-webkit-autofill,
+.auth-card input:-webkit-autofill:hover,
+.auth-card input:-webkit-autofill:focus,
+.auth-card input:-webkit-autofill:active {
+    -webkit-text-fill-color: #000 !important;
+    caret-color: #000 !important;
+}
