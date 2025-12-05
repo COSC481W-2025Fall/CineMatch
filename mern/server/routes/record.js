@@ -18,7 +18,15 @@ const AGE_RATINGS = {
     5: "NC-17"
 };
 
-// format doc to new general collection
+// normalize inputs
+function normalizeString(str) {
+    if (!str) return "";
+    return str.toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, "");
+}
+
 const formatMovie = (doc) => {
     // turn comma seperated into array
     const genreArray = doc.genres ? doc.genres.split(", ") : [];
@@ -63,10 +71,13 @@ router.get("/", async (req, res) => {
 
         const filter = {};
 
+        // normalization added to all searches
         // search title
         const qName = name ?? title;
         if (qName) {
-            filter.name = { $regex: qName, $options: "i" };
+            // normalize here
+            const cleanName = normalizeString(qName);
+            filter.search_name = { $regex: cleanName, $options: "i" };
         }
 
         // search year
@@ -89,17 +100,19 @@ router.get("/", async (req, res) => {
 
         // search directors
         if (director) {
-            filter.directors = { $regex: director, $options: "i" };
+            const cleanDirector = normalizeString(director);
+            filter.search_directors = { $regex: cleanDirector, $options: "i" };
         }
 
         // SEARCH BY ACTOR (supports single or multiple actors, AND logic)
         if (actor) {
             // split with comma and and them
-            const actorsList = actor.split(",").map(a => a.trim()).filter(Boolean);
+            const actorsList = actor.split(",").map(a => normalizeString(a)).filter(Boolean);
+
             if (actorsList.length > 0) {
                 filter.$and = filter.$and || [];
                 actorsList.forEach(a => {
-                    filter.$and.push({ actors: { $regex: a, $options: "i" } });
+                    filter.$and.push({ search_actors: { $regex: a, $options: "i" } });
                 });
             }
         }
