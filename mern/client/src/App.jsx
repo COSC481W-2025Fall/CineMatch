@@ -799,6 +799,7 @@ function App() {
                                         <input
                                             id="qYear_Min"
                                             className="filter-input"
+                                            type="number"
                                             placeholder="MIN"
                                             value={params.year_min}
                                             onChange={handleChange}
@@ -813,6 +814,7 @@ function App() {
                                             id="qYear_Max"
                                             className="filter-input"
                                             placeholder="MAX"
+                                            type="number"
                                             value={params.year_max}
                                             onChange={handleChange}
                                             onKeyDown={(e) => e.key === "Enter" && doSearch()}
