@@ -893,7 +893,16 @@ function App() {
                         </li>
                     </ul>
 
-                    <button className="go-btn" onClick={() => doSearch()}>
+                    <button
+                        className="go-btn"
+                        onClick={() => {
+                            doSearch();
+                            // collapse sidebar on mobile after pressing search (recommendation from my father)
+                            if (window.innerWidth < 768) {
+                                setSidebarCollapsed(true);
+                            }
+                        }}
+                    >
                         SEARCH
                     </button>
                     <button className="go-btn" onClick={clearFilters}>
