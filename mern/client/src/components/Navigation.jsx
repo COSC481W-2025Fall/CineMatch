@@ -108,14 +108,14 @@ export default function Navigation({ sidebarCollapsed, setSidebarCollapsed }) {
                         className="dropdown-item"
                         onClick={() => setListsOpen(false)}
                     >
-                      WatchList
+                      Watched Movies
                     </Link>
                     <Link
                         to="/to-watch-list"
                         className="dropdown-item"
                         onClick={() => setListsOpen(false)}
                     >
-                      To-Watch List
+                      Watch Later
                     </Link>
                   </div>
               )}
@@ -133,10 +133,10 @@ export default function Navigation({ sidebarCollapsed, setSidebarCollapsed }) {
               FEED
             </Link>
             <Link to="/watchlist" className={btnClass("/watchlist")}>
-              WATCHED LIST
+              WATCHED MOVIES
             </Link>
             <Link to="/to-watch-list" className={btnClass("/to-watch-list")}>
-              TO-WATCH LIST
+              WATCH LATER
             </Link>
 
             {/* Both: HELP icon button */}

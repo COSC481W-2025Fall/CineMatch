@@ -234,8 +234,8 @@ export default function MovieDetails({
                                     aria-pressed={!!isWatched}
                                 >
                                     {isWatched
-                                        ? "Remove from Watched List"
-                                        : "Add to Watched List"}
+                                        ? "Unmark As Watched"
+                                        : "Mark As Watched"}
                                 </button>
 
                                 <button
@@ -249,8 +249,8 @@ export default function MovieDetails({
                                     aria-pressed={!!inToWatch}
                                 >
                                     {inToWatch
-                                        ? "Remove from To-Watch List"
-                                        : "Save for Later"}
+                                        ? "Remove from Watch Later"
+                                        : "Add to Watch Later"}
                                 </button>
                             </div>
 

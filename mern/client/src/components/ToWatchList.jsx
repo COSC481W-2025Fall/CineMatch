@@ -305,7 +305,7 @@ export default function ToWatchListPage() {
 
             if (ids.length === 0) {
                 setMovies([]);
-                setStatus("Your to-watch list is empty.");
+                setStatus("Your watch later list is empty.");
                 return;
             }
 
@@ -324,7 +324,7 @@ export default function ToWatchListPage() {
             setStatus(
                 withTmdb.length
                     ? ""
-                    : "Your to-watch list is empty or no matches for this search."
+                    : "Your watch later list is empty or no matches for this search."
             );
         } catch (err) {
             console.error(err);
