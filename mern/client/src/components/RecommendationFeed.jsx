@@ -229,7 +229,7 @@ export default function RecommendationFeed() {
         setDislikedTmdbIds(freshDisliked);
 
         if (watchedIds.size === 0) { // Check if the user has watched any movies yet
-            setStatus("Your watched list is empty — watch a few movies to seed recommendations.");
+            setStatus("Your watched movies list is empty, mark some as watched to get recommendations!.");
             setRecs([]);
             return;
         }
