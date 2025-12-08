@@ -52,7 +52,7 @@ const formatMovie = (doc) => {
         runtime: doc.runtime || doc.minute,
         ageRating: AGE_RATINGS[doc.age_rating] || null,
         // For details view specifically:
-        topCast: doc.actors ? doc.actors.split(", ").slice(0, 50) : [],
+        topCast: doc.actors ? doc.actors.split(", ").slice(0, 100) : [],
         directors: doc.directors ? doc.directors.split(", ") : [],
         keywords: doc.keywords ? doc.keywords.split(", ") : []
     };
@@ -143,7 +143,7 @@ router.get("/", async (req, res) => {
         const docs = await collection
             .find(filter)
             .sort({ popularity: -1, date: -1 }) // Sort by popularity, then newness
-            .limit(50)
+            .limit(200)
             .toArray();
 
         // format results

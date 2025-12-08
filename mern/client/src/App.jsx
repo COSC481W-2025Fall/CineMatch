@@ -555,7 +555,8 @@ function App() {
                 !nextParams.rating_min &&
                 !nextParams.rating_max;
 
-            setMovies(noSearch ? shuffleArray(withTmdb) : withTmdb);
+            // shuffle 50 from top 200
+            setMovies(noSearch ? shuffleArray(withTmdb).slice(0, 50) : withTmdb);
             setStatus(withTmdb.length ? "" : "No results found.");
 
             setAppliedParams(nextParams);
