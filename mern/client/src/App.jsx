@@ -991,9 +991,11 @@ function App() {
                                                 fontSize: 11,
                                                 fontWeight: 600,
                                                 backgroundColor: likedFlag
-                                                    ? "rgba(0, 128, 0, 0.85)"
-                                                    : "rgba(180, 0, 0, 0.85)",
+                                                    ? "rgba(0, 128, 0, 1)"   // make solid
+                                                    : "rgba(180, 0, 0, 1)", // make solid
                                                 color: "#fff",
+                                                zIndex: 10, // bring to front
+                                                boxShadow: "0 2px 4px rgba(0,0,0,0.5)"
                                             }}
                                         >
                                             {likedFlag ? "👍" : "👎"}
