@@ -752,9 +752,10 @@ body {
     }
 
     .nav-icon-btn {
-        width: 46px;
+        display: inline-flex;
+        align-items: center;
+        vertical-align: middle;
         height: 46px;
-        font-size: 16px;
     }
 
     /* Dropdown menus */
@@ -887,9 +888,10 @@ body {
     }
 
     .nav-icon-btn {
-        width: 46px;
+        display: inline-flex;
+        align-items: center;
+        vertical-align: middle;
         height: 46px;
-        font-size: 20px;
     }
 
     .sidebar {
