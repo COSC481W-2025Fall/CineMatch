@@ -1010,10 +1010,13 @@ function App() {
                                     />
                                     <div className="movie-title">{m.title ?? "Untitled"}</div>
                                     <div className="movie-sub">
-                                        {m.year ?? "—"} •{" "}
-                                        {Array.isArray(m.genre)
-                                            ? m.genre.join(", ")
-                                            : m.genre || "—"}
+                                        {m.year ?? "—"}
+                                        {(() => {
+                                            const list = Array.isArray(m.genre) ? m.genre : [m.genre];
+                                            // remove NA or null or empty
+                                            const clean = list.filter((g) => g && g !== "NA");
+                                            return clean.length > 0 ? ` • ${clean.join(", ")}` : "";
+                                        })()}
                                     </div>
                                     {m.rating != null && (
                                         <div className="movie-sub">⭐ {m.rating} {m.ageRating ? ` • ${m.ageRating}` : ""}</div>
