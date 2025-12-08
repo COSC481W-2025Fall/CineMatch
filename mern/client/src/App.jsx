@@ -777,9 +777,8 @@ function App() {
                     <ul className="search-filters">
                         {["Actor", "Director", "Title", "Keyword"].map((label) => (
                             <li className="filter-item" key={label}>
-                                <div className="filter-link">
+                                <label className="filter-link" htmlFor={`q${label}`} style={{ display: "block", cursor: "text" }}>
                                     <input
-                                        // TODO: normalize text here when doing future searches for titles/people
                                         id={`q${label}`}
                                         className="filter-input"
                                         placeholder={`${label.toUpperCase()}...`}
@@ -787,7 +786,7 @@ function App() {
                                         onChange={handleChange}
                                         onKeyDown={(e) => e.key === "Enter" && doSearch()}
                                     />
-                                </div>
+                                </label>
                             </li>
                         ))}
 
@@ -796,7 +795,11 @@ function App() {
                             <div className="year-label">YEAR</div>
                             <div className="year-bubbles">
                                 <div className="filter-item">
-                                    <div className="filter-link">
+                                    <label
+                                        className="filter-link"
+                                        htmlFor="qYear_Min"
+                                        style={{ display: "block", cursor: "text" }}
+                                    >
                                         <input
                                             id="qYear_Min"
                                             className="filter-input"
@@ -806,11 +809,15 @@ function App() {
                                             onChange={handleChange}
                                             onKeyDown={(e) => e.key === "Enter" && doSearch()}
                                         />
-                                    </div>
+                                    </label>
                                 </div>
 
                                 <div className="filter-item">
-                                    <div className="filter-link">
+                                    <label
+                                        className="filter-link"
+                                        htmlFor="qYear_Max"
+                                        style={{ display: "block", cursor: "text" }}
+                                    >
                                         <input
                                             id="qYear_Max"
                                             className="filter-input"
@@ -820,7 +827,7 @@ function App() {
                                             onChange={handleChange}
                                             onKeyDown={(e) => e.key === "Enter" && doSearch()}
                                         />
-                                    </div>
+                                    </label>
                                 </div>
                             </div>
                         </li>
@@ -831,7 +838,11 @@ function App() {
 
                             <div className="rating-bubbles">
                                 <div className="filter-item">
-                                    <div className="filter-link">
+                                    <label
+                                        className="filter-link"
+                                        htmlFor="qRating_Min"
+                                        style={{ display: "block", cursor: "text" }}
+                                    >
                                         <input
                                             id="qRating_Min"
                                             className="filter-input"
@@ -845,11 +856,15 @@ function App() {
                                             onChange={handleChange}
                                             onKeyDown={(e) => e.key === "Enter" && doSearch()}
                                         />
-                                    </div>
+                                    </label>
                                 </div>
 
                                 <div className="filter-item">
-                                    <div className="filter-link">
+                                    <label
+                                        className="filter-link"
+                                        htmlFor="qRating_Max"
+                                        style={{ display: "block", cursor: "text" }}
+                                    >
                                         <input
                                             id="qRating_Max"
                                             className="filter-input"
@@ -863,7 +878,7 @@ function App() {
                                             onChange={handleChange}
                                             onKeyDown={(e) => e.key === "Enter" && doSearch()}
                                         />
-                                    </div>
+                                    </label>
                                 </div>
                             </div>
                         </li>
