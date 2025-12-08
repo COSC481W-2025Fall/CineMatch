@@ -187,7 +187,7 @@ router.post("/bulk", async (req, res) => {
         if (ids.length === 0) return res.status(200).json([]);
 
         const {
-            title, director, actor, genre,
+            title, director, actor, genre, keyword,
             year, rating
         } = req.body?.params || {};
 
