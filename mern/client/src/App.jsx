@@ -1,5 +1,5 @@
 // App.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx";
 import ErrorModal from "./components/ErrorModal.jsx";
@@ -164,6 +164,9 @@ function App() {
     const [errorMsg, setErrorMsg] = useState("");
     const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
+    // track abort controller to cancel double shuffle
+    const searchController = useRef(null);
+
     useEffect(() => {
         localStorage.setItem("recordTmdbMap", JSON.stringify(recordTmdbMap));
     }, [recordTmdbMap]);
@@ -297,8 +300,9 @@ function App() {
     }
 
     // Fetch movies from the backend API
-    async function fetchMovies(p = {}) {
-        const res = await fetch(API_BASE + buildQuery(p));
+    // add signal param to support aborting a search (could be useful for chip issue as well)
+    async function fetchMovies(p = {}, signal = null) {
+        const res = await fetch(API_BASE + buildQuery(p), { signal });
         let payload;
         try {
             payload = await res.json();
@@ -446,6 +450,14 @@ function App() {
     }
 
     async function doSearch(overrideQuery, opts = {}) {
+        // abort prior request
+        if (searchController.current) {
+            searchController.current.abort();
+        }
+        // make new controller for request
+        const controller = new AbortController();
+        searchController.current = controller;
+        const signal = controller.signal;
         // sometimes onClick passes the click event as the first arg
         // if that happens, ignore it so we don't treat it like overrides
         if (
@@ -532,7 +544,8 @@ function App() {
             };
 
             // ask backend for results
-            const data = await fetchMovies(query);
+            // pass signal here
+            const data = await fetchMovies(query, signal);
 
             // Attach tmdbId from our persisted map, if we know it
             const withTmdb = data.map((m) => {
@@ -563,6 +576,8 @@ function App() {
             setAppliedGenres(nextGenres);
             if (!opts.isClear) setHasSearched(true);
         } catch (err) {
+            // if the fetch was aborted, ignore the error
+            if (err.name === 'AbortError') return;
             console.error(err);
             setStatus("");
             setErrorMsg(err.message);
