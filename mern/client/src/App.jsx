@@ -246,6 +246,10 @@ function App() {
     const [appliedGenres, setAppliedGenres] = useState(selectedGenres);
     const [hasSearched, setHasSearched] = useState(false);
 
+    // track latest applied filters
+    const appliedParamsRef = useRef(appliedParams);
+    const appliedGenresRef = useRef(appliedGenres);
+
     // ----------------------------------------------------
     // Navigation helpers
     // ----------------------------------------------------
@@ -573,7 +577,10 @@ function App() {
             setStatus(withTmdb.length ? "" : "No results found.");
 
             setAppliedParams(nextParams);
+            appliedParamsRef.current = nextParams;
             setAppliedGenres(nextGenres);
+            appliedGenresRef.current = nextGenres;
+
             if (!opts.isClear) setHasSearched(true);
         } catch (err) {
             // if the fetch was aborted, ignore the error
@@ -586,8 +593,8 @@ function App() {
 
     function handleRemoveChip(chip) {
         // start from the applied filters, this matches what's on screen
-        const baseParams = { ...appliedParams };
-        let baseGenres = [...appliedGenres];
+        const baseParams = { ...appliedParamsRef.current };
+        let baseGenres = [...appliedGenresRef.current];
 
         // remove one item from a comma list (case-insensitive)
         const removeFromCommaList = (raw, valueToRemove) =>
@@ -635,6 +642,10 @@ function App() {
                 break;
         }
 
+        // Update refs right away so the next click sees the new states
+        appliedParamsRef.current = baseParams;
+        appliedGenresRef.current = baseGenres;
+
         // keep sidebar inputs/checkboxes same with what we removed
         setParams((prev) => ({ ...prev, ...baseParams }));
         setSelectedGenres(baseGenres);
@@ -664,6 +675,10 @@ function App() {
         setSelectedGenres([]);
         setAppliedParams(emptyParams);
         setAppliedGenres([]);
+
+        // reset refs
+        appliedParamsRef.current = emptyParams;
+        appliedGenresRef.current = [];
 
         // Run search with empty filters
         doSearch({ ...emptyParams, genre: [] }, { fromChip: true, isClear: true });
