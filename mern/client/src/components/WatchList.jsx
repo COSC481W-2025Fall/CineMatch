@@ -94,8 +94,7 @@ export default function WatchListPage() {
     // for this page, watchlist = watched movie ids (by DB id)
     const watchlist = useMemo(() => new Set([...watched]), [watched]);
 
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth <= 768);
     // Liked/disliked (by TMDB id) – watchlist is editable
     const [likedTmdbIds, setLikedTmdbIds] = useState(() =>
         loadArrayFromStorage("likedTmdbIds")

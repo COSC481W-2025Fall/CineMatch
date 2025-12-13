@@ -90,8 +90,7 @@ export default function ToWatchListPage() {
         loadMapFromStorage("recordTmdbMap")
     );
 
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth <= 768);
     const [details, setDetails] = useState(null);
     const [showDetails, setShowDetails] = useState(false);
 

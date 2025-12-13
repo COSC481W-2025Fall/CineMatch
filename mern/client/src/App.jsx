@@ -162,8 +162,7 @@ function App() {
 
     // error state message
     const [errorMsg, setErrorMsg] = useState("");
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth <= 768);
     // track abort controller to cancel double shuffle
     const searchController = useRef(null);
 
