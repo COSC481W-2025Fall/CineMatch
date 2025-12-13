@@ -4,11 +4,7 @@ import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx";
 import ErrorModal from "./components/ErrorModal.jsx";
 import Navigation from "./components/Navigation.jsx";
-import {
-    getLikedTmdbIds,
-    getDislikedTmdbIds,
-} from "./components/likeDislikeStorage";
-import { authedFetch, refresh } from "./auth/api.js";
+import { authedFetch, refresh, fetchReactions, updateReaction} from "./auth/api.js"; // just need this
 import { useAuth } from "./auth/AuthContext.jsx";
 
 const API_BASE = "";
@@ -152,8 +148,8 @@ function App() {
     const [toWatch, setToWatch] = useState(() => new Set());
 
     // liked/disliked arrays  (read-only in Search)
-    const [likedTmdbIds, setLikedTmdbIds] = useState(() => getLikedTmdbIds());
-    const [dislikedTmdbIds, setDislikedTmdbIds] = useState(() => getDislikedTmdbIds());
+    const [likedTmdbIds, setLikedTmdbIds] = useState([]);
+    const [dislikedTmdbIds, setDislikedTmdbIds] = useState([]);
 
     // record id - TMDB id map
     const [recordTmdbMap, setRecordTmdbMap] = useState(() =>
@@ -194,6 +190,10 @@ function App() {
 
             setWatched(new Set(w.map(Number)));
             setToWatch(new Set(t.map(Number)));
+
+            const reactions = await fetchReactions();
+            setLikedTmdbIds(reactions.likedTmdbIds);
+            setDislikedTmdbIds(reactions.dislikedTmdbIds);
         } catch (e) {
             console.warn("loadListsIntoApp error:", e);
         }
@@ -773,17 +773,10 @@ function App() {
 
         // If removed from watched list, clear like/dislike for this TMDB id
         if (wasWatched && tmdbId != null && Number.isFinite(tmdbId)) {
-            setLikedTmdbIds((prev) => {
-                const next = prev.filter((x) => x !== tmdbId);
-                localStorage.setItem("likedTmdbIds", JSON.stringify(next));
-                return next;
-            });
+            setLikedTmdbIds((prev) => prev.filter((x) => x !== tmdbId));
+            setDislikedTmdbIds((prev) => prev.filter((x) => x !== tmdbId));
 
-            setDislikedTmdbIds((prev) => {
-                const next = prev.filter((x) => x !== tmdbId);
-                localStorage.setItem("dislikedTmdbIds", JSON.stringify(next));
-                return next;
-            });
+            updateReaction(tmdbId, "clear").catch(console.error);
         }
     };
 
