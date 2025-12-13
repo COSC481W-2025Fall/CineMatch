@@ -117,25 +117,7 @@ function ActiveFilterBar({ params, selectedGenres, visible, onRemove }) {
     );
 }
 
-function loadMapFromStorage(key) {
-    try {
-        const raw = localStorage.getItem(key);
-        if (!raw) return {};
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== "object") return {};
-        const out = {};
-        for (const [k, v] of Object.entries(parsed)) {
-            const idNum = Number(k);
-            const tmdbNum = Number(v);
-            if (Number.isFinite(idNum) && Number.isFinite(tmdbNum)) {
-                out[idNum] = tmdbNum;
-            }
-        }
-        return out;
-    } catch {
-        return {};
-    }
-}
+
 
 // ----------------------------------------------------
 // App component
@@ -151,20 +133,13 @@ function App() {
     const [likedTmdbIds, setLikedTmdbIds] = useState([]);
     const [dislikedTmdbIds, setDislikedTmdbIds] = useState([]);
 
-    // record id - TMDB id map
-    const [recordTmdbMap, setRecordTmdbMap] = useState(() =>
-        loadMapFromStorage("recordTmdbMap")
-    );
-
     // error state message
     const [errorMsg, setErrorMsg] = useState("");
     const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth <= 768);
     // track abort controller to cancel double shuffle
     const searchController = useRef(null);
 
-    useEffect(() => {
-        localStorage.setItem("recordTmdbMap", JSON.stringify(recordTmdbMap));
-    }, [recordTmdbMap]);
+
 
     async function loadListsIntoApp() {
         try {
@@ -423,18 +398,7 @@ function App() {
             setDetails({ id: movie.id, tmdbId: finalTmdbId, ...data, ...patch });
             setShowDetails(true);
 
-            // Cache TMDB id on the search results and in recordTmdbMap
-            if (finalTmdbId != null) {
-                setMovies((prev) =>
-                    prev.map((m) =>
-                        m.id === movie.id ? { ...m, tmdbId: finalTmdbId ?? m.tmdbId } : m
-                    )
-                );
-                setRecordTmdbMap((prev) => ({
-                    ...prev,
-                    [movie.id]: finalTmdbId,
-                }));
-            }
+
         } catch (e) {
             console.error(e);
         }
@@ -554,10 +518,6 @@ function App() {
 
             // Attach tmdbId from our persisted map, if we know it
             const withTmdb = data.map((m) => {
-                const mapped = recordTmdbMap[m.id];
-                if (mapped && m.tmdbId == null) {
-                    return { ...m, tmdbId: mapped };
-                }
                 return m;
             });
 
@@ -1000,9 +960,7 @@ function App() {
                             const tmdbIdNum =
                                 m.tmdbId != null
                                     ? Number(m.tmdbId)
-                                    : recordTmdbMap[m.id] != null
-                                        ? Number(recordTmdbMap[m.id])
-                                        : null;
+                                    : Number(m.id);
 
                             const likedFlag =
                                 tmdbIdNum != null && likedTmdbIds.includes(tmdbIdNum);
