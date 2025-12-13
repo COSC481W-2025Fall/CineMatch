@@ -36,6 +36,7 @@ export default function MovieDetails({
         topCast,
         topCastCount,
         genres,
+        genre,
         runtime,
         ageRating,
         directors,
@@ -44,6 +45,8 @@ export default function MovieDetails({
         tagline, // for later
     } = details;
 
+    // make genre list both genre and genres because fixing records doesnt seem to work
+    const genreList = Array.isArray(genres) ? genres : Array.isArray(genre) ? genre : [];
     const runtimeText = formatRuntime(runtime);
 
     const directorList =
@@ -169,10 +172,10 @@ export default function MovieDetails({
                                 </strong>{" "}
                                 {hasDirectors ? directorList.join(", ") : "None Listed"}
                             </div>
-
-                            {Array.isArray(genres) && genres.length > 0 && (
+                            {/*change to genre list*/}
+                            {genreList.length > 0 && (
                                 <div style={{ marginBottom: 12 }}>
-                                    <strong>Genres:</strong> {genres.join(", ")}
+                                    <strong>Genres:</strong> {genreList.join(", ")}
                                 </div>
                             )}
 

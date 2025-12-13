@@ -72,20 +72,13 @@ export default function RecommendationFeed() {
         const raw = await res.json();
 
         const w = Array.isArray(raw.watchedIds) ? raw.watchedIds
-            : Array.isArray(raw.watched)       ? raw.watched
-                : [];
-        const t = Array.isArray(raw.toWatchIds)   ? raw.toWatchIds
-            : Array.isArray(raw.toWatch)         ? raw.toWatch
-                : Array.isArray(raw["to-watch"])     ? raw["to-watch"]
-                    : [];
+            : Array.isArray(raw.watched) ? raw.watched : [];
+        const t = Array.isArray(raw.toWatchIds) ? raw.toWatchIds
+            : Array.isArray(raw.toWatch) ? raw.toWatch
+                : Array.isArray(raw["to-watch"]) ? raw["to-watch"] : [];
 
-        const watchedIdsArr = w.map(Number);
-        const toWatchIdsArr = t.map(Number);
-
-        setWatched(new Set(watchedIdsArr));
-        setWatchlist(new Set(toWatchIdsArr));
-
-        return { watchedIds: watchedIdsArr, toWatchIds: toWatchIdsArr };
+        setWatched(new Set(w.map(Number)));
+        setWatchlist(new Set(t.map(Number)));
     }
 
     // server-side toggle for watched / to-watch
@@ -110,40 +103,35 @@ export default function RecommendationFeed() {
     // Rewrote openDetails in feed because old one is excruciatingly slow...
     async function openDetails(rec) {
         try {
-            const movieId = rec.id != null ? rec.id : null;
+            // refactor
+            let currentDetails = {
+                id: rec.id ?? null, // local ID if we have it
+                tmdbId: rec.tmdbId ?? null,
+                title: rec.title ?? "",
+                year: rec.year ?? null,
+                rating: rec.rating ?? null,
+                posterUrl: rec.posterUrl || (rec.posterPath ? `${TMDB_IMG}${rec.posterPath}` : null),
+                description: rec.description || rec.overview || "",
+                genres: rec.genre || rec.genres || [],
+                topCast: [],
+                backdropUrl: rec.backdropUrl || null,
+                runtime: rec.runtime || null,
+                ageRating: rec.ageRating || null,
+            };
 
-            if (movieId == null) {
-                const title = rec?.title ?? "";
-                setDetails({
-                    id: null,
-                    tmdbId: null,
-                    title,
-                    year: rec?.year ?? null,
-                    rating: rec?.rating ?? null,
-                    posterUrl: rec?.posterPath ? `${TMDB_IMG}${rec.posterPath}` : null,
-                    description: rec?.overview || "",
-                    genres: [],
-                    topCast: [],
-                });
-                setShowDetails(true);
-                return;
+            // check for local ID first
+            if (currentDetails.id) {
+                const res = await fetch(`/record/details/${currentDetails.id}`);
+                if (res.ok) {
+                    const localData = await res.json();
+                    currentDetails = { ...currentDetails, ...localData };
+                }
             }
+            const tmdbId = currentDetails.tmdbId
+                ?? (typeof currentDetails.id === "number" ? currentDetails.id : null);
 
-            const res = await fetch(`/record/details/${movieId}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-
-            const tmdbId =
-                typeof data.tmdbId === "number"
-                    ? data.tmdbId
-                    : typeof rec.tmdbId === "number"
-                        ? rec.tmdbId
-                        : null;
-
-            let patch = {};
-
-            if (tmdbId !== null && tmdbId !== undefined) {
-                const numOfActors = CAST_LIMIT;
+            // get tmdb api to fill in and get watch providers
+            if (tmdbId) {
                 const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
                 url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
                 url.searchParams.set("append_to_response", "credits,watch/providers");
@@ -152,72 +140,61 @@ export default function RecommendationFeed() {
                 if (tmdbRes.ok) {
                     const tmdb = await tmdbRes.json();
 
-                    let tmdbCast = [];
-                    if (tmdb && tmdb.credits && tmdb.credits.cast && Array.isArray(tmdb.credits.cast)) {
-                        tmdbCast = tmdb.credits.cast;
-                    }
+                    // cast
+                    let tmdbCast = tmdb.credits?.cast || [];
+                    tmdbCast.sort((a, b) => (a.order || 999) - (b.order || 999));
+                    const topCast = tmdbCast.slice(0, CAST_LIMIT).map(p => p.name).filter(Boolean);
 
-                    tmdbCast.sort(function (a, b) {
-                        let ao = 999;
-                        let bo = 999;
-                        if (a && typeof a.order === "number") ao = a.order;
-                        if (b && typeof b.order === "number") bo = b.order;
-                        return ao - bo;
-                    });
+                    // runtime
+                    const runtime = tmdb.runtime || null;
 
-                    const topActors = tmdbCast.slice(0, numOfActors);
-                    const topCast = [];
-                    for (let i = 0; i < topActors.length; i++) {
-                        const person = topActors[i];
-                        if (person && typeof person.name === "string" && person.name.length > 0) {
-                            topCast.push(person.name);
+                    // proveders (should always run)
+                    const watchProviders = tmdb["watch/providers"]?.results?.US?.flatrate || [];
+
+                    // patch
+                    if (topCast.length > 0) currentDetails.topCast = topCast;
+                    if (runtime) currentDetails.runtime = runtime;
+                    if (watchProviders.length > 0) currentDetails.watchProviders = watchProviders;
+
+                    if (!currentDetails.id) {
+                        if (!currentDetails.description) currentDetails.description = tmdb.overview;
+                        if (!currentDetails.posterUrl && tmdb.poster_path) {
+                            currentDetails.posterUrl = `${TMDB_IMG}${tmdb.poster_path}`;
+                        }
+                        if (!currentDetails.backdropUrl && tmdb.backdrop_path) {
+                            currentDetails.backdropUrl = `https://image.tmdb.org/t/p/original${tmdb.backdrop_path}`;
+                        }
+                        if ((!currentDetails.genres || currentDetails.genres.length === 0) && tmdb.genres) {
+                            currentDetails.genres = tmdb.genres.map(g => g.name);
                         }
                     }
 
-                    let runtime = null;
-                    if (tmdb && typeof tmdb.runtime === "number") {
-                        runtime = tmdb.runtime;
-                    }
-
-                    let watchProviders = [];
-                    if (
-                        tmdb &&
-                        tmdb["watch/providers"] &&
-                        tmdb["watch/providers"].results &&
-                        tmdb["watch/providers"].results.US &&
-                        tmdb["watch/providers"].results.US.flatrate
-                    ) {
-                        watchProviders = tmdb["watch/providers"].results.US.flatrate;
-                    }
-
-                    patch.tmdbId = tmdbId;
-                    if (topCast.length > 0) {
-                        patch.topCast = topCast;
-                    }
-                    if (runtime !== null) {
-                        patch.runtime = runtime;
-                    }
-                    if (watchProviders.length > 0) {
-                        patch.watchProviders = watchProviders;
-                    }
-
-                    console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime, "providers:", watchProviders.length);
+                    currentDetails.tmdbId = tmdbId; // change to just ID
                 }
             }
 
-            const posterUrl =
-                data.posterUrl || (rec?.posterPath ? `${TMDB_IMG}${rec.posterPath}` : null);
-
-            setDetails({
-                id: movieId,
-                tmdbId: patch.tmdbId ?? tmdbId ?? null,
-                ...data,
-                ...patch,
-                posterUrl,
-            });
+            setDetails(currentDetails);
             setShowDetails(true);
+
+        } catch (e) {
+            console.error("Error opening details:", e);
+        }
+    }
+
+    // helper to get local details
+    async function fetchLocalDetails(ids) {
+        if (!ids || ids.length === 0) return [];
+        try {
+            const res = await fetch("/record/bulk", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ids }),
+            });
+            if (!res.ok) return [];
+            return await res.json();
         } catch (e) {
             console.error(e);
+            return [];
         }
     }
 
@@ -249,9 +226,38 @@ export default function RecommendationFeed() {
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const json = await resp.json();
             const items = Array.isArray(json?.items) ? json.items : [];
+            const tmdbIdsToCheck = items
+                .map(i => i.tmdbId)
+                .filter(id => typeof id === 'number');
+
+            let localDataMap = {};
+            if (tmdbIdsToCheck.length > 0) {
+                const localDetails = await fetchLocalDetails(tmdbIdsToCheck);
+                localDetails.forEach((d) => {
+                    // Index by the ID (which corresponds to TMDB ID)
+                    localDataMap[d.id] = d;
+                });
+            }
+
+            const enrichedItems = items.map((item) => {
+                const local = item.tmdbId ? localDataMap[item.tmdbId] : null;
+
+                if (local) {
+                    return {
+                        ...item,
+                        ...local,        // overwrite from database for the sake of consistancy (especially for poster / backdrops)
+                        tmdbId: item.tmdbId, // keep ID ref
+                        id: local.id,    // make watched work
+                        genres: local.genre,
+                        overview: local.description || item.overview,
+                        posterUrl: local.posterUrl
+                    };
+                }
+                return item;
+            });
 
             // Hide any movies the user has disliked (based on TMDB id)
-            const filtered = items.filter((item) => {
+            const filtered = enrichedItems.filter((item) => {
                 if (item.tmdbId == null) return true;
                 const idNum = Number(item.tmdbId);
                 if (!Number.isFinite(idNum)) return true;
@@ -296,12 +302,12 @@ export default function RecommendationFeed() {
     );
 
     const onMarkWatched = () => {
-        if (!details || !canModifyLists) return;
+        if (!details || !canModifyLists || !details.id) return;
         const id = Number(details.id);
         toggleList("watched", id).catch(console.error);
     };
     const onAddToWatch = () => {
-        if (!details || !canModifyLists) return;
+        if (!details || !canModifyLists || !details.id) return;
         const id = Number(details.id);
         toggleList("to-watch", id).catch(console.error);
     };
@@ -318,20 +324,136 @@ export default function RecommendationFeed() {
                     <div id="status" className="muted">{status}</div>
                     <div id="results" className="movie-grid">
                         {recs.map((r, idx) => {
-                            const poster = r.posterPath
-                                ? `${TMDB_IMG}${r.posterPath}`
-                                : "https://placehold.co/300x450?text=No+Poster";
+                            // Determine poster: Local URL > TMDB Path > Placeholder
+                            const poster = r.posterUrl
+                                ? r.posterUrl
+                                : r.posterPath
+                                    ? `${TMDB_IMG}${r.posterPath}`
+                                    : "https://placehold.co/300x450?text=No+Poster";
+
                             return (
                                 <article
                                     className="movie-card"
                                     key={`${r.tmdbId ?? r.id ?? "rec"}_${idx}`}
                                     onClick={() => openDetails(r)}
-                                    style={{ cursor: "pointer" }}
+                                    style={{
+                                        cursor: "pointer",
+                                        position: "relative",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        height: "100%",
+                                        backgroundColor: "#222",
+                                        borderRadius: "8px",
+                                        overflow: "hidden",
+                                    }}
                                 >
-                                    <img src={poster} alt={r.title || "Untitled"} />
-                                    <div className="movie-title">{r.title || "Untitled"}</div>
-                                    <div className="movie-sub">
-                                        {(r.year ?? "—")} • {r.rating != null ? `⭐ ${r.rating}` : "—"}
+                                    <img
+                                        src={poster}
+                                        alt={r.title || "Untitled"}
+                                        style={{
+                                            width: "100%",
+                                            aspectRatio: "2/3",
+                                            objectFit: "cover",
+                                            display: "block",
+                                        }}
+                                    />
+
+                                    <div
+                                        style={{
+                                            padding: "10px",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            flex: 1,
+                                            gap: "4px",
+                                        }}
+                                    >
+                                        <div
+                                            className="movie-title"
+                                            style={{
+                                                whiteSpace: "normal",
+                                                overflow: "visible",
+                                                lineHeight: "1.2",
+                                                fontSize: "1rem",
+                                                fontWeight: "600",
+                                                marginBottom: "2px",
+                                            }}
+                                        >
+                                            {r.title || "Untitled"}
+                                        </div>
+                                        <div
+                                            className="movie-sub"
+                                            style={{
+                                                fontSize: "0.85rem",
+                                                opacity: 0.8,
+                                                marginBottom: "2px"
+                                            }}
+                                        >
+                                            {r.year ?? "—"}
+                                        </div>
+
+                                        {(r.rating != null || r.ageRating) && (
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "8px",
+                                                    flexWrap: "wrap",
+                                                    marginBottom: "2px",
+                                                }}
+                                            >
+                                                {r.rating != null && (
+                                                    <div
+                                                        className="movie-sub"
+                                                        style={{
+                                                            display: "inline-flex",
+                                                            alignItems: "center",
+                                                            gap: "4px",
+                                                            lineHeight: 1,
+                                                        }}
+                                                    >
+                                                        <span style={{ transform: "translateY(-1px)" }}>⭐</span>
+                                                        <span>{Number(r.rating).toFixed(1)}</span>
+                                                    </div>
+                                                )}
+
+                                                {r.ageRating && (
+                                                    <span
+                                                        style={{
+                                                            border: "1px solid #555",
+                                                            padding: "1px 6px",
+                                                            borderRadius: "4px",
+                                                            fontSize: "0.75rem",
+                                                            color: "#ccc",
+                                                            lineHeight: "1.2",
+                                                            display: "inline-block",
+                                                        }}
+                                                    >
+                                                        {r.ageRating}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div
+                                            className="movie-sub"
+                                            style={{
+                                                marginTop: "auto",
+                                                fontSize: "0.8rem",
+                                                opacity: 0.6,
+                                                lineHeight: "1.3",
+                                                paddingTop: "6px"
+                                            }}
+                                        >
+                                            {(() => {
+                                                const list = Array.isArray(r.genre)
+                                                    ? r.genre
+                                                    : Array.isArray(r.genres)
+                                                        ? r.genres
+                                                        : [r.genre || r.genres];
+                                                const clean = list.filter((g) => g && g !== "NA");
+                                                return clean.length > 0 ? clean.join(", ") : "—";
+                                            })()}
+                                        </div>
                                     </div>
                                 </article>
                             );
