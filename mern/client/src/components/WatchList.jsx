@@ -645,7 +645,7 @@ export default function WatchListPage() {
                         {status}
                     </div>
                     <div id="results" className="movie-grid">
-                        {movies.map((m, idx) => {
+                        {movies.map((m) => {
                             const tmdbIdNum =
                                 m.tmdbId != null
                                     ? Number(m.tmdbId)
@@ -653,20 +653,28 @@ export default function WatchListPage() {
                                         ? Number(recordTmdbMap[m.id])
                                         : null;
 
-                            const liked =
+                            const likedFlag =
                                 tmdbIdNum != null && likedTmdbIds.includes(tmdbIdNum);
-                            const disliked =
-                                tmdbIdNum != null &&
-                                dislikedTmdbIds.includes(tmdbIdNum);
+                            const dislikedFlag =
+                                tmdbIdNum != null && dislikedTmdbIds.includes(tmdbIdNum);
 
                             return (
                                 <article
                                     className="movie-card"
-                                    key={idx}
+                                    key={m.id}
                                     onClick={() => openDetails(m)}
-                                    style={{ cursor: "pointer", position: "relative" }}
+                                    style={{
+                                        cursor: "pointer",
+                                        position: "relative",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        height: "100%",
+                                        backgroundColor: "#222", // ensuring consistent background for card
+                                        borderRadius: "8px",
+                                        overflow: "hidden", // ensures image respects border radius
+                                    }}
                                 >
-                                    {(liked || disliked) && (
+                                    {(likedFlag || dislikedFlag) && (
                                         <div
                                             className="like-flag-card"
                                             style={{
@@ -677,7 +685,7 @@ export default function WatchListPage() {
                                                 borderRadius: 999,
                                                 fontSize: 11,
                                                 fontWeight: 600,
-                                                backgroundColor: liked
+                                                backgroundColor: likedFlag
                                                     ? "rgba(0, 128, 0, 1)"   // make solid
                                                     : "rgba(180, 0, 0, 1)", // make solid
                                                 color: "#fff",
@@ -685,26 +693,130 @@ export default function WatchListPage() {
                                                 boxShadow: "0 2px 4px rgba(0,0,0,0.5)"
                                             }}
                                         >
-                                            {liked ? "👍" : "👎"}
+                                            {likedFlag ? "👍" : "👎"}
                                         </div>
                                     )}
+
                                     <img
                                         src={
-                                            m.posterUrl ||
-                                            "https://placehold.co/300x450?text=No+Poster"
+                                            m.posterUrl || "https://placehold.co/300x450?text=No+Poster"
                                         }
                                         alt={m.title || ""}
+                                        style={{
+                                            width: "100%",
+                                            aspectRatio: "2/3",
+                                            objectFit: "cover",
+                                            display: "block",
+                                        }}
                                     />
-                                    <div className="movie-title">{m.title ?? "Untitled"}</div>
-                                    <div className="movie-sub">
-                                        {m.year ?? "—"} •{" "}
-                                        {Array.isArray(m.genre)
-                                            ? m.genre.join(", ")
-                                            : m.genre || "—"}
+
+                                    <div
+                                        style={{
+                                            padding: "10px",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            flex: 1,
+                                            gap: "4px", // element gap, maybe increase later?
+                                        }}
+                                    >
+                                        <div
+                                            className="movie-title"
+                                            style={{
+                                                whiteSpace: "normal",
+                                                overflow: "visible",
+                                                lineHeight: "1.2",
+                                                fontSize: "1rem",
+                                                fontWeight: "600",
+                                                marginBottom: "2px",
+                                            }}
+                                        >
+                                            {m.title ?? ""}
+                                        </div>
+                                        <div
+                                            className="movie-sub"
+                                            style={{
+                                                fontSize: "0.85rem",
+                                                opacity: 0.8,
+                                                marginBottom: "2px"
+                                            }}
+                                        >
+                                            {m.year ?? "—"}
+                                        </div>
+
+                                        {(m.rating != null || m.ageRating) && (
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "8px",
+                                                    flexWrap: "wrap",
+                                                    marginBottom: "2px",
+                                                }}
+                                            >
+                                                {m.rating != null && (
+                                                    <div
+                                                        className="movie-sub"
+                                                        style={{
+                                                            display: "inline-flex",
+                                                            alignItems: "center",
+                                                            gap: "4px",
+                                                            lineHeight: 1,
+                                                        }}
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                display: "inline-block",
+                                                                transform: "translateY(-1px)", // translate emoji to fix vertical allignment issue
+                                                            }}
+                                                        >
+                                                          ⭐
+                                                        </span>
+                                                        <span>{Number(m.rating).toFixed(1)}</span>
+                                                    </div>
+                                                )}
+
+                                                {m.ageRating && (
+                                                    <span
+                                                        style={{
+                                                            border: "1px solid #555",
+                                                            padding: "1px 6px",
+                                                            borderRadius: "4px",
+                                                            fontSize: "0.75rem",
+                                                            color: "#ccc",
+                                                            lineHeight: "1.2", // prevent offset
+                                                            display: "inline-block",
+                                                        }}
+                                                    >
+                                                        {m.ageRating}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div
+                                            className="movie-sub"
+                                            style={{
+                                                marginTop: "auto", // move genres to bottom
+                                                fontSize: "0.8rem",
+                                                opacity: 0.6,
+                                                lineHeight: "1.3",
+                                                paddingTop: "6px"
+                                            }}
+                                        >
+                                            {(() => {
+                                                const list = Array.isArray(m.genre)
+                                                    ? m.genre
+                                                    : [m.genre];
+                                                // remove NA or null or empty
+                                                const clean = list.filter(
+                                                    (g) => g && g !== "NA"
+                                                );
+                                                return clean.length > 0
+                                                    ? clean.join(", ")
+                                                    : "—";
+                                            })()}
+                                        </div>
                                     </div>
-                                    {m.rating != null && (
-                                        <div className="movie-sub">⭐ {m.rating}</div>
-                                    )}
                                 </article>
                             );
                         })}
