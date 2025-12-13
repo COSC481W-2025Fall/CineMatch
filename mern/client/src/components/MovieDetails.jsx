@@ -128,9 +128,12 @@ export default function MovieDetails({
                             width={220}
                             height={330}
                             style={{
-                                borderRadius: 8,
+                                borderRadius: "12px",
                                 flexShrink: 0,
-                                boxShadow: "0 4px 10px rgba(0,0,0,0.5)",
+                                objectFit: "cover", // Ensures image fills the box without stretching
+                                boxShadow: "0 8px 25px rgba(0,0,0,0.6)", // Deeper, more professional shadow
+                                border: "1px solid rgba(255, 255, 255, 0.1)", // Subtle glass-like border
+                                backgroundColor: "#1a1a1a", // Dark background prevents white flashes
                             }}
                         />
 
@@ -145,14 +148,14 @@ export default function MovieDetails({
                                 }}
                             >
                                 {title ?? "Untitled"}
-                            </h2>{" "} 
+                            </h2>{" "}
                             {/*add text shadow to make it easy to read on light background*/}
                             <div
                                 className="muted"
                                 style={{ marginBottom: 8, color: "rgba(255,255,255,0.8)" }}
                             >
                                 {year ?? "—"}
-                                {rating != null ? ` • ⭐ ${rating}` : ""}
+                                {rating != null ? ` • ⭐ ${Number(rating).toFixed(1)}` : ""}
                                 {runtimeText ? ` • ${runtimeText}` : ""}
                                 {ageRating ? ` • ${ageRating}` : ""}
                             </div>
