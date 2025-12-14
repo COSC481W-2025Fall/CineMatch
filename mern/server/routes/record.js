@@ -283,7 +283,24 @@ router.get("/tmdb/:id", async (req, res) => {
     }
 });
 
+router.get("/record/collection/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const url = new URL(`https://api.themoviedb.org/3/collection/${id}`);
+        url.searchParams.set("api_key", process.env.TMDB_API_KEY);
 
+        const tmdbRes = await fetch(url.toString());
+        if (!tmdbRes.ok) {
+            return res.status(tmdbRes.status).json({ error: "TMDB collection fetch failed" });
+        }
+
+        const data = await tmdbRes.json();
+        res.json(data);
+    } catch (err) {
+        console.error("TMDB collection proxy error:", err);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
 
 
 export default router;
