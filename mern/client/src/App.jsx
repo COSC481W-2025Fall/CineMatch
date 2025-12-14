@@ -414,10 +414,18 @@ function App() {
 
                     // get where to watch
                     let watchProviders = [];
+                    let watchType = null;
 
                     // use US by default, not important for other areas rn since it changes by location
-                    if (tmdb && tmdb["watch/providers"] && tmdb["watch/providers"].results && tmdb["watch/providers"].results.US && tmdb["watch/providers"].results.US.flatrate) {
-                        watchProviders = tmdb["watch/providers"].results.US.flatrate;
+                    if (tmdb && tmdb["watch/providers"] && tmdb["watch/providers"].results && tmdb["watch/providers"].results.US) {
+                        const us = tmdb["watch/providers"].results.US;
+                        if (us.flatrate && us.flatrate.length > 0) {
+                            watchProviders = us.flatrate;
+                            watchType = "stream";
+                        } else if (us.rent && us.rent.length > 0) {
+                            watchProviders = us.rent;
+                            watchType = "rent";
+                        }
                     }
 
                     // get trailer
@@ -471,6 +479,7 @@ function App() {
                     // add watchers to patch and pass to detail view
                     if (watchProviders.length > 0) {
                         patch.watchProviders = watchProviders;
+                        patch.watchType = watchType;
                     }
 
                     if (trailerUrl) {

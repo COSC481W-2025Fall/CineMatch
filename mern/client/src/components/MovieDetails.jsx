@@ -51,6 +51,7 @@ export default function MovieDetails({
         directors,
         director,
         watchProviders,
+        watchType,
         tagline, // for later
         trailerUrl,
         prequel,
@@ -238,7 +239,7 @@ export default function MovieDetails({
                             {Array.isArray(watchProviders) && watchProviders.length > 0 && (
                                 <div style={{ marginBottom: 12 }}>
                                     <strong style={{ display: "block", marginBottom: 6 }}>
-                                        Where to watch:
+                                        {watchType === "rent" ? "Rent It On:" : "Stream It On:"}
                                     </strong>
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                                         {watchProviders.map((provider, index) => {

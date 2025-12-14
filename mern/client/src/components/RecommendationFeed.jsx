@@ -148,8 +148,21 @@ export default function RecommendationFeed() {
                     // runtime
                     const runtime = tmdb.runtime || null;
 
-                    // proveders (should always run)
-                    const watchProviders = tmdb["watch/providers"]?.results?.US?.flatrate || [];
+                    // get where to watch
+                    let watchProviders = [];
+                    let watchType = null;
+
+                    // use US by default, not important for other areas rn since it changes by location
+                    if (tmdb && tmdb["watch/providers"] && tmdb["watch/providers"].results && tmdb["watch/providers"].results.US) {
+                        const us = tmdb["watch/providers"].results.US;
+                        if (us.flatrate && us.flatrate.length > 0) {
+                            watchProviders = us.flatrate;
+                            watchType = "stream";
+                        } else if (us.rent && us.rent.length > 0) {
+                            watchProviders = us.rent;
+                            watchType = "rent";
+                        }
+                    }
 
                     // trailer
                     const videos = tmdb.videos?.results || [];
@@ -190,7 +203,10 @@ export default function RecommendationFeed() {
                     // patch
                     if (topCast.length > 0) currentDetails.topCast = topCast;
                     if (runtime) currentDetails.runtime = runtime;
-                    if (watchProviders.length > 0) currentDetails.watchProviders = watchProviders;
+                    if (watchProviders.length > 0) {
+                        currentDetails.watchProviders = watchProviders;
+                        currentDetails.watchType = watchType;
+                    }
 
                     if (!currentDetails.id) {
                         if (!currentDetails.description) currentDetails.description = tmdb.overview;
