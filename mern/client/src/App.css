@@ -684,7 +684,7 @@ body {
 .menu-button:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
-    backgorund: linear-gradient(45deg, #f7e135, #cc8800);
+    background: linear-gradient(45deg, #f7e135, #cc8800);
 }
 
 .menu-logo {
