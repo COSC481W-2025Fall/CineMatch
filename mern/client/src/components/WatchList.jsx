@@ -131,7 +131,7 @@ export default function WatchListPage() {
             const data = await res.json();
             // replace whole conversion call and check with this
             const tmdbId = movie.id;
-            console.log("[TMDB] Using ID:", tmdbId);
+            //console.log("[TMDB] Using ID:", tmdbId);
 
             let patch = {}; // empty
 
@@ -264,7 +264,7 @@ export default function WatchListPage() {
                         patch.rating = tmdb.vote_average;
                     }
 
-                    console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime, "providers:", watchProviders.length);
+                    //console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime, "providers:", watchProviders.length);
                 }
             }
 
@@ -313,7 +313,7 @@ export default function WatchListPage() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const raw = await res.json();
-        console.log("[/api/me/lists] payload ->", raw);
+        //console.log("[/api/me/lists] payload ->", raw);
 
 
         const w = Array.isArray(raw.watchedIds)   ? raw.watchedIds
@@ -331,7 +331,7 @@ export default function WatchListPage() {
         setToWatch(new Set(toWatchIds));
         setLoaded(true);
 
-        console.log("toWatch set after loadLists ->", toWatchIds);
+        //console.log("toWatch set after loadLists ->", toWatchIds);
         return { watchedIds, toWatchIds };
     }
 
@@ -399,7 +399,7 @@ export default function WatchListPage() {
             try {
                 //await refresh().catch(() => {});   //refresh token in needed
                 const { watchedIds } = await loadLists();
-                console.log("watched set after loadLists ->", watchedIds);
+                //console.log("watched set after loadLists ->", watchedIds);
 
                 const reactions = await fetchReactions().catch(() => ({ likedTmdbIds: [], dislikedTmdbIds: [] }));
                 setLikedTmdbIds(reactions.likedTmdbIds);
@@ -407,7 +407,7 @@ export default function WatchListPage() {
 
                 await doSearch(watchedIds); // perfoms intail search using  new ids
             } catch (e) {
-                console.error("initial load failed:", e);
+                //console.error("initial load failed:", e);
                 setStatus(e.message || "Error loading lists.");
             }
         })();

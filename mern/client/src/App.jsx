@@ -395,13 +395,22 @@ function App() {
             const data = await res.json();
 
             // replace whole conversion call and check with this
-            const tmdbId = movie.id;
-            console.log("[TMDB] Using ID:", tmdbId);
+            const rawTmdbId =
+                movie.tmdbId != null && movie.tmdbId !== ""
+                    ? movie.tmdbId
+                    : movie.id;
+
+            const tmdbId =
+                rawTmdbId != null && rawTmdbId !== ""
+                    ? Number(rawTmdbId)
+                    : null;
+
+
 
             let patch = {}; // empty
 
             // if found then pull actors, runtime, and watch providers
-            if (tmdbId !== null && tmdbId !== undefined) {
+            if (tmdbId !== null && Number.isFinite(tmdbId)) {
                 const numOfActors = CAST_LIMIT;
 
                 const tmdbRes = await fetch(
@@ -490,7 +499,11 @@ function App() {
                                         new Date(b.release_date || "9999-12-31")
                                     );
                                 });
-                                const currentIndex = parts.findIndex((p) => p.id === tmdbId);
+
+                                const currentIndex = parts.findIndex(
+                                    (p) => Number(p.id) === tmdbId
+                                );
+
                                 if (currentIndex !== -1) {
                                     if (currentIndex > 0) {
                                         // prequel
@@ -552,14 +565,6 @@ function App() {
                         patch.rating = tmdb.vote_average;
                     }
 
-                    console.log(
-                        "[TMDB TEST] topCast:",
-                        topCast,
-                        "runtime:",
-                        runtime,
-                        "providers:",
-                        watchProviders.length
-                    );
                 }
             }
 
@@ -579,6 +584,7 @@ function App() {
             console.error(e);
         }
     }
+
 
 
 
