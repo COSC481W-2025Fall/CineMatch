@@ -48,6 +48,7 @@ export default function MovieDetails({
         director,
         watchProviders,
         tagline, // for later
+        trailerUrl,
     } = details;
 
     // make genre list both genre and genres because fixing records doesnt seem to work
@@ -138,22 +139,43 @@ export default function MovieDetails({
                     </button>
                     <div className="modal-header">
                         {" "}
-                        {/* Use a placeholder image if no poster URL is provided */}
-                        {/* Poster */}
-                        <img
-                            src={posterUrl || "https://placehold.co/220x330?text=No+Poster"}
-                            alt={title || ""}
-                            width={220}
-                            height={330}
-                            style={{
-                                borderRadius: "12px",
-                                flexShrink: 0,
-                                objectFit: "cover", // Ensures image fills the box without stretching
-                                boxShadow: "0 8px 25px rgba(0,0,0,0.6)", // Deeper, more professional shadow
-                                border: "1px solid rgba(255, 255, 255, 0.1)", // Subtle glass-like border
-                                backgroundColor: "#1a1a1a", // Dark background prevents white flashes
-                            }}
-                        />
+                        {/* wrapper for poster and trailer button */}
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "220px", flexShrink: 0 }}>
+                            {/* Use a placeholder image if no poster URL is provided */}
+                            {/* Poster */}
+                            <img
+                                src={posterUrl || "https://placehold.co/220x330?text=No+Poster"}
+                                alt={title || ""}
+                                width={220}
+                                height={330}
+                                style={{
+                                    width: "100%",
+                                    borderRadius: "12px",
+                                    objectFit: "cover", // Ensures image fills the box without stretching
+                                    boxShadow: "0 8px 25px rgba(0,0,0,0.6)", // Deeper, more professional shadow
+                                    border: "1px solid rgba(255, 255, 255, 0.1)", // Subtle glass-like border
+                                    backgroundColor: "#1a1a1a", // Dark background prevents white flashes
+                                }}
+                            />
+
+                            {/* trailer button (maybe make it aligned with other buttons later if time */}
+                            <a
+                                href={trailerUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent((title || "") + " " + (year || "") + " official trailer")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="go-btn"
+                                style={{
+                                    textAlign: "center",
+                                    textDecoration: "none",
+                                    display: "block",
+                                    fontSize: "0.9rem",
+                                    padding: "10px 0",
+                                }}
+                            >
+                                {/*if it finds an official trailer, go right to that, otherwise search by name and year + official trailer on yt*/}
+                                {trailerUrl ? "View official trailer" : "Search for trailer"}
+                            </a>
+                        </div>
 
                         <div style={{ flex: 1 }}>
                             {" "}

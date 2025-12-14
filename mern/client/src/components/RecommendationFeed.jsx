@@ -134,7 +134,7 @@ export default function RecommendationFeed() {
             if (tmdbId) {
                 const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
                 url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
-                url.searchParams.set("append_to_response", "credits,watch/providers");
+                url.searchParams.set("append_to_response", "credits,watch/providers,videos"); // add where to watch to the append and trailer
 
                 const tmdbRes = await fetch(url.toString(), { headers: { accept: "application/json" } });
                 if (tmdbRes.ok) {
@@ -150,6 +150,11 @@ export default function RecommendationFeed() {
 
                     // proveders (should always run)
                     const watchProviders = tmdb["watch/providers"]?.results?.US?.flatrate || [];
+
+                    // trailer
+                    const videos = tmdb.videos?.results || [];
+                    const trailer = videos.find(v => v.site === "YouTube" && v.type === "Trailer");
+                    if (trailer) currentDetails.trailerUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
 
                     // patch
                     if (topCast.length > 0) currentDetails.topCast = topCast;

@@ -140,7 +140,7 @@ export default function WatchListPage() {
                 const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
                 url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
 
-                url.searchParams.set("append_to_response", "credits,watch/providers"); // add where to watch to the append
+                url.searchParams.set("append_to_response", "credits,watch/providers,videos"); // add where to watch to the append and trailer
 
                 const tmdbRes = await fetch(url.toString(), {headers: {accept: "application/json"}});
                 if (tmdbRes.ok) {
@@ -189,6 +189,12 @@ export default function WatchListPage() {
                         watchProviders = tmdb["watch/providers"].results.US.flatrate;
                     }
 
+                    let trailerUrl = null;
+                    if (tmdb && tmdb.videos && tmdb.videos.results) {
+                        const trailer = tmdb.videos.results.find(v => v.site === "YouTube" && v.type === "Trailer");
+                        if (trailer) trailerUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
+                    }
+
                     // fill patch objects
 
                     // removed outdated comments here from old database logic
@@ -202,6 +208,10 @@ export default function WatchListPage() {
                     // add watchers to patch and pass to detail view
                     if (watchProviders.length > 0) {
                         patch.watchProviders = watchProviders;
+                    }
+
+                    if (trailerUrl) {
+                        patch.trailerUrl = trailerUrl;
                     }
 
                     console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime, "providers:", watchProviders.length);
