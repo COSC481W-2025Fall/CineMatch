@@ -53,7 +53,6 @@ export default function MovieDetails({
         director,
         watchProviders,
         watchType,
-        tagline, // for later
         trailerUrl,
         prequel,
         sequel,
