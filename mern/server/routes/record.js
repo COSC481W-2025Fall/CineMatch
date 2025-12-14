@@ -283,38 +283,20 @@ router.get("/tmdb/:id", async (req, res) => {
     }
 });
 
-router.get("/record/collection/:id", async (req, res) => {
-    try {
-        const { id } = req.params;
-        const url = new URL(`https://api.themoviedb.org/3/collection/${id}`);
-        url.searchParams.set("api_key", process.env.TMDB_API_KEY);
 
-        const tmdbRes = await fetch(url.toString());
-        if (!tmdbRes.ok) {
-            return res.status(tmdbRes.status).json({ error: "TMDB collection fetch failed" });
-        }
-
-        const data = await tmdbRes.json();
-        res.json(data);
-    } catch (err) {
-        console.error("TMDB collection proxy error:", err);
-        res.status(500).json({ error: "Internal server error" });
-    }
-});
-
-router.get("/collection/:collectionId", async (req, res) => {
+router.get("/record/collection/:collectionId", async (req, res) => {
     try {
         const { collectionId } = req.params;
 
-        if (!TMDB_API_KEY) {
-            console.error("TMDB API key is not configured");
+        if (!process.env.VITE_TMDB_API_KEY) {
+            console.error("[TMDB COLLECTION] TMDB_API_KEY not set");
             return res
                 .status(500)
                 .json({ error: "TMDB API key is not configured on the server" });
         }
 
-        const url = new URL(`${TMDB_BASE}/collection/${collectionId}`);
-        url.searchParams.set("api_key", TMDB_API_KEY);
+        const url = new URL(`https://api.themoviedb.org/3/collection/${collectionId}`);
+        url.searchParams.set("api_key", process.env.VITE_TMDB_API_KEY);
 
         console.log("[TMDB COLLECTION] Fetching:", url.toString());
 
@@ -328,11 +310,13 @@ router.get("/collection/:collectionId", async (req, res) => {
                 "[TMDB COLLECTION] TMDB error",
                 tmdbRes.status,
                 tmdbRes.statusText,
-                text,
+                text
             );
             return res
                 .status(tmdbRes.status)
-                .json({ error: `TMDB collection fetch failed: HTTP ${tmdbRes.status}` });
+                .json({
+                    error: `TMDB collection fetch failed: HTTP ${tmdbRes.status}`,
+                });
         }
 
         const data = await tmdbRes.json();
@@ -342,5 +326,6 @@ router.get("/collection/:collectionId", async (req, res) => {
         res.status(500).json({ error: "Failed to fetch TMDB collection" });
     }
 });
+
 
 export default router;
