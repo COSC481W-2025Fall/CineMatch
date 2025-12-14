@@ -738,25 +738,45 @@ body {
         display: inline-flex !important;
     }
 
+
     .navigation-top {
-        padding: 12px 20px;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        padding: 8px 10px;
+        column-gap: 8px;
     }
 
     .nav-left,
     .nav-right {
-        gap: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: 0 0 auto;
     }
 
-    /* logo centered */
     .logo {
         font-size: 24px;
+        padding: 0;
+        margin: 0;
+        justify-self: center;
+        transform: scaleX(1.35);
     }
 
     .nav-icon-btn {
         display: inline-flex;
         align-items: center;
-        vertical-align: middle;
-        height: 46px;
+        justify-content: center;
+        padding: 6px 10px;
+        min-width: 34px;
+        height: 40px;
+        font-size: 16px;
+    }
+
+    .nav-avatar-circle {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
     }
 
     /* Dropdown menus */
@@ -803,14 +823,11 @@ body {
         pointer-events: auto;
     }
 
-
-
     /* When collapsed on mobile, sidebar stays off-screen and no overlay */
     .main-container.sidebar-collapsed .sidebar {
         transform: translateX(-100%);
         pointer-events: none;
     }
-
 
     /* no horizontal scrolling */
     body,
@@ -819,8 +836,6 @@ body {
     .content-area {
         overflow-x: hidden !important;
     }
-    /***
-        /* show two movie cards side by side*/
     .content-area {
         display: flex;
         flex-direction: column;
@@ -881,6 +896,7 @@ body {
         min-height: 44px;
     }
 }
+
 
 /* Extra small devices */
 @media (max-width: 480px) {
