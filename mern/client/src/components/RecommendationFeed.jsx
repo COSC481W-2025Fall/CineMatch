@@ -99,8 +99,7 @@ export default function RecommendationFeed() {
 
         await loadLists();
     }
-
-    // Rewrote openDetails in feed because old one is excruciatingly slow...
+    
     // Rewrote openDetails in feed because old one is excruciatingly slow...
     async function openDetails(rec) {
         try {
@@ -141,21 +140,10 @@ export default function RecommendationFeed() {
 
             // get tmdb api to fill in and get watch providers
             if (tmdbId) {
-                const url = new URL(
-                    "https://api.themoviedb.org/3/movie/" + tmdbId
+                const tmdbRes = await fetch(
+                    `${API_BASE}/record/tmdb/${tmdbId}?append_to_response=credits,watch/providers,videos`,
+                    { headers: { accept: "application/json" } }
                 );
-                url.searchParams.set(
-                    "api_key",
-                    import.meta.env.VITE_TMDB_API_KEY
-                );
-                url.searchParams.set(
-                    "append_to_response",
-                    "credits,watch/providers,videos"
-                ); // add where to watch to the append and trailer
-
-                const tmdbRes = await fetch(url.toString(), {
-                    headers: { accept: "application/json" },
-                });
                 if (tmdbRes.ok) {
                     const tmdb = await tmdbRes.json();
 
@@ -208,21 +196,13 @@ export default function RecommendationFeed() {
                         tmdb.belongs_to_collection &&
                         tmdb.belongs_to_collection.id
                     ) {
-                        const collectionUrl = new URL(
-                            `https://api.themoviedb.org/3/collection/${tmdb.belongs_to_collection.id}`
-                        );
-                        collectionUrl.searchParams.set(
-                            "api_key",
-                            import.meta.env.VITE_TMDB_API_KEY
-                        );
                         try {
                             const collRes = await fetch(
-                                collectionUrl.toString(),
+                                `${API_BASE}/record/collection/${tmdb.belongs_to_collection.id}`,
                                 { headers: { accept: "application/json" } }
                             );
                             if (collRes.ok) {
-                                const collectionData =
-                                    await collRes.json();
+                                const collectionData = await collRes.json();
                                 // sort by release date to determine order
                                 const parts = (collectionData.parts || []).sort(
                                     (a, b) => {
@@ -244,8 +224,7 @@ export default function RecommendationFeed() {
                                 if (currentIndex !== -1) {
                                     if (currentIndex > 0) {
                                         // prequel exists
-                                        const prev =
-                                            parts[currentIndex - 1];
+                                        const prev = parts[currentIndex - 1];
                                         currentDetails.prequel = {
                                             id: prev.id,
                                             tmdbId: prev.id,
@@ -254,8 +233,7 @@ export default function RecommendationFeed() {
                                     }
                                     if (currentIndex < parts.length - 1) {
                                         // sequel exists
-                                        const next =
-                                            parts[currentIndex + 1];
+                                        const next = parts[currentIndex + 1];
                                         currentDetails.sequel = {
                                             id: next.id,
                                             tmdbId: next.id,

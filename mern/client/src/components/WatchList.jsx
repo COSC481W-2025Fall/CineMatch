@@ -466,7 +466,7 @@ export default function WatchListPage() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
 
-        const { watchedIds } = loadLists();
+        const { watchedIds } = await loadLists();
         await doSearch(watchedIds);
     }
 

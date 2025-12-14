@@ -474,7 +474,7 @@ export default function ToWatchListPage() {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-        const { toWatchIds } = loadLists();
+        const { toWatchIds } = await loadLists();
         await doSearch(toWatchIds);
     }
 
