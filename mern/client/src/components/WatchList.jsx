@@ -30,7 +30,7 @@ const GENRES = [
     "Western",
 ];
 
-const CAST_LIMIT = 7;
+const CAST_LIMIT = 5;
 
 // localStorage helpers
 function loadSetFromStorage(key) {

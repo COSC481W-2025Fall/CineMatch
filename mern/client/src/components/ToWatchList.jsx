@@ -16,7 +16,7 @@ const GENRES = [
     "Science Fiction", "Thriller", "War", "Western"
 ];
 
-const CAST_LIMIT = 7; // cast limit
+const CAST_LIMIT = 5; // cast limit
 
 // localStorage helpers
 function loadSetFromStorage(key) {

@@ -10,7 +10,7 @@ const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
 
 const DEFAULT_LIMIT = 20;
 
-const CAST_LIMIT = 7;
+const CAST_LIMIT = 5;
 
 function loadArrayFromStorage(key) {
     try {

@@ -1,6 +1,9 @@
 // src/components/MovieDetails.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+// emojis are hard to see on yellow background so i used these
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faThumbsUp, faThumbsDown } from "@fortawesome/free-solid-svg-icons";
 
 function formatRuntime(minutes) {
     if (typeof minutes !== "number" || minutes < 0) return null;
@@ -135,14 +138,15 @@ export default function MovieDetails({
                 <div style={backgroundLayerStyle} />
 
                 {/* dedicated content layer too */}
-                <div style={{ position: "relative", zIndex: 1 }}>
+                <div style={{ position: "relative", zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
 
                     <button className="modal-close" onClick={onClose} aria-label="Close">
                         ×
                     </button>
-                    <div className="modal-header">
+
+                    <div className="modal-header" style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: "20px" }}>
                         {" "}
-                        {/* wrapper for poster and trailer button */}
+                        {/* wrapper for poster*/}
                         <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "220px", flexShrink: 0 }}>
                             {/* Use a placeholder image if no poster URL is provided */}
                             {/* Poster */}
@@ -160,27 +164,9 @@ export default function MovieDetails({
                                     backgroundColor: "#1a1a1a", // Dark background prevents white flashes
                                 }}
                             />
-
-                            {/* trailer button (maybe make it aligned with other buttons later if time */}
-                            <a
-                                href={trailerUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent((title || "") + " " + (year || "") + " official trailer")}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="go-btn"
-                                style={{
-                                    textAlign: "center",
-                                    textDecoration: "none",
-                                    display: "block",
-                                    fontSize: "0.9rem",
-                                    padding: "10px 0",
-                                }}
-                            >
-                                {/*if it finds an official trailer, go right to that, otherwise search by name and year + official trailer on yt*/}
-                                {trailerUrl ? "View official trailer" : "Search for trailer"}
-                            </a>
                         </div>
 
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: 1, minWidth: "300px" }}>
                             {" "}
                             {/* Show year if present, rating if its not null, and runtime if present*/}
                             {/* Title / year / rating / runtime */}
@@ -212,12 +198,6 @@ export default function MovieDetails({
                                 </strong>{" "}
                                 {hasDirectors ? directorList.join(", ") : "None Listed"}
                             </div>
-                            {/*change to genre list*/}
-                            {genreList.length > 0 && (
-                                <div style={{ marginBottom: 12 }}>
-                                    <strong>Genres:</strong> {genreList.join(", ")}
-                                </div>
-                            )}
 
                             {/* Only show up the top cast members */}
                             {Array.isArray(topCast) && topCast.length > 0 && (
@@ -232,6 +212,26 @@ export default function MovieDetails({
                                         )
                                         .join(", ")}
                                 </div>
+                            )}
+
+                            {/*change to genre list*/}
+                            {genreList.length > 0 && (
+                                <div style={{ marginBottom: 12 }}>
+                                    <strong>Genres:</strong> {genreList.join(", ")}
+                                </div>
+                            )}
+
+                            {description && (
+                                <p
+                                    style={{
+                                        marginTop: 12,
+                                        marginBottom: 12,
+                                        lineHeight: 1.5,
+                                        textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+                                    }}
+                                >
+                                    {description}
+                                </p>
                             )}
 
                             {/*where to watch icons*/}
@@ -315,104 +315,96 @@ export default function MovieDetails({
                                     )}
                                 </div>
                             )}
+                        </div>
+                    </div>
 
-                            {description && (
-                                <p
-                                    style={{
-                                        marginTop: 12,
-                                        lineHeight: 1.5,
-                                        textShadow: "0 1px 2px rgba(0,0,0,0.8)",
-                                    }}
-                                >
-                                    {description}
-                                </p>
-                            )}
+                    {/* mobile fix kinda */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", marginTop: "12px", alignItems: "center" }}>
 
-                            {/* Action buttons */}
-                            <div
+                        {/* trailer button new */}
+                        <div style={{ width: "220px", flexShrink: 0 }}>
+                            {/* trailer button */}
+                            <a
+                                href={trailerUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent((title || "") + " " + (year || "") + " official trailer")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="go-btn"
                                 style={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: 8,
-                                    marginTop: 12,
+                                    textAlign: "center",
+                                    textDecoration: "none",
+                                    display: "block",
+                                    fontSize: "0.9rem",
+                                    padding: "10px 0",
                                 }}
                             >
-                                {/* Buttons (swapped meanings) */}
-                                <div style={{ display: "flex", gap: 8 }}>
-                                    <button
-                                        className="go-btn"
-                                        onClick={() => handleAction(handleMarkWatched)}
-                                        // removed disabled
-                                        aria-pressed={!!isWatched}
-                                    >
-                                        {isWatched
-                                            ? "Unmark As Watched"
-                                            : "Mark As Watched"}
-                                    </button>
+                                {/*if it finds an official trailer, go right to that, otherwise search by name and year + official trailer on yt*/}
+                                {trailerUrl ? "View official trailer" : "Search for trailer"}
+                            </a>
+                        </div>
 
-                                    <button
-                                        className="go-btn"
-                                        onClick={() => handleAction(handleAddToWatch)}
-                                        // removed disabled
-                                        aria-pressed={!!inToWatch}
-                                    >
-                                        {inToWatch
-                                            ? "Remove from Watch Later"
-                                            : "Add to Watch Later"}
-                                    </button>
-                                </div>
+                        {/* action section - added wrap for small screens */}
+                        <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center", minWidth: "300px" }}>
+                            {/* Buttons (swapped meanings) */}
+                            <button
+                                className="go-btn"
+                                onClick={() => handleAction(handleMarkWatched)}
+                                aria-pressed={!!isWatched}
+                                style={{ flex: 1, whiteSpace: "nowrap" }}
+                            >
+                                {isWatched ? "Unmark As Watched" : "Mark As Watched"}
+                            </button>
 
-                                {/* Like / Dislike row */}
-                                {(onLike || onDislike) && (
-                                    <div style={{ display: "flex", gap: 8 }}>
-                                        {onLike && (
-                                            <button
-                                                type="button"
-                                                className="go-btn"
-                                                style={{
-                                                    flex: 1,
-                                                    fontWeight: isLiked ? 700 : 400,
-                                                    backgroundColor: isLiked
-                                                        ? "rgba(0, 128, 0, 0.85)" // green
-                                                        : undefined,
-                                                    borderColor: isLiked
-                                                        ? "rgba(0, 128, 0, 0.85)"
-                                                        : undefined,
-                                                    color: isLiked ? "#fff" : undefined,
-                                                }}
-                                                onClick={() => handleAction(handleLike)}
-                                                aria-pressed={!!isLiked}
-                                            >
-                                                {isLiked ? "Liked 👍" : "Like 👍"}
-                                            </button>
-                                        )}
+                            <button
+                                className="go-btn"
+                                onClick={() => handleAction(handleAddToWatch)}
+                                aria-pressed={!!inToWatch}
+                                style={{ flex: 1, whiteSpace: "nowrap" }}
+                            >
+                                {inToWatch ? "Remove Watch Later" : "Add to Watch Later"}
+                            </button>
 
-                                        {onDislike && (
-                                            <button
-                                                type="button"
-                                                className="go-btn"
-                                                style={{
-                                                    flex: 1,
-                                                    fontWeight: isDisliked ? 700 : 400,
-                                                    backgroundColor: isDisliked
-                                                        ? "rgba(180, 0, 0, 0.85)" // red
-                                                        : undefined,
-                                                    borderColor: isDisliked
-                                                        ? "rgba(180, 0, 0, 0.85)"
-                                                        : undefined,
-                                                    color: isDisliked ? "#fff" : undefined,
-                                                }}
-                                                onClick={() => handleAction(handleDislike)}
-                                                aria-pressed={!!isDisliked}
-                                            >
-                                                {isDisliked
-                                                    ? "Disliked 👎"
-                                                    : "Dislike 👎"}
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                            {/* Like / Dislike row */}
+                            {(onLike || onDislike) && (
+                                <>
+                                    {onLike && (
+                                        <button
+                                            type="button"
+                                            className="go-btn"
+                                            style={{
+                                                flex: 0.5,
+                                                fontWeight: isLiked ? 700 : 400,
+                                                backgroundColor: isLiked ? "rgba(0, 128, 0, 0.85)" : undefined,
+                                                borderColor: isLiked ? "rgba(0, 128, 0, 0.85)" : undefined,
+                                                color: isLiked ? "#fff" : undefined,
+                                            }}
+                                            onClick={() => handleAction(handleLike)}
+                                            aria-pressed={!!isLiked}
+                                            title="Like"
+                                        >
+                                            <FontAwesomeIcon icon={faThumbsUp} />
+                                        </button>
+                                    )}
+
+                                    {onDislike && (
+                                        <button
+                                            type="button"
+                                            className="go-btn"
+                                            style={{
+                                                flex: 0.5,
+                                                fontWeight: isDisliked ? 700 : 400,
+                                                backgroundColor: isDisliked ? "rgba(180, 0, 0, 0.85)" : undefined,
+                                                borderColor: isDisliked ? "rgba(180, 0, 0, 0.85)" : undefined,
+                                                color: isDisliked ? "#fff" : undefined,
+                                            }}
+                                            onClick={() => handleAction(handleDislike)}
+                                            aria-pressed={!!isDisliked}
+                                            title="Dislike"
+                                        >
+                                            <FontAwesomeIcon icon={faThumbsDown} />
+                                        </button>
+                                    )}
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
