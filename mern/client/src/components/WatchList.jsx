@@ -417,7 +417,7 @@ export default function WatchListPage() {
         if (!loaded) return;
         doSearch();
 
-    }, [watchedKey, loaded, doSearch]);
+    }, [watchedKey, loaded]);
 
     function handleChange(e) {
         const { id, value } = e.target;
@@ -464,7 +464,8 @@ export default function WatchListPage() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
 
-        await loadLists();
+        const { watchedIds } = await loadLists();
+        await doSearch(watchedIds);
     }
 
     function applyLocalReaction(tmdbIdNum, reaction) {
