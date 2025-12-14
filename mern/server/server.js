@@ -53,6 +53,7 @@ app.use('/record/actors', actors);
 app.use('/record/directors', directors);
 app.use('/record/genre', genre);
 app.use('/record', records);
+app.use("/api/record", records);
 
 // protect /feed with access token (change as you like)
 app.use('/feed', feedRouter);
