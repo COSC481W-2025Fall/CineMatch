@@ -1,5 +1,9 @@
 // src/components/MovieDetails.jsx
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+// emojis are hard to see on yellow background so i used these
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faThumbsUp, faThumbsDown } from "@fortawesome/free-solid-svg-icons";
 
 function formatRuntime(minutes) {
     if (typeof minutes !== "number" || minutes < 0) return null;
@@ -24,7 +28,12 @@ export default function MovieDetails({
                                          isDisliked = false,
                                          likesEditable = true,
                                          canModifyLists = true,
+                                         onNavigate, // function to open prequel / sequel
                                      }) {
+    // for login redirection
+    const navigate = useNavigate();
+    const location = useLocation();
+
     if (!details) return null; // If no movie details are provided, render nothing
 
     const {
@@ -37,12 +46,21 @@ export default function MovieDetails({
         topCast,
         topCastCount,
         genres,
+        genre,
         runtime,
+        ageRating,
         directors,
         director,
         watchProviders,
+        watchType,
+        tagline, // for later
+        trailerUrl,
+        prequel,
+        sequel,
     } = details;
 
+    // make genre list both genre and genres because fixing records doesnt seem to work
+    const genreList = Array.isArray(genres) ? genres : Array.isArray(genre) ? genre : [];
     const runtimeText = formatRuntime(runtime);
 
     const directorList =
@@ -57,13 +75,38 @@ export default function MovieDetails({
         directorList.length > 0 &&
         !(directorList.length === 1 && directorList[0] === "NA");
 
-    // use linear gradiant to make it look better and text easier to read
-    const modalStyle = backdropUrl
+    // preload background image
+    const [bgLoaded, setBgLoaded] = useState(false);
+
+    useEffect(() => {
+        if (backdropUrl) {
+            setBgLoaded(false);
+            const img = new Image();
+            img.src = backdropUrl;
+            img.onload = () => {
+                setBgLoaded(true); // fade in when data is ready
+            };
+        } else {
+            setBgLoaded(false);
+        }
+    }, [backdropUrl]);
+
+    // Separate style for the background layer
+    const backgroundLayerStyle = backdropUrl
         ? {
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
             backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(17,17,17,0.95) 85%, #111 100%), url(${backdropUrl})`,
             backgroundSize: "cover",
             backgroundPosition: "center top",
             backgroundRepeat: "no-repeat",
+            opacity: bgLoaded ? 1 : 0,
+            transition: "opacity 0.5s ease-in-out",
+            zIndex: 0,
+            borderRadius: "12px",
         }
         : {};
 
@@ -71,7 +114,9 @@ export default function MovieDetails({
     const handleMarkWatched = () => {
         if (typeof onMarkWatched !== "function") return;
         if (!canModifyLists) {
-            window.alert("You must be logged in to use watch lists. Please log in or register to use this feature.");
+            window.alert(
+                "You must be logged in to use watch lists. Please log in or register to use this feature."
+            );
             return;
         }
         onMarkWatched();
@@ -80,7 +125,9 @@ export default function MovieDetails({
     const handleAddToWatch = () => {
         if (typeof onAddToWatch !== "function") return;
         if (!canModifyLists) {
-            window.alert("You must be logged in to use watch lists. Please log in or register to use this feature.");
+            window.alert(
+                "You must be logged in to use watch lists. Please log in or register to use this feature."
+            );
             return;
         }
         onAddToWatch();
@@ -89,195 +136,429 @@ export default function MovieDetails({
     const handleLike = typeof onLike === "function" ? onLike : () => {};
     const handleDislike = typeof onDislike === "function" ? onDislike : () => {};
 
+    // gate actions heind the login
+    function handleAction(actionFn) {
+        if (!canModifyLists) {
+            // redirect to login and save to return to later
+            navigate("/login", { state: { from: location } });
+        } else {
+            actionFn();
+        }
+    }
+
     // Clicking the backdrop closes the modal
     return (
         <div className="modal-backdrop" onClick={onClose}>
             <div
                 className="modal"
                 onClick={(e) => e.stopPropagation()}
-                style={modalStyle}
+                style={{ position: "relative" }}
             >
-                <button className="modal-close" onClick={onClose} aria-label="Close">
-                    ×
-                </button>
-                <div className="modal-header">
-                    {" "}
-                    {/* Use a placeholder image if no poster URL is provided */}
-                    {/* Poster */}
-                    <img
-                        src={posterUrl || "https://placehold.co/220x330?text=No+Poster"}
-                        alt={title || ""}
-                        width={220}
-                        height={330}
+                {/* dedicated layer */}
+                <div style={backgroundLayerStyle} />
+
+                {/* dedicated content layer too */}
+                <div
+                    style={{
+                        position: "relative",
+                        zIndex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        height: "100%",
+                    }}
+                >
+                    <button
+                        className="modal-close"
+                        onClick={onClose}
+                        aria-label="Close"
+                    >
+                        ×
+                    </button>
+
+                    <div
+                        className="modal-header"
                         style={{
-                            borderRadius: 8,
-                            flexShrink: 0,
-                            boxShadow: "0 4px 10px rgba(0,0,0,0.5)",
+                            flex: 1,
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: "20px",
                         }}
-                    />
-
-                    <div style={{ flex: 1 }}>
+                    >
                         {" "}
-                        {/* Show year if present, rating if its not null, and runtime if present*/}
-                        {/* Title / year / rating / runtime */}
-                        <h2
-                            style={{
-                                margin: "0 0 8px",
-                                textShadow: "0 2px 4px rgba(0,0,0,0.8)",
-                            }}
-                        >
-                            {title ?? "Untitled"}
-                        </h2>{" "}
-                        {/*add text shadow to make it easy to read on light background*/}
-                        <div
-                            className="muted"
-                            style={{ marginBottom: 8, color: "rgba(255,255,255,0.8)" }}
-                        >
-                            {year ?? "—"}
-                            {rating != null ? ` • ⭐ ${rating}` : ""}
-                            {runtimeText ? ` • ${runtimeText}` : ""}
-                        </div>
-
-                        {/* condensed logic, list none listed for cases of no director */}
-                        <div style={{ marginBottom: 12 }}>
-                            <strong>
-                                {hasDirectors && directorList.length > 1
-                                    ? "Directors:"
-                                    : "Director:"}
-                            </strong>{" "}
-                            {hasDirectors ? directorList.join(", ") : "None Listed"}
-                        </div>
-
-                        {Array.isArray(genres) && genres.length > 0 && (
-                            <div style={{ marginBottom: 12 }}>
-                                <strong>Genres:</strong> {genres.join(", ")}
-                            </div>
-                        )}
-
-                        {/* Only show up the top cast members */}
-                        {Array.isArray(topCast) && topCast.length > 0 && (
-                            <div style={{ marginBottom: 12 }}>
-                                <strong>Top cast:</strong>{" "}
-                                {topCast
-                                    .slice(
-                                        0,
-                                        typeof topCastCount === "number"
-                                            ? topCastCount
-                                            : topCast.length
-                                    )
-                                    .join(", ")}
-                            </div>
-                        )}
-
-                        {/*where to watch icons*/}
-                        {Array.isArray(watchProviders) && watchProviders.length > 0 && (
-                            <div style={{ marginBottom: 12 }}>
-                                <strong style={{ display: "block", marginBottom: 6 }}>
-                                    Where to watch:
-                                </strong>
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                                    {watchProviders.map((provider, index) => {
-                                        if (
-                                            typeof provider === "object" &&
-                                            provider.logo_path
-                                        ) {
-                                            return (
-                                                <img
-                                                    key={index}
-                                                    src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
-                                                    alt={provider.provider_name}
-                                                    title={provider.provider_name} // show name on hover, maybe add click to go to website
-                                                    style={{
-                                                        width: 45, // no automatic sizing for now
-                                                        height: 45,
-                                                        borderRadius: 8,
-                                                        cursor: "help",
-                                                        boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
-                                                    }}
-                                                />
-                                            );
-                                        }
-                                        return null;
-                                    })}
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: "0.7em",
-                                        opacity: 0.6,
-                                        marginTop: 4,
-                                    }}
-                                >
-                                    Source: JustWatch
-                                </div>
-                            </div>
-                        )}
-
-                        {description && (
-                            <p
-                                style={{
-                                    marginTop: 12,
-                                    lineHeight: 1.5,
-                                    textShadow: "0 1px 2px rgba(0,0,0,0.8)",
-                                }}
-                            >
-                                {description}
-                            </p>
-                        )}
-
-                        {/* Action buttons */}
+                        {/* wrapper for poster*/}
                         <div
                             style={{
                                 display: "flex",
                                 flexDirection: "column",
-                                gap: 8,
-                                marginTop: 12,
+                                gap: "12px",
+                                width: "220px",
+                                flexShrink: 0,
+                            }}
+                        >
+                            {/* Use a placeholder image if no poster URL is provided */}
+                            {/* Poster */}
+                            <img
+                                src={
+                                    posterUrl ||
+                                    "https://placehold.co/220x330?text=No+Poster"
+                                }
+                                alt={title || ""}
+                                width={220}
+                                height={330}
+                                style={{
+                                    width: "100%",
+                                    borderRadius: "12px",
+                                    objectFit: "cover", // Ensures image fills the box without stretching
+                                    boxShadow: "0 8px 25px rgba(0,0,0,0.6)", // Deeper, more professional shadow
+                                    border:
+                                        "1px solid rgba(255, 255, 255, 0.1)", // Subtle glass-like border
+                                    backgroundColor: "#1a1a1a", // Dark background prevents white flashes
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ flex: 1, minWidth: "300px" }}>
+                            {" "}
+                            {/* Show year if present, rating if its not null, and runtime if present*/}
+                            {/* Title / year / rating / runtime */}
+                            <h2
+                                style={{
+                                    margin: "0 0 8px",
+                                    textShadow:
+                                        "0 2px 4px rgba(0,0,0,0.8)",
+                                }}
+                            >
+                                {title ?? "Untitled"}
+                            </h2>{" "}
+                            {/*add text shadow to make it easy to read on light background*/}
+                            <div
+                                className="muted"
+                                style={{
+                                    marginBottom: 8,
+                                    color: "rgba(255,255,255,0.8)",
+                                }}
+                            >
+                                {year ?? "—"}
+                                {rating != null
+                                    ? ` • ⭐ ${Number(rating).toFixed(1)}`
+                                    : ""}
+                                {runtimeText ? ` • ${runtimeText}` : ""}
+                                {ageRating ? ` • ${ageRating}` : ""}
+                            </div>
+
+                            {/* condensed logic, list none listed for cases of no director */}
+                            <div style={{ marginBottom: 12 }}>
+                                <strong>
+                                    {hasDirectors &&
+                                    directorList.length > 1
+                                        ? "Directors:"
+                                        : "Director:"}
+                                </strong>{" "}
+                                {hasDirectors
+                                    ? directorList.join(", ")
+                                    : "None Listed"}
+                            </div>
+
+                            {/* Only show up the top cast members */}
+                            {Array.isArray(topCast) &&
+                                topCast.length > 0 && (
+                                    <div
+                                        style={{ marginBottom: 12 }}
+                                    >
+                                        <strong>Top cast:</strong>{" "}
+                                        {topCast
+                                            .slice(
+                                                0,
+                                                typeof topCastCount ===
+                                                "number"
+                                                    ? topCastCount
+                                                    : topCast.length
+                                            )
+                                            .join(", ")}
+                                    </div>
+                                )}
+
+                            {/*change to genre list*/}
+                            {genreList.length > 0 && (
+                                <div
+                                    style={{ marginBottom: 12 }}
+                                >
+                                    <strong>Genres:</strong>{" "}
+                                    {genreList.join(", ")}
+                                </div>
+                            )}
+
+                            {description && (
+                                <p
+                                    style={{
+                                        marginTop: 12,
+                                        marginBottom: 12,
+                                        lineHeight: 1.5,
+                                        textShadow:
+                                            "0 1px 2px rgba(0,0,0,0.8)",
+                                    }}
+                                >
+                                    {description}
+                                </p>
+                            )}
+
+                            {/*where to watch icons*/}
+                            {Array.isArray(watchProviders) &&
+                                watchProviders.length > 0 && (
+                                    <div
+                                        style={{ marginBottom: 12 }}
+                                    >
+                                        <strong
+                                            style={{
+                                                display: "block",
+                                                marginBottom: 6,
+                                            }}
+                                        >
+                                            {watchType === "rent"
+                                                ? "Rent It On:"
+                                                : "Stream It On:"}
+                                        </strong>
+                                        <div
+                                            style={{
+                                                display: "flex",
+                                                flexWrap: "wrap",
+                                                gap: 8,
+                                            }}
+                                        >
+                                            {watchProviders.map(
+                                                (
+                                                    provider,
+                                                    index
+                                                ) => {
+                                                    if (
+                                                        typeof provider ===
+                                                        "object" &&
+                                                        provider.logo_path
+                                                    ) {
+                                                        return (
+                                                            <img
+                                                                key={
+                                                                    index
+                                                                }
+                                                                src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                                                                alt={
+                                                                    provider.provider_name
+                                                                }
+                                                                title={
+                                                                    provider.provider_name
+                                                                } // show name on hover, maybe add click to go to website
+                                                                style={{
+                                                                    width: 45, // no automatic sizing for now
+                                                                    height: 45,
+                                                                    borderRadius: 8,
+                                                                    cursor:
+                                                                        "help",
+                                                                    boxShadow:
+                                                                        "0 2px 4px rgba(0,0,0,0.3)",
+                                                                }}
+                                                            />
+                                                        );
+                                                    }
+                                                    return null;
+                                                }
+                                            )}
+                                        </div>
+                                        <div
+                                            style={{
+                                                fontSize: "0.7em",
+                                                opacity: 0.6,
+                                                marginTop: 4,
+                                            }}
+                                        >
+                                            Source: JustWatch
+                                        </div>
+                                    </div>
+                                )}
+
+                            {/* prequel sequel links*/}
+                            {(prequel || sequel) && onNavigate && (
+                                <div
+                                    style={{
+                                        marginBottom: 12,
+                                        display: "flex",
+                                        gap: "16px",
+                                    }}
+                                >
+                                    {prequel && (
+                                        <div>
+                                            <strong>
+                                                Prequel:{" "}
+                                            </strong>
+                                            <span
+                                                onClick={() =>
+                                                    onNavigate(
+                                                        prequel
+                                                    )
+                                                }
+                                                style={{
+                                                    color: "#f7e135",
+                                                    cursor: "pointer",
+                                                    textDecoration:
+                                                        "underline",
+                                                    fontWeight: "600",
+                                                }}
+                                            >
+                                                {prequel.title}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {sequel && (
+                                        <div>
+                                            <strong>
+                                                Sequel:{" "}
+                                            </strong>
+                                            <span
+                                                onClick={() =>
+                                                    onNavigate(
+                                                        sequel
+                                                    )
+                                                }
+                                                style={{
+                                                    color: "#f7e135",
+                                                    cursor: "pointer",
+                                                    textDecoration:
+                                                        "underline",
+                                                    fontWeight: "600",
+                                                }}
+                                            >
+                                                {sequel.title}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* mobile fix kinda */}
+                    <div
+                        style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: "20px",
+                            marginTop: "12px",
+                            alignItems: "center",
+                        }}
+                    >
+                        {/* trailer button new */}
+                        <div
+                            style={{ width: "220px", flexShrink: 0 }}
+                        >
+                            {/* trailer button */}
+                            <a
+                                href={
+                                    trailerUrl ||
+                                    `https://www.youtube.com/results?search_query=${encodeURIComponent(
+                                        (title || "") +
+                                        " " +
+                                        (year || "") +
+                                        " official trailer"
+                                    )}`
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="go-btn"
+                                style={{
+                                    textAlign: "center",
+                                    textDecoration: "none",
+                                    display: "block",
+                                    fontSize: "0.9rem",
+                                    padding: "10px 0",
+                                }}
+                            >
+                                {/*if it finds an official trailer, go right to that, otherwise search by name and year + official trailer on yt*/}
+                                {trailerUrl
+                                    ? "View official trailer"
+                                    : "Search for trailer"}
+                            </a>
+                        </div>
+
+                        {/* action section - added wrap for small screens */}
+                        <div
+                            style={{
+                                flex: 1,
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: "8px",
+                                alignItems: "center",
+                                minWidth: "300px",
                             }}
                         >
                             {/* Buttons (swapped meanings) */}
-                            <div style={{ display: "flex", gap: 8 }}>
-                                <button
-                                    className="go-btn"
-                                    onClick={handleMarkWatched}
-                                    aria-pressed={!!isWatched}
-                                >
-                                    {isWatched
-                                        ? "Remove from Watched List"
-                                        : "Add to Watched List"}
-                                </button>
+                            <button
+                                className="go-btn"
+                                onClick={() =>
+                                    handleAction(handleMarkWatched)
+                                }
+                                aria-pressed={!!isWatched}
+                                style={{
+                                    flex: 1,
+                                    whiteSpace: "nowrap",
+                                }}
+                            >
+                                {isWatched
+                                    ? "Unmark As Watched"
+                                    : "Mark As Watched"}
+                            </button>
 
-                                <button
-                                    className="go-btn"
-                                    onClick={handleAddToWatch}
-                                    aria-pressed={!!inToWatch}
-                                >
-                                    {inToWatch
-                                        ? "Remove from To-Watch List"
-                                        : "Save for Later"}
-                                </button>
-                            </div>
+                            <button
+                                className="go-btn"
+                                onClick={() =>
+                                    handleAction(handleAddToWatch)
+                                }
+                                aria-pressed={!!inToWatch}
+                                style={{
+                                    flex: 1,
+                                    whiteSpace: "nowrap",
+                                }}
+                            >
+                                {inToWatch
+                                    ? "Remove Watch Later"
+                                    : "Add to Watch Later"}
+                            </button>
 
                             {/* Like / Dislike row */}
                             {(onLike || onDislike) && likesEditable && (
-                                <div style={{ display: "flex", gap: 8 }}>
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        gap: 8,
+                                        flex: 1,
+                                    }}
+                                >
                                     {onLike && (
                                         <button
                                             type="button"
                                             className="go-btn"
                                             style={{
-                                                flex: 1,
-                                                fontWeight: isLiked ? 700 : 400,
+                                                flex: 0.5,
+                                                fontWeight: isLiked
+                                                    ? 700
+                                                    : 400,
                                                 backgroundColor: isLiked
-                                                    ? "rgba(0, 128, 0, 0.85)" // green
+                                                    ? "rgba(0, 128, 0, 0.85)"
                                                     : undefined,
                                                 borderColor: isLiked
                                                     ? "rgba(0, 128, 0, 0.85)"
                                                     : undefined,
-                                                color: isLiked ? "#fff" : undefined,
+                                                color: isLiked
+                                                    ? "#fff"
+                                                    : undefined,
                                             }}
-                                            onClick={handleLike}
+                                            onClick={() =>
+                                                handleAction(handleLike)
+                                            }
                                             aria-pressed={!!isLiked}
+                                            title="Like"
                                         >
-                                            {isLiked ? "Liked 👍" : "Like 👍"}
+                                            <FontAwesomeIcon
+                                                icon={faThumbsUp}
+                                            />
                                         </button>
                                     )}
 
@@ -286,20 +567,31 @@ export default function MovieDetails({
                                             type="button"
                                             className="go-btn"
                                             style={{
-                                                flex: 1,
-                                                fontWeight: isDisliked ? 700 : 400,
+                                                flex: 0.5,
+                                                fontWeight: isDisliked
+                                                    ? 700
+                                                    : 400,
                                                 backgroundColor: isDisliked
-                                                    ? "rgba(180, 0, 0, 0.85)" // red
+                                                    ? "rgba(180, 0, 0, 0.85)"
                                                     : undefined,
                                                 borderColor: isDisliked
                                                     ? "rgba(180, 0, 0, 0.85)"
                                                     : undefined,
-                                                color: isDisliked ? "#fff" : undefined,
+                                                color: isDisliked
+                                                    ? "#fff"
+                                                    : undefined,
                                             }}
-                                            onClick={handleDislike}
+                                            onClick={() =>
+                                                handleAction(
+                                                    handleDislike
+                                                )
+                                            }
                                             aria-pressed={!!isDisliked}
+                                            title="Dislike"
                                         >
-                                            {isDisliked ? "Disliked 👎" : "Dislike 👎"}
+                                            <FontAwesomeIcon
+                                                icon={faThumbsDown}
+                                            />
                                         </button>
                                     )}
                                 </div>

@@ -30,7 +30,7 @@ const GENRES = [
     "Western",
 ];
 
-const CAST_LIMIT = 7;
+const CAST_LIMIT = 5;
 
 // localStorage helpers
 function loadSetFromStorage(key) {
@@ -94,15 +94,10 @@ export default function WatchListPage() {
     // for this page, watchlist = watched movie ids (by DB id)
     const watchlist = useMemo(() => new Set([...watched]), [watched]);
 
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth <= 768);
     // Liked/disliked (by TMDB id) – watchlist is editable
-    const [likedTmdbIds, setLikedTmdbIds] = useState(() =>
-        loadArrayFromStorage("likedTmdbIds")
-    );
-    const [dislikedTmdbIds, setDislikedTmdbIds] = useState(() =>
-        loadArrayFromStorage("dislikedTmdbIds")
-    );
+    const [likedTmdbIds, setLikedTmdbIds] = useState([]);
+    const [dislikedTmdbIds, setDislikedTmdbIds] = useState([]);
 
     // Map of DB record id - TMDB id, shared with Search page via localStorage
     const [recordTmdbMap, setRecordTmdbMap] = useState(() =>
@@ -117,17 +112,6 @@ export default function WatchListPage() {
         }
     }, [watched]);
 
-    // Keep liked/disliked in sync with localStorage
-    useEffect(() => {
-        localStorage.setItem("likedTmdbIds", JSON.stringify(likedTmdbIds));
-    }, [likedTmdbIds]);
-
-    useEffect(() => {
-        localStorage.setItem(
-            "dislikedTmdbIds",
-            JSON.stringify(dislikedTmdbIds)
-        );
-    }, [dislikedTmdbIds]);
 
     useEffect(() => {
         localStorage.setItem(
@@ -156,7 +140,7 @@ export default function WatchListPage() {
                 const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
                 url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
 
-                url.searchParams.set("append_to_response", "credits,watch/providers"); // add where to watch to the append
+                url.searchParams.set("append_to_response", "credits,watch/providers,videos"); // add where to watch to the append and trailer
 
                 const tmdbRes = await fetch(url.toString(), {headers: {accept: "application/json"}});
                 if (tmdbRes.ok) {
@@ -199,10 +183,55 @@ export default function WatchListPage() {
 
                     // get where to watch
                     let watchProviders = [];
+                    let watchType = null;
 
                     // use US by default, not important for other areas rn since it changes by location
-                    if (tmdb && tmdb["watch/providers"] && tmdb["watch/providers"].results && tmdb["watch/providers"].results.US && tmdb["watch/providers"].results.US.flatrate) {
-                        watchProviders = tmdb["watch/providers"].results.US.flatrate;
+                    if (tmdb && tmdb["watch/providers"] && tmdb["watch/providers"].results && tmdb["watch/providers"].results.US) {
+                        const us = tmdb["watch/providers"].results.US;
+                        if (us.flatrate && us.flatrate.length > 0) {
+                            watchProviders = us.flatrate;
+                            watchType = "stream";
+                        } else if (us.rent && us.rent.length > 0) {
+                            watchProviders = us.rent;
+                            watchType = "rent";
+                        }
+                    }
+
+                    let trailerUrl = null;
+                    if (tmdb && tmdb.videos && tmdb.videos.results) {
+                        const trailer = tmdb.videos.results.find(v => v.site === "YouTube" && v.type === "Trailer");
+                        if (trailer) trailerUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
+                    }
+
+                    // check for prequel and sequel
+                    if (tmdb.belongs_to_collection && tmdb.belongs_to_collection.id) {
+                        const collectionUrl = new URL(`https://api.themoviedb.org/3/collection/${tmdb.belongs_to_collection.id}`);
+                        collectionUrl.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
+                        try {
+                            const collRes = await fetch(collectionUrl.toString(), { headers: { accept: "application/json" } });
+                            if (collRes.ok) {
+                                const collectionData = await collRes.json();
+                                // sort by release date to determine order
+                                const parts = (collectionData.parts || []).sort((a, b) => {
+                                    return new Date(a.release_date || "9999-12-31") - new Date(b.release_date || "9999-12-31");
+                                });
+                                const currentIndex = parts.findIndex(p => p.id === tmdbId);
+                                if (currentIndex !== -1) {
+                                    if (currentIndex > 0) {
+                                        // prequel exists
+                                        const prev = parts[currentIndex - 1];
+                                        patch.prequel = { id: prev.id, tmdbId: prev.id, title: prev.title };
+                                    }
+                                    if (currentIndex < parts.length - 1) {
+                                        // sequel exists
+                                        const next = parts[currentIndex + 1];
+                                        patch.sequel = { id: next.id, tmdbId: next.id, title: next.title };
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Collection fetch error:", e);
+                        }
                     }
 
                     // fill patch objects
@@ -218,6 +247,20 @@ export default function WatchListPage() {
                     // add watchers to patch and pass to detail view
                     if (watchProviders.length > 0) {
                         patch.watchProviders = watchProviders;
+                        patch.watchType = watchType;
+                    }
+
+                    if (trailerUrl) {
+                        patch.trailerUrl = trailerUrl;
+                    }
+
+                    if (!data.title && tmdb.title) {
+                        patch.title = tmdb.title;
+                        patch.year = tmdb.release_date ? parseInt(tmdb.release_date.slice(0, 4)) : null;
+                        patch.description = tmdb.overview;
+                        patch.posterUrl = tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : null;
+                        patch.backdropUrl = tmdb.backdrop_path ? `https://image.tmdb.org/t/p/original${tmdb.backdrop_path}` : null;
+                        patch.rating = tmdb.vote_average;
                     }
 
                     console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime, "providers:", watchProviders.length);
@@ -237,18 +280,6 @@ export default function WatchListPage() {
             setDetails({ id: movie.id, tmdbId: finalTmdbId, ...data, ...patch });
             setShowDetails(true);
 
-            // Cache TMDB id on the search results and in recordTmdbMap
-            if (finalTmdbId != null) {
-                setMovies((prev) =>
-                    prev.map((m) =>
-                        m.id === movie.id ? { ...m, tmdbId: finalTmdbId ?? m.tmdbId } : m
-                    )
-                );
-                setRecordTmdbMap((prev) => ({
-                    ...prev,
-                    [movie.id]: finalTmdbId,
-                }));
-            }
         } catch (e) {
             console.error(e);
         }
@@ -336,18 +367,16 @@ export default function WatchListPage() {
 
             if (ids.length === 0) {
                 setMovies([]);
-                setStatus("Your watch list is empty.");
+                setStatus("Your watched movies is empty.");
                 return;
             }
 
             const data = await fetchWatchlistSubset(ids, params);
 
+            setMovies(data);
+
             // Attach tmdbId from our persisted map, if we know it
             const withTmdb = data.map((m) => {
-                const mapped = recordTmdbMap[m.id];
-                if (mapped && m.tmdbId == null) {
-                    return { ...m, tmdbId: mapped };
-                }
                 return m;
             });
 
@@ -355,7 +384,7 @@ export default function WatchListPage() {
             setStatus(
                 withTmdb.length
                     ? ""
-                    : "Your watch list is empty or no matches for this search."
+                    : "Your watched movies list is empty or no matches for this search."
             );
         } catch (err) {
             console.error(err);
@@ -370,12 +399,9 @@ export default function WatchListPage() {
                 const { watchedIds } = await loadLists();
                 console.log("watched set after loadLists ->", watchedIds);
 
-                const {
-                    likedTmdbIds: srvLiked,
-                    dislikedTmdbIds: srvDisliked,
-                } = await fetchReactions().catch(() => ({ likedTmdbIds: [], dislikedTmdbIds: [] }));
-                setLikedTmdbIds(srvLiked.map(Number));
-                setDislikedTmdbIds(srvDisliked.map(Number));
+                const reactions = await fetchReactions().catch(() => ({ likedTmdbIds: [], dislikedTmdbIds: [] }));
+                setLikedTmdbIds(reactions.likedTmdbIds);
+                setDislikedTmdbIds(reactions.dislikedTmdbIds)
 
                 await doSearch(watchedIds); // perfoms intail search using  new ids
             } catch (e) {
@@ -474,7 +500,7 @@ export default function WatchListPage() {
             if (wasWatched && tmdbIdNum != null && Number.isFinite(tmdbIdNum)) {
                 const reaction = "clear";
                 applyLocalReaction(tmdbIdNum, reaction);
-                updateReaction(tmdbIdNum, reaction).catch(console.error);
+                updateReaction(tmdbIdNum, reaction).catch(console.error)
             }
         } catch (e) {
             console.error(e);
@@ -645,28 +671,34 @@ export default function WatchListPage() {
                         {status}
                     </div>
                     <div id="results" className="movie-grid">
-                        {movies.map((m, idx) => {
+                        {movies.map((m) => {
                             const tmdbIdNum =
                                 m.tmdbId != null
                                     ? Number(m.tmdbId)
-                                    : recordTmdbMap[m.id] != null
-                                        ? Number(recordTmdbMap[m.id])
-                                        : null;
+                                    : Number(m.id);
 
-                            const liked =
+                            const likedFlag =
                                 tmdbIdNum != null && likedTmdbIds.includes(tmdbIdNum);
-                            const disliked =
-                                tmdbIdNum != null &&
-                                dislikedTmdbIds.includes(tmdbIdNum);
+                            const dislikedFlag =
+                                tmdbIdNum != null && dislikedTmdbIds.includes(tmdbIdNum);
 
                             return (
                                 <article
                                     className="movie-card"
-                                    key={idx}
+                                    key={m.id}
                                     onClick={() => openDetails(m)}
-                                    style={{ cursor: "pointer", position: "relative" }}
+                                    style={{
+                                        cursor: "pointer",
+                                        position: "relative",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        height: "100%",
+                                        backgroundColor: "#222", // ensuring consistent background for card
+                                        borderRadius: "8px",
+                                        overflow: "hidden", // ensures image respects border radius
+                                    }}
                                 >
-                                    {(liked || disliked) && (
+                                    {(likedFlag || dislikedFlag) && (
                                         <div
                                             className="like-flag-card"
                                             style={{
@@ -677,32 +709,138 @@ export default function WatchListPage() {
                                                 borderRadius: 999,
                                                 fontSize: 11,
                                                 fontWeight: 600,
-                                                backgroundColor: liked
-                                                    ? "rgba(0, 128, 0, 0.85)"
-                                                    : "rgba(180, 0, 0, 0.85)",
+                                                backgroundColor: likedFlag
+                                                    ? "rgba(0, 128, 0, 1)"   // make solid
+                                                    : "rgba(180, 0, 0, 1)", // make solid
                                                 color: "#fff",
+                                                zIndex: 10, // bring to front
+                                                boxShadow: "0 2px 4px rgba(0,0,0,0.5)"
                                             }}
                                         >
-                                            {liked ? "👍" : "👎"}
+                                            {likedFlag ? "👍" : "👎"}
                                         </div>
                                     )}
+
                                     <img
                                         src={
-                                            m.posterUrl ||
-                                            "https://placehold.co/300x450?text=No+Poster"
+                                            m.posterUrl || "https://placehold.co/300x450?text=No+Poster"
                                         }
                                         alt={m.title || ""}
+                                        style={{
+                                            width: "100%",
+                                            aspectRatio: "2/3",
+                                            objectFit: "cover",
+                                            display: "block",
+                                        }}
                                     />
-                                    <div className="movie-title">{m.title ?? "Untitled"}</div>
-                                    <div className="movie-sub">
-                                        {m.year ?? "—"} •{" "}
-                                        {Array.isArray(m.genre)
-                                            ? m.genre.join(", ")
-                                            : m.genre || "—"}
+
+                                    <div
+                                        style={{
+                                            padding: "10px",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            flex: 1,
+                                            gap: "4px", // element gap, maybe increase later?
+                                        }}
+                                    >
+                                        <div
+                                            className="movie-title"
+                                            style={{
+                                                whiteSpace: "normal",
+                                                overflow: "visible",
+                                                lineHeight: "1.2",
+                                                fontSize: "1rem",
+                                                fontWeight: "600",
+                                                marginBottom: "2px",
+                                            }}
+                                        >
+                                            {m.title ?? ""}
+                                        </div>
+                                        <div
+                                            className="movie-sub"
+                                            style={{
+                                                fontSize: "0.85rem",
+                                                opacity: 0.8,
+                                                marginBottom: "2px"
+                                            }}
+                                        >
+                                            {m.year ?? "—"}
+                                        </div>
+
+                                        {(m.rating != null || m.ageRating) && (
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "8px",
+                                                    flexWrap: "wrap",
+                                                    marginBottom: "2px",
+                                                }}
+                                            >
+                                                {m.rating != null && (
+                                                    <div
+                                                        className="movie-sub"
+                                                        style={{
+                                                            display: "inline-flex",
+                                                            alignItems: "center",
+                                                            gap: "4px",
+                                                            lineHeight: 1,
+                                                        }}
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                display: "inline-block",
+                                                                transform: "translateY(-1px)", // translate emoji to fix vertical allignment issue
+                                                            }}
+                                                        >
+                                                          ⭐
+                                                        </span>
+                                                        <span>{Number(m.rating).toFixed(1)}</span>
+                                                    </div>
+                                                )}
+
+                                                {m.ageRating && (
+                                                    <span
+                                                        style={{
+                                                            border: "1px solid #555",
+                                                            padding: "1px 6px",
+                                                            borderRadius: "4px",
+                                                            fontSize: "0.75rem",
+                                                            color: "#ccc",
+                                                            lineHeight: "1.2", // prevent offset
+                                                            display: "inline-block",
+                                                        }}
+                                                    >
+                                                        {m.ageRating}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div
+                                            className="movie-sub"
+                                            style={{
+                                                marginTop: "auto", // move genres to bottom
+                                                fontSize: "0.8rem",
+                                                opacity: 0.6,
+                                                lineHeight: "1.3",
+                                                paddingTop: "6px"
+                                            }}
+                                        >
+                                            {(() => {
+                                                const list = Array.isArray(m.genre)
+                                                    ? m.genre
+                                                    : [m.genre];
+                                                // remove NA or null or empty
+                                                const clean = list.filter(
+                                                    (g) => g && g !== "NA"
+                                                );
+                                                return clean.length > 0
+                                                    ? clean.join(", ")
+                                                    : "—";
+                                            })()}
+                                        </div>
                                     </div>
-                                    {m.rating != null && (
-                                        <div className="movie-sub">⭐ {m.rating}</div>
-                                    )}
                                 </article>
                             );
                         })}
@@ -723,6 +861,7 @@ export default function WatchListPage() {
                     isLiked={!!isLiked}
                     isDisliked={!!isDisliked}
                     likesEditable={true}
+                    onNavigate={openDetails}
                 />
             )}
         </>

@@ -45,6 +45,7 @@ export async function refresh() {
     return data;
 }
 
+// Authorization fetch
 
 export async function authedFetch(path, init = {}) {
     const headers = new Headers(init.headers || {});
@@ -73,6 +74,7 @@ export async function authedFetch(path, init = {}) {
             });
         } catch {
             // give up and return original 401
+            window.dispatchEvent(new Event("auth:unauthorized"));
         }
     }
 

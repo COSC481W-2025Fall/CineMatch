@@ -8,6 +8,7 @@ import {
   faMagnifyingGlass,
   faClapperboard,
   faCircleInfo,
+    faBars // eric what awful IDE did you use that does this indentation i litterly cant indent by a single space on webstorm
 } from "@fortawesome/free-solid-svg-icons";
 import { faUser } from "@fortawesome/free-regular-svg-icons";
 import NotificationModal from "./NotificationModal.jsx";
@@ -74,7 +75,7 @@ export default function Navigation({ sidebarCollapsed, setSidebarCollapsed }) {
                 style={{ visibility: showSearchToggle ? "visible" : "hidden" }}
                 disabled={!showSearchToggle}
             >
-              <FontAwesomeIcon icon={faMagnifyingGlass} />
+                <FontAwesomeIcon icon={faBars} />
             </button>
 
             {/* Mobile: movie list icon -> Feed / WatchList / To-Watch */}
@@ -108,14 +109,14 @@ export default function Navigation({ sidebarCollapsed, setSidebarCollapsed }) {
                         className="dropdown-item"
                         onClick={() => setListsOpen(false)}
                     >
-                      WatchList
+                      Watched Movies
                     </Link>
                     <Link
                         to="/to-watch-list"
                         className="dropdown-item"
                         onClick={() => setListsOpen(false)}
                     >
-                      To-Watch List
+                      Watch Later
                     </Link>
                   </div>
               )}
@@ -133,10 +134,10 @@ export default function Navigation({ sidebarCollapsed, setSidebarCollapsed }) {
               FEED
             </Link>
             <Link to="/watchlist" className={btnClass("/watchlist")}>
-              WATCHED LIST
+              WATCHED MOVIES
             </Link>
             <Link to="/to-watch-list" className={btnClass("/to-watch-list")}>
-              TO-WATCH LIST
+              WATCH LATER
             </Link>
 
             {/* Both: HELP icon button */}

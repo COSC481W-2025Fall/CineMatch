@@ -10,7 +10,7 @@ const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
 
 const DEFAULT_LIMIT = 20;
 
-const CAST_LIMIT = 7;
+const CAST_LIMIT = 5;
 
 function loadArrayFromStorage(key) {
     try {
@@ -72,20 +72,13 @@ export default function RecommendationFeed() {
         const raw = await res.json();
 
         const w = Array.isArray(raw.watchedIds) ? raw.watchedIds
-            : Array.isArray(raw.watched)       ? raw.watched
-                : [];
-        const t = Array.isArray(raw.toWatchIds)   ? raw.toWatchIds
-            : Array.isArray(raw.toWatch)         ? raw.toWatch
-                : Array.isArray(raw["to-watch"])     ? raw["to-watch"]
-                    : [];
+            : Array.isArray(raw.watched) ? raw.watched : [];
+        const t = Array.isArray(raw.toWatchIds) ? raw.toWatchIds
+            : Array.isArray(raw.toWatch) ? raw.toWatch
+                : Array.isArray(raw["to-watch"]) ? raw["to-watch"] : [];
 
-        const watchedIdsArr = w.map(Number);
-        const toWatchIdsArr = t.map(Number);
-
-        setWatched(new Set(watchedIdsArr));
-        setWatchlist(new Set(toWatchIdsArr));
-
-        return { watchedIds: watchedIdsArr, toWatchIds: toWatchIdsArr };
+        setWatched(new Set(w.map(Number)));
+        setWatchlist(new Set(t.map(Number)));
     }
 
     // server-side toggle for watched / to-watch
@@ -108,112 +101,233 @@ export default function RecommendationFeed() {
     }
 
     // Rewrote openDetails in feed because old one is excruciatingly slow...
+    // Rewrote openDetails in feed because old one is excruciatingly slow...
     async function openDetails(rec) {
         try {
-            const movieId = rec.tmdbId ?? rec.id;
+            const movieId = rec.id ?? null;
 
-            if (movieId == null) {
-                const title = rec?.title ?? "";
-                setDetails({
-                    id: null,
-                    tmdbId: null,
-                    title,
-                    year: rec?.year ?? null,
-                    rating: rec?.rating ?? null,
-                    posterUrl: rec?.posterPath ? `${TMDB_IMG}${rec.posterPath}` : null,
-                    description: rec?.overview || "",
-                    genres: [],
-                    topCast: [],
-                });
-                setShowDetails(true);
-                return;
+            // refactor
+            let currentDetails = {
+                id: movieId, // local ID if we have it
+                tmdbId: rec.tmdbId ?? null,
+                title: rec.title ?? "",
+                year: rec.year ?? null,
+                rating: rec.rating ?? null,
+                posterUrl:
+                    rec.posterUrl ||
+                    (rec.posterPath ? `${TMDB_IMG}${rec.posterPath}` : null),
+                description: rec.description || rec.overview || "",
+                genres: rec.genre || rec.genres || [],
+                topCast: [],
+                backdropUrl: rec.backdropUrl || null,
+                runtime: rec.runtime || null,
+                ageRating: rec.ageRating || null,
+            };
+
+            // check for local ID first
+            if (movieId != null) {
+                const res = await fetch(`${API_BASE}/record/details/${movieId}`);
+                if (res.ok) {
+                    const localData = await res.json();
+                    currentDetails = { ...currentDetails, ...localData };
+                }
             }
 
-            const res = await fetch(`${API_BASE}/record/details/${movieId}`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+            const tmdbId =
+                currentDetails.tmdbId ??
+                (typeof currentDetails.id === "number"
+                    ? currentDetails.id
+                    : null);
 
-            const tmdbId = movieId;
-            //console.log("[TMDB] Using ID:", tmdbId);
+            // get tmdb api to fill in and get watch providers
+            if (tmdbId) {
+                const url = new URL(
+                    "https://api.themoviedb.org/3/movie/" + tmdbId
+                );
+                url.searchParams.set(
+                    "api_key",
+                    import.meta.env.VITE_TMDB_API_KEY
+                );
+                url.searchParams.set(
+                    "append_to_response",
+                    "credits,watch/providers,videos"
+                ); // add where to watch to the append and trailer
 
-            let patch = {};
-
-            if (tmdbId !== null && tmdbId !== undefined) {
-                const numOfActors = CAST_LIMIT;
-                const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
-                url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
-                url.searchParams.set("append_to_response", "credits,watch/providers");
-
-                const tmdbRes = await fetch(url.toString(), { headers: { accept: "application/json" } });
+                const tmdbRes = await fetch(url.toString(), {
+                    headers: { accept: "application/json" },
+                });
                 if (tmdbRes.ok) {
                     const tmdb = await tmdbRes.json();
 
-                    let tmdbCast = [];
-                    if (tmdb && tmdb.credits && tmdb.credits.cast && Array.isArray(tmdb.credits.cast)) {
-                        tmdbCast = tmdb.credits.cast;
-                    }
+                    // cast
+                    let tmdbCast = tmdb.credits?.cast || [];
+                    tmdbCast.sort(
+                        (a, b) => (a.order || 999) - (b.order || 999)
+                    );
+                    const topCast = tmdbCast
+                        .slice(0, CAST_LIMIT)
+                        .map((p) => p.name)
+                        .filter(Boolean);
 
-                    tmdbCast.sort(function (a, b) {
-                        let ao = 999;
-                        let bo = 999;
-                        if (a && typeof a.order === "number") ao = a.order;
-                        if (b && typeof b.order === "number") bo = b.order;
-                        return ao - bo;
-                    });
+                    // runtime
+                    const runtime = tmdb.runtime || null;
 
-                    const topActors = tmdbCast.slice(0, numOfActors);
-                    const topCast = [];
-                    for (let i = 0; i < topActors.length; i++) {
-                        const person = topActors[i];
-                        if (person && typeof person.name === "string" && person.name.length > 0) {
-                            topCast.push(person.name);
-                        }
-                    }
-
-                    let runtime = null;
-                    if (tmdb && typeof tmdb.runtime === "number") {
-                        runtime = tmdb.runtime;
-                    }
-
+                    // get where to watch
                     let watchProviders = [];
+                    let watchType = null;
+
+                    // use US by default, not important for other areas rn since it changes by location
                     if (
                         tmdb &&
                         tmdb["watch/providers"] &&
                         tmdb["watch/providers"].results &&
-                        tmdb["watch/providers"].results.US &&
-                        tmdb["watch/providers"].results.US.flatrate
+                        tmdb["watch/providers"].results.US
                     ) {
-                        watchProviders = tmdb["watch/providers"].results.US.flatrate;
+                        const us = tmdb["watch/providers"].results.US;
+                        if (us.flatrate && us.flatrate.length > 0) {
+                            watchProviders = us.flatrate;
+                            watchType = "stream";
+                        } else if (us.rent && us.rent.length > 0) {
+                            watchProviders = us.rent;
+                            watchType = "rent";
+                        }
                     }
 
-                    patch.tmdbId = tmdbId;
-                    if (topCast.length > 0) {
-                        patch.topCast = topCast;
+                    // trailer
+                    const videos = tmdb.videos?.results || [];
+                    const trailer = videos.find(
+                        (v) =>
+                            v.site === "YouTube" && v.type === "Trailer"
+                    );
+                    if (trailer)
+                        currentDetails.trailerUrl =
+                            `https://www.youtube.com/watch?v=${trailer.key}`;
+
+                    // check for prequel / sequel in collection
+                    if (
+                        tmdb.belongs_to_collection &&
+                        tmdb.belongs_to_collection.id
+                    ) {
+                        const collectionUrl = new URL(
+                            `https://api.themoviedb.org/3/collection/${tmdb.belongs_to_collection.id}`
+                        );
+                        collectionUrl.searchParams.set(
+                            "api_key",
+                            import.meta.env.VITE_TMDB_API_KEY
+                        );
+                        try {
+                            const collRes = await fetch(
+                                collectionUrl.toString(),
+                                { headers: { accept: "application/json" } }
+                            );
+                            if (collRes.ok) {
+                                const collectionData =
+                                    await collRes.json();
+                                // sort by release date to determine order
+                                const parts = (collectionData.parts || []).sort(
+                                    (a, b) => {
+                                        return (
+                                            new Date(
+                                                a.release_date ||
+                                                "9999-12-31"
+                                            ) -
+                                            new Date(
+                                                b.release_date ||
+                                                "9999-12-31"
+                                            )
+                                        );
+                                    }
+                                );
+                                const currentIndex = parts.findIndex(
+                                    (p) => p.id === tmdbId
+                                );
+                                if (currentIndex !== -1) {
+                                    if (currentIndex > 0) {
+                                        // prequel exists
+                                        const prev =
+                                            parts[currentIndex - 1];
+                                        currentDetails.prequel = {
+                                            id: prev.id,
+                                            tmdbId: prev.id,
+                                            title: prev.title,
+                                        };
+                                    }
+                                    if (currentIndex < parts.length - 1) {
+                                        // sequel exists
+                                        const next =
+                                            parts[currentIndex + 1];
+                                        currentDetails.sequel = {
+                                            id: next.id,
+                                            tmdbId: next.id,
+                                            title: next.title,
+                                        };
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Collection fetch error:", e);
+                        }
                     }
-                    if (runtime !== null) {
-                        patch.runtime = runtime;
-                    }
+
+                    // patch
+                    if (topCast.length > 0) currentDetails.topCast = topCast;
+                    if (runtime) currentDetails.runtime = runtime;
                     if (watchProviders.length > 0) {
-                        patch.watchProviders = watchProviders;
+                        currentDetails.watchProviders = watchProviders;
+                        currentDetails.watchType = watchType;
                     }
 
-                    console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime, "providers:", watchProviders.length);
+                    if (!currentDetails.id) {
+                        if (!currentDetails.description)
+                            currentDetails.description = tmdb.overview;
+                        if (!currentDetails.posterUrl && tmdb.poster_path) {
+                            currentDetails.posterUrl =
+                                `${TMDB_IMG}${tmdb.poster_path}`;
+                        }
+                        if (
+                            !currentDetails.backdropUrl &&
+                            tmdb.backdrop_path
+                        ) {
+                            currentDetails.backdropUrl =
+                                `https://image.tmdb.org/t/p/original${tmdb.backdrop_path}`;
+                        }
+                        if (
+                            (!currentDetails.genres ||
+                                currentDetails.genres.length === 0) &&
+                            tmdb.genres
+                        ) {
+                            currentDetails.genres = tmdb.genres.map(
+                                (g) => g.name
+                            );
+                        }
+                    }
+
+                    currentDetails.tmdbId = tmdbId; // change to just ID
                 }
             }
 
-            const posterUrl =
-                data.posterUrl || (rec?.posterPath ? `${TMDB_IMG}${rec.posterPath}` : null);
-
-            setDetails({
-                id: movieId,
-                tmdbId: patch.tmdbId ?? movieId,
-                ...data,
-                ...patch,
-                posterUrl,
-            });
+            setDetails(currentDetails);
             setShowDetails(true);
         } catch (e) {
+            console.error("Error opening details:", e);
+        }
+    }
+
+
+    // helper to get local details
+    async function fetchLocalDetails(ids) {
+        if (!ids || ids.length === 0) return [];
+        try {
+            const res = await fetch("/record/bulk", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ids }),
+            });
+            if (!res.ok) return [];
+            return await res.json();
+        } catch (e) {
             console.error(e);
+            return [];
         }
     }
 
@@ -225,7 +339,7 @@ export default function RecommendationFeed() {
         setDislikedTmdbIds(freshDisliked);
 
         if (watchedIds.size === 0) { // Check if the user has watched any movies yet
-            setStatus("Your watched list is empty — watch a few movies to seed recommendations.");
+            setStatus("Your watched movies list is empty, mark some as watched to get recommendations!.");
             setRecs([]);
             return;
         }
@@ -245,9 +359,38 @@ export default function RecommendationFeed() {
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const json = await resp.json();
             const items = Array.isArray(json?.items) ? json.items : [];
+            const tmdbIdsToCheck = items
+                .map(i => i.tmdbId)
+                .filter(id => typeof id === 'number');
+
+            let localDataMap = {};
+            if (tmdbIdsToCheck.length > 0) {
+                const localDetails = await fetchLocalDetails(tmdbIdsToCheck);
+                localDetails.forEach((d) => {
+                    // Index by the ID (which corresponds to TMDB ID)
+                    localDataMap[d.id] = d;
+                });
+            }
+
+            const enrichedItems = items.map((item) => {
+                const local = item.tmdbId ? localDataMap[item.tmdbId] : null;
+
+                if (local) {
+                    return {
+                        ...item,
+                        ...local,        // overwrite from database for the sake of consistancy (especially for poster / backdrops)
+                        tmdbId: item.tmdbId, // keep ID ref
+                        id: local.id,    // make watched work
+                        genres: local.genre,
+                        overview: local.description || item.overview,
+                        posterUrl: local.posterUrl
+                    };
+                }
+                return item;
+            });
 
             // Hide any movies the user has disliked (based on TMDB id)
-            const filtered = items.filter((item) => {
+            const filtered = enrichedItems.filter((item) => {
                 if (item.tmdbId == null) return true;
                 const idNum = Number(item.tmdbId);
                 if (!Number.isFinite(idNum)) return true;
@@ -292,12 +435,12 @@ export default function RecommendationFeed() {
     );
 
     const onMarkWatched = () => {
-        if (!details || !canModifyLists) return;
+        if (!details || !canModifyLists || !details.id) return;
         const id = Number(details.id);
         toggleList("watched", id).catch(console.error);
     };
     const onAddToWatch = () => {
-        if (!details || !canModifyLists) return;
+        if (!details || !canModifyLists || !details.id) return;
         const id = Number(details.id);
         toggleList("to-watch", id).catch(console.error);
     };
@@ -314,20 +457,136 @@ export default function RecommendationFeed() {
                     <div id="status" className="muted">{status}</div>
                     <div id="results" className="movie-grid">
                         {recs.map((r, idx) => {
-                            const poster = r.posterPath
-                                ? `${TMDB_IMG}${r.posterPath}`
-                                : "https://placehold.co/300x450?text=No+Poster";
+                            // Determine poster: Local URL > TMDB Path > Placeholder
+                            const poster = r.posterUrl
+                                ? r.posterUrl
+                                : r.posterPath
+                                    ? `${TMDB_IMG}${r.posterPath}`
+                                    : "https://placehold.co/300x450?text=No+Poster";
+
                             return (
                                 <article
                                     className="movie-card"
                                     key={`${r.tmdbId ?? r.id ?? "rec"}_${idx}`}
                                     onClick={() => openDetails(r)}
-                                    style={{ cursor: "pointer" }}
+                                    style={{
+                                        cursor: "pointer",
+                                        position: "relative",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        height: "100%",
+                                        backgroundColor: "#222",
+                                        borderRadius: "8px",
+                                        overflow: "hidden",
+                                    }}
                                 >
-                                    <img src={poster} alt={r.title || "Untitled"} />
-                                    <div className="movie-title">{r.title || "Untitled"}</div>
-                                    <div className="movie-sub">
-                                        {(r.year ?? "—")} • {r.rating != null ? `⭐ ${r.rating}` : "—"}
+                                    <img
+                                        src={poster}
+                                        alt={r.title || "Untitled"}
+                                        style={{
+                                            width: "100%",
+                                            aspectRatio: "2/3",
+                                            objectFit: "cover",
+                                            display: "block",
+                                        }}
+                                    />
+
+                                    <div
+                                        style={{
+                                            padding: "10px",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            flex: 1,
+                                            gap: "4px",
+                                        }}
+                                    >
+                                        <div
+                                            className="movie-title"
+                                            style={{
+                                                whiteSpace: "normal",
+                                                overflow: "visible",
+                                                lineHeight: "1.2",
+                                                fontSize: "1rem",
+                                                fontWeight: "600",
+                                                marginBottom: "2px",
+                                            }}
+                                        >
+                                            {r.title || "Untitled"}
+                                        </div>
+                                        <div
+                                            className="movie-sub"
+                                            style={{
+                                                fontSize: "0.85rem",
+                                                opacity: 0.8,
+                                                marginBottom: "2px"
+                                            }}
+                                        >
+                                            {r.year ?? "—"}
+                                        </div>
+
+                                        {(r.rating != null || r.ageRating) && (
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "8px",
+                                                    flexWrap: "wrap",
+                                                    marginBottom: "2px",
+                                                }}
+                                            >
+                                                {r.rating != null && (
+                                                    <div
+                                                        className="movie-sub"
+                                                        style={{
+                                                            display: "inline-flex",
+                                                            alignItems: "center",
+                                                            gap: "4px",
+                                                            lineHeight: 1,
+                                                        }}
+                                                    >
+                                                        <span style={{ transform: "translateY(-1px)" }}>⭐</span>
+                                                        <span>{Number(r.rating).toFixed(1)}</span>
+                                                    </div>
+                                                )}
+
+                                                {r.ageRating && (
+                                                    <span
+                                                        style={{
+                                                            border: "1px solid #555",
+                                                            padding: "1px 6px",
+                                                            borderRadius: "4px",
+                                                            fontSize: "0.75rem",
+                                                            color: "#ccc",
+                                                            lineHeight: "1.2",
+                                                            display: "inline-block",
+                                                        }}
+                                                    >
+                                                        {r.ageRating}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div
+                                            className="movie-sub"
+                                            style={{
+                                                marginTop: "auto",
+                                                fontSize: "0.8rem",
+                                                opacity: 0.6,
+                                                lineHeight: "1.3",
+                                                paddingTop: "6px"
+                                            }}
+                                        >
+                                            {(() => {
+                                                const list = Array.isArray(r.genre)
+                                                    ? r.genre
+                                                    : Array.isArray(r.genres)
+                                                        ? r.genres
+                                                        : [r.genre || r.genres];
+                                                const clean = list.filter((g) => g && g !== "NA");
+                                                return clean.length > 0 ? clean.join(", ") : "—";
+                                            })()}
+                                        </div>
                                     </div>
                                 </article>
                             );
@@ -378,6 +637,7 @@ export default function RecommendationFeed() {
                     canModifyLists={canModifyLists}
                     castLimit={CAST_LIMIT}
                     runtime={typeof details?.runtime === "number" ? details.runtime : null}
+                    onNavigate={openDetails}
                 />
             )}
         </>

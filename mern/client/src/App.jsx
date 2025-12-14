@@ -1,15 +1,11 @@
 // App.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import "./App.css";
 import MovieDetails from "./components/MovieDetails.jsx";
 import ErrorModal from "./components/ErrorModal.jsx";
 import Navigation from "./components/Navigation.jsx";
-import {
-    getLikedTmdbIds,
-    getDislikedTmdbIds,
-} from "./components/likeDislikeStorage";
-import { API_BASE, authedFetch, refresh } from "./auth/api.js";
-import {  useAuth } from "./auth/AuthContext.jsx";
+import { API_BASE, authedFetch, refresh, fetchReactions, updateReaction} from "./auth/api.js"; // just need this
+import { useAuth } from "./auth/AuthContext.jsx";
 
 
 // get TMDB key from .env file
@@ -17,7 +13,7 @@ const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
 // for exporting
-const CAST_LIMIT = 7;
+const CAST_LIMIT = 5;
 
 const GENRES = [
     "Action",
@@ -40,6 +36,16 @@ const GENRES = [
     "Western",
 ];
 
+// rating map
+const AGE_RATINGS_DATA = [
+    { id: 0, name: "Not Rated" },
+    { id: 1, name: "G" },
+    { id: 2, name: "PG" },
+    { id: 3, name: "PG-13" },
+    { id: 4, name: "R" },
+    { id: 5, name: "NC-17" },
+];
+
 // utilities (top of file)
 function shuffleArray(array) {
     const arr = [...array]; // makes a shallow copy of the original array
@@ -51,7 +57,7 @@ function shuffleArray(array) {
 }
 
 // Renders clickable chips for the active filters
-function ActiveFilterBar({ params, selectedGenres, visible, onRemove }) {
+function ActiveFilterBar({ params, selectedGenres, selectedAgeRatings, visible, onRemove }) {
     if (!visible) return null; // don't show chips until a search has run
 
     const chips = [];
@@ -66,6 +72,14 @@ function ActiveFilterBar({ params, selectedGenres, visible, onRemove }) {
             .map((s) => s.trim())
             .filter(Boolean)
             .forEach((name) => push("actor", name, `Actor: ${name}`));
+    }
+
+    if (params.keyword?.trim()) {
+        params.keyword
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .forEach((k) => push("keyword", k, `Keyword: ${k}`));
     }
 
     // Director — single chip only (no comma support)
@@ -90,6 +104,12 @@ function ActiveFilterBar({ params, selectedGenres, visible, onRemove }) {
     // Genres — one chip per selected genre (carry index so we can remove the exact one)
     (selectedGenres || []).forEach((g, i) => push("genre", g, `Genre: ${g}`, i));
 
+    // rating chips (maybe condense this into one chip later?)
+    (selectedAgeRatings || []).forEach((id, i) => {
+        const label = AGE_RATINGS_DATA.find(r => r.id === id)?.name || id;
+        push("age_rating", id, `Age: ${label}`, i);
+    });
+
     if (!chips.length) return null; // nothing to show
 
     return (
@@ -112,25 +132,7 @@ function ActiveFilterBar({ params, selectedGenres, visible, onRemove }) {
     );
 }
 
-function loadMapFromStorage(key) {
-    try {
-        const raw = localStorage.getItem(key);
-        if (!raw) return {};
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== "object") return {};
-        const out = {};
-        for (const [k, v] of Object.entries(parsed)) {
-            const idNum = Number(k);
-            const tmdbNum = Number(v);
-            if (Number.isFinite(idNum) && Number.isFinite(tmdbNum)) {
-                out[idNum] = tmdbNum;
-            }
-        }
-        return out;
-    } catch {
-        return {};
-    }
-}
+
 
 // ----------------------------------------------------
 // App component
@@ -143,21 +145,16 @@ function App() {
     const [toWatch, setToWatch] = useState(() => new Set());
 
     // liked/disliked arrays  (read-only in Search)
-    const [likedTmdbIds, setLikedTmdbIds] = useState(() => getLikedTmdbIds());
-    const [dislikedTmdbIds, setDislikedTmdbIds] = useState(() => getDislikedTmdbIds());
-
-    // record id - TMDB id map
-    const [recordTmdbMap, setRecordTmdbMap] = useState(() =>
-        loadMapFromStorage("recordTmdbMap")
-    );
+    const [likedTmdbIds, setLikedTmdbIds] = useState([]);
+    const [dislikedTmdbIds, setDislikedTmdbIds] = useState([]);
 
     // error state message
     const [errorMsg, setErrorMsg] = useState("");
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth <= 768);
+    // track abort controller to cancel double shuffle
+    const searchController = useRef(null);
 
-    useEffect(() => {
-        localStorage.setItem("recordTmdbMap", JSON.stringify(recordTmdbMap));
-    }, [recordTmdbMap]);
+
 
     async function loadListsIntoApp() {
         try {
@@ -191,6 +188,7 @@ function App() {
                 return;
             }
 
+
             const watchedArr =
                 Array.isArray(raw?.watchedIds) ? raw.watchedIds :
                     Array.isArray(raw?.watched)    ? raw.watched    :
@@ -216,6 +214,9 @@ function App() {
 
             setWatched(watchedSet);
             setToWatch(toWatchSet);
+            const reactions = await fetchReactions();
+            setLikedTmdbIds(reactions.likedTmdbIds);
+            setDislikedTmdbIds(reactions.dislikedTmdbIds);
         } catch (e) {
             console.warn("loadListsIntoApp error:", e);
             setWatched(new Set());
@@ -251,6 +252,7 @@ function App() {
         actor: "",
         director: "",
         genre: "",
+        keyword: "",
         title: "",
         year_min: "",
         year_max: "",
@@ -264,16 +266,30 @@ function App() {
     const [genreDropdownOpen, setGenreDropdownOpen] = useState(false);
     const [selectedGenres, setSelectedGenres] = useState([]);
 
+    const [ageRatingDropdownOpen, setAgeRatingDropdownOpen] = useState(false);
+    const [selectedAgeRatings, setSelectedAgeRatings] = useState([]);
+
     // Frozen copies of the last submitted filters (chips read from these)
     const [appliedParams, setAppliedParams] = useState(params);
     const [appliedGenres, setAppliedGenres] = useState(selectedGenres);
+    const [appliedAgeRatings, setAppliedAgeRatings] = useState(selectedAgeRatings);
     const [hasSearched, setHasSearched] = useState(false);
+
+    // track latest applied filters
+    const appliedParamsRef = useRef(appliedParams);
+    const appliedGenresRef = useRef(appliedGenres);
+    const appliedAgeRatingsRef = useRef(appliedAgeRatings);
 
     // ----------------------------------------------------
     // Navigation helpers
     // ----------------------------------------------------
     function toggleDropdown() {
         setGenreDropdownOpen((prev) => !prev);
+    }
+
+    // toggle for age ratings
+    function toggleAgeRatingDropdown() {
+        setAgeRatingDropdownOpen((prev) => !prev);
     }
 
     function handleGenreToggle(genre) {
@@ -304,6 +320,34 @@ function App() {
         return selectedGenres.includes(genre);
     }
 
+    // helpers for age ratings
+    function handleAgeRatingToggle(id) {
+        const newSelected = [...selectedAgeRatings];
+        if (selectedAgeRatings.includes(id)) {
+            const index = newSelected.indexOf(id);
+            newSelected.splice(index, 1);
+        } else {
+            newSelected.push(id);
+        }
+        setSelectedAgeRatings(newSelected);
+    }
+
+    function getAgeRatingLabel() {
+        if (selectedAgeRatings.length === 0) {
+            return "AGE RATING...";
+        } else {
+            return selectedAgeRatings.length + " SELECTED";
+        }
+    }
+
+    function getAgeDropdownArrowClass() {
+        return ageRatingDropdownOpen ? "dropdown-arrow open" : "dropdown-arrow";
+    }
+
+    function isAgeRatingChecked(id) {
+        return selectedAgeRatings.includes(id);
+    }
+
     // ----------------------------------------------------
     // Backend helpers
     // ----------------------------------------------------
@@ -323,8 +367,9 @@ function App() {
     }
 
     // Fetch movies from the backend API
-    async function fetchMovies(p = {}) {
-        const res = await fetch(API_BASE + buildQuery(p));
+    // add signal param to support aborting a search (could be useful for chip issue as well)
+    async function fetchMovies(p = {}, signal = null) {
+        const res = await fetch(API_BASE + buildQuery(p), { signal });
         let payload;
         try {
             payload = await res.json();
@@ -342,6 +387,8 @@ function App() {
     // ----------------------------------------------------
     // TMDB details loader
     // ----------------------------------------------------
+
+    // make some changes to this to make sure all information is fetched
     async function openDetails(movie) {
         try {
             const res = await fetch(`${API_BASE}/record/details/${movie.id}`);
@@ -357,8 +404,9 @@ function App() {
             if (tmdbId !== null && tmdbId !== undefined) {
                 const numOfActors = CAST_LIMIT;
 
-
-                const tmdbRes = await fetch(`${API_BASE}/record/tmdb/${tmdbId}`);
+                const tmdbRes = await fetch(
+                    `${API_BASE}/record/tmdb/${tmdbId}?append_to_response=credits,watch/providers,videos`
+                );
 
                 if (tmdbRes.ok) {
                     const tmdb = await tmdbRes.json();
@@ -400,16 +448,58 @@ function App() {
 
                     // get where to watch
                     let watchProviders = [];
+                    let watchType = null;
 
                     // use US by default, not important for other areas rn since it changes by location
-                    if (
-                        tmdb &&
-                        tmdb["watch/providers"] &&
-                        tmdb["watch/providers"].results &&
-                        tmdb["watch/providers"].results.US &&
-                        tmdb["watch/providers"].results.US.flatrate
-                    ) {
-                        watchProviders = tmdb["watch/providers"].results.US.flatrate;
+
+                    if (tmdb && tmdb["watch/providers"] && tmdb["watch/providers"].results && tmdb["watch/providers"].results.US) {
+                        const us = tmdb["watch/providers"].results.US;
+                        if (us.flatrate && us.flatrate.length > 0) {
+                            watchProviders = us.flatrate;
+                            watchType = "stream";
+                        } else if (us.rent && us.rent.length > 0) {
+                            watchProviders = us.rent;
+                            watchType = "rent";
+                        }
+                    }
+
+                    // get trailer
+                    let trailerUrl = null;
+                    if (tmdb && tmdb.videos && tmdb.videos.results) {
+                        const trailer = tmdb.videos.results.find(v => v.site === "YouTube" && v.type === "Trailer");
+                        if (trailer) trailerUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
+                    }
+
+                    // check for prequel and sequel
+                    if (tmdb.belongs_to_collection && tmdb.belongs_to_collection.id) {
+                        const collectionUrl = new URL(`https://api.themoviedb.org/3/collection/${tmdb.belongs_to_collection.id}`);
+                        collectionUrl.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
+                        try {
+                            const collRes = await fetch(collectionUrl.toString(), { headers: { accept: "application/json" } });
+                            if (collRes.ok) {
+                                const collectionData = await collRes.json();
+                                // sort by release date to determine order
+                                const parts = (collectionData.parts || []).sort((a, b) => {
+                                    return new Date(a.release_date || "9999-12-31") - new Date(b.release_date || "9999-12-31");
+                                });
+                                const currentIndex = parts.findIndex(p => p.id === tmdbId);
+                                if (currentIndex !== -1) {
+                                    if (currentIndex > 0) {
+                                        // prequel
+                                        const prev = parts[currentIndex - 1];
+                                        patch.prequel = { id: prev.id, tmdbId: prev.id, title: prev.title };
+                                    }
+                                    if (currentIndex < parts.length - 1) {
+                                        // sequel exists
+                                        const next = parts[currentIndex + 1];
+                                        patch.sequel = { id: next.id, tmdbId: next.id, title: next.title };
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Collection fetch error:", e);
+                        }
+
                     }
 
                     // fill patch objects
@@ -425,6 +515,20 @@ function App() {
                     // add watchers to patch and pass to detail view
                     if (watchProviders.length > 0) {
                         patch.watchProviders = watchProviders;
+                        patch.watchType = watchType;
+                    }
+
+                    if (trailerUrl) {
+                        patch.trailerUrl = trailerUrl;
+                    }
+
+                    if (!data.title) {
+                        patch.title = tmdb.title;
+                        patch.year = tmdb.release_date ? parseInt(tmdb.release_date.slice(0, 4)) : null;
+                        patch.description = tmdb.overview;
+                        patch.posterUrl = tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : null;
+                        patch.backdropUrl = tmdb.backdrop_path ? `https://image.tmdb.org/t/p/original${tmdb.backdrop_path}` : null;
+                        patch.rating = tmdb.vote_average;
                     }
 
                     console.log(
@@ -451,22 +555,11 @@ function App() {
             setDetails({ id: movie.id, tmdbId: finalTmdbId, ...data, ...patch });
             setShowDetails(true);
 
-            // Cache TMDB id on the search results and in recordTmdbMap
-            if (finalTmdbId != null) {
-                setMovies((prev) =>
-                    prev.map((m) =>
-                        m.id === movie.id ? { ...m, tmdbId: finalTmdbId ?? m.tmdbId } : m
-                    )
-                );
-                setRecordTmdbMap((prev) => ({
-                    ...prev,
-                    [movie.id]: finalTmdbId,
-                }));
-            }
         } catch (e) {
             console.error(e);
         }
     }
+
 
 
     // ----------------------------------------------------
@@ -483,6 +576,14 @@ function App() {
     }
 
     async function doSearch(overrideQuery, opts = {}) {
+        // abort prior request
+        if (searchController.current) {
+            searchController.current.abort();
+        }
+        // make new controller for request
+        const controller = new AbortController();
+        searchController.current = controller;
+        const signal = controller.signal;
         // sometimes onClick passes the click event as the first arg
         // if that happens, ignore it so we don't treat it like overrides
         if (
@@ -518,8 +619,12 @@ function App() {
 
         setStatus("Loading…"); // show loading message while we fetch
         try {
+            // separate genre from other overrides
+            const { genre: overrideGenre, age_rating: overrideAgeRating, ...otherOverrides } = overrideQuery || {};
+
             // start from current inputs unless we received an override (chip removal, clear, etc.)
-            let nextParams = overrideQuery ? { ...params, ...overrideQuery } : { ...params };
+            // ghost fix: use otherOverrides instead of overrideQuery to keep genre out of nextParams
+            let nextParams = overrideQuery ? { ...params, ...otherOverrides } : { ...params };
 
             // GENRES handling:
             // - if override has "genre": use that
@@ -527,9 +632,15 @@ function App() {
             // - if no override: use the live checkbox selection
             let nextGenres = overrideQuery
                 ? Object.prototype.hasOwnProperty.call(overrideQuery, "genre")
-                    ? [...(overrideQuery.genre || [])]
+                    ? [...(overrideGenre || [])]
                     : [...appliedGenres]
                 : [...selectedGenres];
+
+            let nextAgeRatings = overrideQuery
+                ? Object.prototype.hasOwnProperty.call(overrideQuery, "age_rating")
+                    ? [...(overrideAgeRating || [])]
+                    : [...appliedAgeRatings]
+                : [...selectedAgeRatings];
 
             // ACTORS handling:
             // - merge previously applied actors with what's typed ONLY for normal searches
@@ -537,6 +648,7 @@ function App() {
             const skipActorMerge = opts.fromChip === true || opts.isClear === true;
             if (!skipActorMerge && hasSearched) {
                 nextParams.actor = mergeCommaLists(appliedParams.actor, nextParams.actor);
+                nextParams.keyword = mergeCommaLists(appliedParams.keyword, nextParams.keyword); // added for keywords
             }
 
             // clean actor string (remove extra spaces/commas)
@@ -548,36 +660,29 @@ function App() {
                     .join(", ");
             }
 
+            // clean keywords
+            if (typeof nextParams.keyword === "string") {
+                nextParams.keyword = nextParams.keyword
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .join(", ");
+            }
+
             // final query object (only include genre if we have at least one)
             const query = {
                 ...nextParams,
                 ...(nextGenres.length ? { genre: nextGenres } : {}),
+                ...(nextAgeRatings.length ? { age_rating: nextAgeRatings } : {}),
             };
 
             // ask backend for results
-            const data = await fetchMovies(query);
+            // pass signal here
+            const data = await fetchMovies(query, signal);
 
             // Attach tmdbId from our persisted map, if we know it
-            /*const withTmdb = data.map((m) => {
-                const mapped = recordTmdbMap[m.id];
-                if (mapped && m.tmdbId == null) {
-                    return { ...m, tmdbId: mapped };
-                }
-                return m;
-            });*/
 
-            const rows = Array.isArray(data)
-                ? data
-                : Array.isArray(data?.results)
-                    ? data.results
-                    : [];
-
-            // Attach tmdbId from our persisted map, if we know it
-            const withTmdb = rows.map((m) => {
-                const mapped = recordTmdbMap[m.id];
-                if (mapped && m.tmdbId == null) {
-                    return { ...m, tmdbId: mapped };
-                }
+            const withTmdb = data.map((m) => {
                 return m;
             });
 
@@ -588,19 +693,31 @@ function App() {
                 (!nextParams.actor || !nextParams.actor.trim()) &&
                 (!nextParams.director || !nextParams.director.trim()) &&
                 (!nextParams.title || !nextParams.title.trim()) &&
+                (!nextParams.keyword || !nextParams.keyword.trim()) &&
                 !nextGenres.length &&
+                !nextAgeRatings.length &&
                 !nextParams.year_min &&
                 !nextParams.year_max &&
                 !nextParams.rating_min &&
                 !nextParams.rating_max;
 
-            setMovies(noSearch ? shuffleArray(withTmdb) : withTmdb);
+            // shuffle 50 from top 200
+            setMovies(noSearch ? shuffleArray(withTmdb).slice(0, 50) : withTmdb);
             setStatus(withTmdb.length ? "" : "No results found.");
 
             setAppliedParams(nextParams);
+            appliedParamsRef.current = nextParams;
+
             setAppliedGenres(nextGenres);
+            appliedGenresRef.current = nextGenres;
+
+            setAppliedAgeRatings(nextAgeRatings);
+            appliedAgeRatingsRef.current = nextAgeRatings;
+
             if (!opts.isClear) setHasSearched(true);
         } catch (err) {
+            // if the fetch was aborted, ignore the error
+            if (err.name === 'AbortError') return;
             console.error(err);
             setStatus("");
             setErrorMsg(err.message);
@@ -609,8 +726,9 @@ function App() {
 
     function handleRemoveChip(chip) {
         // start from the applied filters, this matches what's on screen
-        const baseParams = { ...appliedParams };
-        let baseGenres = [...appliedGenres];
+        const baseParams = { ...appliedParamsRef.current };
+        let baseGenres = [...appliedGenresRef.current];
+        let baseAgeRatings = [...appliedAgeRatingsRef.current];
 
         // remove one item from a comma list (case-insensitive)
         const removeFromCommaList = (raw, valueToRemove) =>
@@ -632,6 +750,9 @@ function App() {
             case "title":
                 baseParams.title = "";
                 break;
+            case "keyword":
+                baseParams.keyword = removeFromCommaList(baseParams.keyword, chip.value);
+                break;
             case "year_min":
                 baseParams.year_min = "";
                 break;
@@ -651,20 +772,36 @@ function App() {
                     baseGenres = baseGenres.filter((g) => g !== chip.value);
                 }
                 break;
+
+            // rating removal
+            case "age_rating":
+                if (typeof chip.idx === "number") {
+                    baseAgeRatings = baseAgeRatings.filter((_, i) => i !== chip.idx);
+                } else {
+                    baseAgeRatings = baseAgeRatings.filter((r) => r !== chip.value);
+                }
+                break;
             default:
                 break;
         }
 
+        // Update refs right away so the next click sees the new states
+        appliedParamsRef.current = baseParams;
+        appliedGenresRef.current = baseGenres;
+        appliedAgeRatingsRef.current = baseAgeRatings;
+
         // keep sidebar inputs/checkboxes same with what we removed
         setParams((prev) => ({ ...prev, ...baseParams }));
         setSelectedGenres(baseGenres);
+        setSelectedAgeRatings(baseAgeRatings);
 
         // UI: hide the chip right away (don't wait for the fetch)
         setAppliedParams(baseParams);
         setAppliedGenres(baseGenres);
+        setAppliedAgeRatings(baseAgeRatings);
 
         // run the search again with updated filters
-        doSearch({ ...baseParams, genre: baseGenres }, { fromChip: true });
+        doSearch({ ...baseParams, genre: baseGenres, age_rating: baseAgeRatings }, { fromChip: true }); // added in ratings
     }
 
     function clearFilters() {
@@ -672,6 +809,7 @@ function App() {
             actor: "",
             director: "",
             title: "",
+            keyword: "",
             year_min: "",
             year_max: "",
             rating_min: "",
@@ -681,11 +819,19 @@ function App() {
         // Reset all states
         setParams(emptyParams);
         setSelectedGenres([]);
+        setSelectedAgeRatings([]);
+
         setAppliedParams(emptyParams);
         setAppliedGenres([]);
+        setAppliedAgeRatings([]);
+
+        // reset refs
+        appliedParamsRef.current = emptyParams;
+        appliedGenresRef.current = [];
+        appliedAgeRatingsRef.current = [];
 
         // Run search with empty filters
-        doSearch({ ...emptyParams, genre: [] }, { fromChip: true, isClear: true });
+        doSearch({ ...emptyParams, genre: [], age_rating: [] }, { fromChip: true, isClear: true });
     }
 
     useEffect(() => {
@@ -776,17 +922,10 @@ function App() {
 
         // If removed from watched list, clear like/dislike for this TMDB id
         if (wasWatched && tmdbId != null && Number.isFinite(tmdbId)) {
-            setLikedTmdbIds((prev) => {
-                const next = prev.filter((x) => x !== tmdbId);
-                localStorage.setItem("likedTmdbIds", JSON.stringify(next));
-                return next;
-            });
+            setLikedTmdbIds((prev) => prev.filter((x) => x !== tmdbId));
+            setDislikedTmdbIds((prev) => prev.filter((x) => x !== tmdbId));
 
-            setDislikedTmdbIds((prev) => {
-                const next = prev.filter((x) => x !== tmdbId);
-                localStorage.setItem("dislikedTmdbIds", JSON.stringify(next));
-                return next;
-            });
+            updateReaction(tmdbId, "clear").catch(console.error);
         }
     };
 
@@ -809,9 +948,9 @@ function App() {
                 <aside className="sidebar">
                     {/* Simple text boxes that we will take as input */}
                     <ul className="search-filters">
-                        {["Actor", "Director", "Title"].map((label) => (
+                        {["Actor", "Director", "Title", "Keyword"].map((label) => (
                             <li className="filter-item" key={label}>
-                                <div className="filter-link">
+                                <label className="filter-link" htmlFor={`q${label}`} style={{ display: "block", cursor: "text" }}>
                                     <input
                                         id={`q${label}`}
                                         className="filter-input"
@@ -820,7 +959,7 @@ function App() {
                                         onChange={handleChange}
                                         onKeyDown={(e) => e.key === "Enter" && doSearch()}
                                     />
-                                </div>
+                                </label>
                             </li>
                         ))}
 
@@ -829,29 +968,39 @@ function App() {
                             <div className="year-label">YEAR</div>
                             <div className="year-bubbles">
                                 <div className="filter-item">
-                                    <div className="filter-link">
+                                    <label
+                                        className="filter-link"
+                                        htmlFor="qYear_Min"
+                                        style={{ display: "block", cursor: "text" }}
+                                    >
                                         <input
                                             id="qYear_Min"
                                             className="filter-input"
+                                            type="number"
                                             placeholder="MIN"
                                             value={params.year_min}
                                             onChange={handleChange}
                                             onKeyDown={(e) => e.key === "Enter" && doSearch()}
                                         />
-                                    </div>
+                                    </label>
                                 </div>
 
                                 <div className="filter-item">
-                                    <div className="filter-link">
+                                    <label
+                                        className="filter-link"
+                                        htmlFor="qYear_Max"
+                                        style={{ display: "block", cursor: "text" }}
+                                    >
                                         <input
                                             id="qYear_Max"
                                             className="filter-input"
                                             placeholder="MAX"
+                                            type="number"
                                             value={params.year_max}
                                             onChange={handleChange}
                                             onKeyDown={(e) => e.key === "Enter" && doSearch()}
                                         />
-                                    </div>
+                                    </label>
                                 </div>
                             </div>
                         </li>
@@ -862,7 +1011,11 @@ function App() {
 
                             <div className="rating-bubbles">
                                 <div className="filter-item">
-                                    <div className="filter-link">
+                                    <label
+                                        className="filter-link"
+                                        htmlFor="qRating_Min"
+                                        style={{ display: "block", cursor: "text" }}
+                                    >
                                         <input
                                             id="qRating_Min"
                                             className="filter-input"
@@ -876,11 +1029,15 @@ function App() {
                                             onChange={handleChange}
                                             onKeyDown={(e) => e.key === "Enter" && doSearch()}
                                         />
-                                    </div>
+                                    </label>
                                 </div>
 
                                 <div className="filter-item">
-                                    <div className="filter-link">
+                                    <label
+                                        className="filter-link"
+                                        htmlFor="qRating_Max"
+                                        style={{ display: "block", cursor: "text" }}
+                                    >
                                         <input
                                             id="qRating_Max"
                                             className="filter-input"
@@ -894,7 +1051,7 @@ function App() {
                                             onChange={handleChange}
                                             onKeyDown={(e) => e.key === "Enter" && doSearch()}
                                         />
-                                    </div>
+                                    </label>
                                 </div>
                             </div>
                         </li>
@@ -923,9 +1080,44 @@ function App() {
                                 </div>
                             )}
                         </li>
+
+                        {/* age ratings drop down hurr durr copy genre dropdown */}
+                        <li className="filter-item genre-dropdown" key="AgeRating">
+                            <div
+                                className="filter-link genre-header"
+                                onClick={toggleAgeRatingDropdown}
+                            >
+                                <span className="genre-label">{getAgeRatingLabel()}</span>
+                                <span className={getAgeDropdownArrowClass()}>▼</span>
+                            </div>
+                            {ageRatingDropdownOpen && (
+                                <div className="genre-checkbox-list">
+                                    {AGE_RATINGS_DATA.map((rating) => (
+                                        <label key={rating.id} className="genre-checkbox-item">
+                                            <input
+                                                type="checkbox"
+                                                checked={isAgeRatingChecked(rating.id)}
+                                                onChange={() => handleAgeRatingToggle(rating.id)}
+                                            />
+                                            <span>{rating.name}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </li>
+
                     </ul>
 
-                    <button className="go-btn" onClick={() => doSearch()}>
+                    <button
+                        className="go-btn"
+                        onClick={() => {
+                            doSearch();
+                            // collapse sidebar on mobile after pressing search (recommendation from my father)
+                            if (window.innerWidth < 768) {
+                                setSidebarCollapsed(true);
+                            }
+                        }}
+                    >
                         SEARCH
                     </button>
                     <button className="go-btn" onClick={clearFilters}>
@@ -935,7 +1127,11 @@ function App() {
                     <footer className="sidebar-footer-credit">
                         <p>
                             Source of data:{" "}
-                            <a href="https://www.themoviedb.org/">
+                            <a
+                                href="https://www.themoviedb.org/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
                                 TMDB{" "}
                                 <img
                                     src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg"
@@ -967,6 +1163,7 @@ function App() {
                     <ActiveFilterBar
                         params={appliedParams}
                         selectedGenres={appliedGenres}
+                        selectedAgeRatings={appliedAgeRatings}
                         visible={hasSearched}
                         onRemove={handleRemoveChip}
                     />
@@ -979,9 +1176,7 @@ function App() {
                             const tmdbIdNum =
                                 m.tmdbId != null
                                     ? Number(m.tmdbId)
-                                    : recordTmdbMap[m.id] != null
-                                        ? Number(recordTmdbMap[m.id])
-                                        : null;
+                                    : Number(m.id);
 
                             const likedFlag =
                                 tmdbIdNum != null && likedTmdbIds.includes(tmdbIdNum);
@@ -996,6 +1191,12 @@ function App() {
                                     style={{
                                         cursor: "pointer",
                                         position: "relative",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        height: "100%",
+                                        backgroundColor: "#222", // ensuring consistent background for card
+                                        borderRadius: "8px",
+                                        overflow: "hidden", // ensures image respects border radius
                                     }}
                                 >
                                     {(likedFlag || dislikedFlag) && (
@@ -1010,9 +1211,11 @@ function App() {
                                                 fontSize: 11,
                                                 fontWeight: 600,
                                                 backgroundColor: likedFlag
-                                                    ? "rgba(0, 128, 0, 0.85)"
-                                                    : "rgba(180, 0, 0, 0.85)",
+                                                    ? "rgba(0, 128, 0, 1)"   // make solid
+                                                    : "rgba(180, 0, 0, 1)", // make solid
                                                 color: "#fff",
+                                                zIndex: 10, // bring to front
+                                                boxShadow: "0 2px 4px rgba(0,0,0,0.5)"
                                             }}
                                         >
                                             {likedFlag ? "👍" : "👎"}
@@ -1024,17 +1227,121 @@ function App() {
                                             m.posterUrl || "https://placehold.co/300x450?text=No+Poster"
                                         }
                                         alt={m.title || ""}
+                                        style={{
+                                            width: "100%",
+                                            aspectRatio: "2/3",
+                                            objectFit: "cover",
+                                            display: "block",
+                                        }}
                                     />
-                                    <div className="movie-title">{m.title ?? "Untitled"}</div>
-                                    <div className="movie-sub">
-                                        {m.year ?? "—"} •{" "}
-                                        {Array.isArray(m.genre)
-                                            ? m.genre.join(", ")
-                                            : m.genre || "—"}
+
+                                    <div
+                                        style={{
+                                            padding: "10px",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            flex: 1,
+                                            gap: "4px", // element gap, maybe increase later?
+                                        }}
+                                    >
+                                        <div
+                                            className="movie-title"
+                                            style={{
+                                                whiteSpace: "normal",
+                                                overflow: "visible",
+                                                lineHeight: "1.2",
+                                                fontSize: "1rem",
+                                                fontWeight: "600",
+                                                marginBottom: "2px",
+                                            }}
+                                        >
+                                            {m.title ?? ""}
+                                        </div>
+                                        <div
+                                            className="movie-sub"
+                                            style={{
+                                                fontSize: "0.85rem",
+                                                opacity: 0.8,
+                                                marginBottom: "2px"
+                                            }}
+                                        >
+                                            {m.year ?? "—"}
+                                        </div>
+
+                                        {(m.rating != null || m.ageRating) && (
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "8px",
+                                                    flexWrap: "wrap",
+                                                    marginBottom: "2px",
+                                                }}
+                                            >
+                                                {m.rating != null && (
+                                                    <div
+                                                        className="movie-sub"
+                                                        style={{
+                                                            display: "inline-flex",
+                                                            alignItems: "center",
+                                                            gap: "4px",
+                                                            lineHeight: 1,
+                                                        }}
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                display: "inline-block",
+                                                                transform: "translateY(-1px)", // translate emoji to fix vertical allignment issue
+                                                            }}
+                                                        >
+                                                          ⭐
+                                                        </span>
+                                                        <span>{Number(m.rating).toFixed(1)}</span>
+                                                    </div>
+                                                )}
+
+                                                {m.ageRating && (
+                                                    <span
+                                                        style={{
+                                                            border: "1px solid #555",
+                                                            padding: "1px 6px",
+                                                            borderRadius: "4px",
+                                                            fontSize: "0.75rem",
+                                                            color: "#ccc",
+                                                            lineHeight: "1.2", // prevent offset
+                                                            display: "inline-block",
+                                                        }}
+                                                    >
+                                                        {m.ageRating}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div
+                                            className="movie-sub"
+                                            style={{
+                                                marginTop: "auto", // move genres to bottom
+                                                fontSize: "0.8rem",
+                                                opacity: 0.6,
+                                                lineHeight: "1.3",
+                                                paddingTop: "6px"
+                                            }}
+                                        >
+                                            {(() => {
+                                                const list = Array.isArray(m.genre)
+                                                    ? m.genre
+                                                    : [m.genre];
+                                                // remove NA or null or empty
+                                                const clean = list.filter(
+                                                    (g) => g && g !== "NA"
+                                                );
+                                                return clean.length > 0
+                                                    ? clean.join(", ")
+                                                    : "—";
+                                            })()}
+                                        </div>
                                     </div>
-                                    {m.rating != null && (
-                                        <div className="movie-sub">⭐ {m.rating}</div>
-                                    )}
                                 </article>
                             );
                         })}
@@ -1049,6 +1356,7 @@ function App() {
                         inToWatch={!!inToWatch}
                         onMarkWatched={onMarkWatched}
                         onAddToWatch={onAddToWatch}
+                        canModifyLists={canModifyLists}
                         // Read-only like/dislike state (no editing here)
                         isLiked={!!isLiked}
                         isDisliked={!!isDisliked}
@@ -1059,7 +1367,7 @@ function App() {
                                 ? details.runtime
                                 : null
                         }
-                        canModifyLists={canModifyLists}
+                        onNavigate={openDetails}
                     />
                 )}
 

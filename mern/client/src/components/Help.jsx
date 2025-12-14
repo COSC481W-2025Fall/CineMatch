@@ -29,14 +29,14 @@ export default function Help() {
             case "watchlist":
                 return (
                     <p className="help-info">
-                        The Watched List keeps track of movies you've seen and helps
+                        The Watched Movies list keeps track of movies you've seen and helps
                         personalize your recommendations.
                     </p>
                 );
             case "to-watch":
                 return (
                     <p className="help-info">
-                        Save movies you plan to watch later in the To-Watch List.
+                        Save movies you plan to watch later in the Watch Later list.
                     </p>
                 );
             case "login/signup":
@@ -85,7 +85,7 @@ export default function Help() {
                             className="menu-button menu-button-red"
                             onClick={() => setSearchMenuOpen(false)}
                         >
-                            WATCHED LIST
+                            WATCHED MOVIES
                         </Link>
 
                         <Link
@@ -93,7 +93,7 @@ export default function Help() {
                             className="menu-button menu-button-red"
                             onClick={() => setSearchMenuOpen(false)}
                         >
-                            TO-WATCH LIST
+                            WATCH LATER
                         </Link>
 
                         <div className="menu-logo">cinematch</div>
@@ -164,7 +164,7 @@ export default function Help() {
                         style={activeButton === "watchlist" ? activeStyle : undefined}
                         className="help-button"
                     >
-                        Watchlist
+                        Watched Movies
                     </button>
 
                     <button
@@ -172,7 +172,7 @@ export default function Help() {
                         style={activeButton === "to-watch" ? activeStyle : undefined}
                         className="help-button"
                     >
-                        To-Watch List
+                        Watch Later
                     </button>
 
                     <button

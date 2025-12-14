@@ -110,6 +110,12 @@ export function AuthProvider({ children }) {
         setUser(null);
     }, []);
 
+    // listen for logouts
+    useEffect(() => {
+        const handleUnauth = () => logout();
+        window.addEventListener("auth:unauthorized", handleUnauth);
+        return () => window.removeEventListener("auth:unauthorized", handleUnauth);
+    }, [logout]);
 
     const value = {
         user,
