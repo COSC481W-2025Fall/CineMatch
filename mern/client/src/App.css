@@ -151,8 +151,9 @@ body {
 }
 
 .nav-icon-btn.active {
-    background: linear-gradient(45deg, #f7e135, #cc8800);
-    transform: translateY(-2px);
+    background: #ffff00;
+    box-shadow: 0 0 15px rgba(247, 225, 53, 0.6); /*glow to make it stand out more*/
+    transform: none; /*removed shift because it makes things look misaligned*/
 }
 
 /* .navigation-button {
