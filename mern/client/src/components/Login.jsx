@@ -22,7 +22,6 @@ export default function Login() {
         }
     }, [status, user, location, navigate]);
 
-
     async function onSubmit(e) {
         e.preventDefault();
         setError("");
@@ -44,29 +43,81 @@ export default function Login() {
         }
     }
 
+    // Shared styles
+    const inputStyle = {
+        width: "100%",
+        padding: "12px",
+        borderRadius: "8px",
+        border: "1px solid #444",
+        background: "#333",
+        color: "#fff",
+        fontSize: "1rem",
+        marginBottom: "16px",
+        outline: "none",
+        transition: "border-color 0.2s",
+    };
+
     return (
         <div className="auth-page">
-            <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+            <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "20px" }}>
                 <form
                     className="auth-card"
                     onSubmit={onSubmit}
                     style={{
-                        width: 360,
+                        width: "100%",
+                        maxWidth: "400px",
                         background: "#222",
                         color: "#eee",
-                        padding: 24,
-                        borderRadius: 12,
-                        boxShadow: "0 8px 24px rgba(0,0,0,.35)",
+                        padding: "32px",
+                        borderRadius: "16px",
+                        boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+                        border: "1px solid #333",
                     }}
                 >
-                    <h1>Log in</h1>
+                    {/* Header with Back Button */}
+                    <div style={{ marginBottom: "24px" }}>
+                        <button
+                            type="button"
+                            onClick={() => navigate(-1)}
+                            style={{
+                                background: "transparent",
+                                border: "none",
+                                color: "#888",
+                                fontSize: "0.9rem",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                padding: "0 0 12px 0",
+                                fontWeight: "600",
+                                transition: "color 0.2s",
+                            }}
+                            onMouseOver={(e) => (e.target.style.color = "#fff")}
+                            onMouseOut={(e) => (e.target.style.color = "#888")}
+                            aria-label="Go back"
+                        >
+                            &larr; Back
+                        </button>
+                        <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: "700", color: "#f7e135" }}>
+                            Log in
+                        </h1>
+                    </div>
 
-                    {error && <div className="auth-error">{error}</div>}
+                    {error && (
+                        <div className="auth-error" style={{
+                            background: "rgba(255, 68, 68, 0.1)",
+                            border: "1px solid rgba(255, 68, 68, 0.2)",
+                            color: "#ff6666",
+                            padding: "12px",
+                            borderRadius: "8px",
+                            marginBottom: "20px",
+                            fontSize: "0.9rem"
+                        }}>
+                            {error}
+                        </div>
+                    )}
 
-                    <label
-                        style={{ display: "block", fontSize: 12, opacity: 0.8 }}
-                        htmlFor="email"
-                    >
+                    <label style={{ display: "block", fontSize: "0.85rem", color: "#aaa", marginBottom: "6px" }} htmlFor="email">
                         Email
                     </label>
                     <input
@@ -77,25 +128,16 @@ export default function Login() {
                         onChange={(e) => setEmail(e.target.value)}
                         disabled={busy}
                         placeholder="your-email@example.com"
-                        style={{
-                            width: "100%",
-                            padding: 10,
-                            borderRadius: 8,
-                            border: "1px solid #444",
-                            marginBottom: 12,
-                        }}
+                        style={inputStyle}
                     />
 
-                    <label htmlFor="password">Password</label>
-                    <div className="pw-wrap" style={{ position: "relative", marginBottom: 12 }}>
+                    <label style={{ display: "block", fontSize: "0.85rem", color: "#aaa", marginBottom: "6px" }} htmlFor="password">
+                        Password
+                    </label>
+                    <div style={{ position: "relative", marginBottom: "8px" }}>
                         <input
                             id="password"
-                            style={{
-                                width: "100%",
-                                padding: "10px 40px 10px 10px",
-                                borderRadius: 8,
-                                border: "1px solid #444",
-                            }}
+                            style={{ ...inputStyle, paddingRight: "40px", marginBottom: "0" }}
                             type={showPw ? "text" : "password"}
                             autoComplete="current-password"
                             value={password}
@@ -105,24 +147,35 @@ export default function Login() {
                         />
                         <button
                             type="button"
-                            className="pw-toggle"
                             onClick={() => setShowPw((s) => !s)}
                             aria-label={showPw ? "Hide password" : "Show password"}
                             disabled={busy}
                             style={{
                                 position: "absolute",
-                                right: 8,
-                                top: 6,
-                                padding: "6px 10px",
-                                borderRadius: 6,
-                                background: "#333",
-                                color: "#ddd",
-                                border: "1px solid #444",
+                                right: "12px",
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                background: "transparent",
+                                border: "none",
+                                color: "#888",
                                 cursor: "pointer",
+                                fontSize: "0.8rem",
+                                fontWeight: "600",
                             }}
                         >
                             {showPw ? "Hide" : "Show"}
                         </button>
+                    </div>
+
+                    <div style={{ textAlign: "right", marginBottom: "24px" }}>
+                        <Link
+                            to="/forgot-password"
+                            style={{ fontSize: "0.85rem", color: "#888", textDecoration: "none" }}
+                            onMouseOver={(e) => (e.target.style.color = "#ccc")}
+                            onMouseOut={(e) => (e.target.style.color = "#888")}
+                        >
+                            Forgot password?
+                        </Link>
                     </div>
 
                     <button
@@ -130,25 +183,31 @@ export default function Login() {
                         type="submit"
                         style={{
                             width: "100%",
-                            padding: 12,
-                            borderRadius: 8,
-                            background: "linear-gradient(45deg,#ffcc00,#d8a100)",
+                            padding: "14px",
+                            borderRadius: "8px",
+                            background: "linear-gradient(45deg,#f7e135,#cc8800)",
                             border: "none",
-                            fontWeight: 700,
+                            fontWeight: "800",
+                            fontSize: "1rem",
                             cursor: "pointer",
                             opacity: busy ? 0.7 : 1,
+                            color: "#111",
+                            marginBottom: "24px",
+                            boxShadow: "0 4px 12px rgba(247, 225, 53, 0.3)",
                         }}
                         disabled={busy}
                     >
                         {busy ? "Signing in…" : "Sign in"}
                     </button>
 
-                    <div className="auth-alt">
-                        No account yet? <Link to="/register">Create an account</Link>
-                    </div>
-                    <div className="auth-alt">
-                        Forgot password?{" "}
-                        <Link to="/forgot-password">Reset password</Link>
+                    <div style={{ textAlign: "center", fontSize: "0.9rem", color: "#aaa" }}>
+                        No account yet?{" "}
+                        <Link
+                            to="/register"
+                            style={{ color: "#f7e135", textDecoration: "none", fontWeight: "600" }}
+                        >
+                            Create an account
+                        </Link>
                     </div>
                 </form>
             </div>
