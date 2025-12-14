@@ -96,12 +96,8 @@ export default function WatchListPage() {
 
     const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth <= 768);
     // Liked/disliked (by TMDB id) – watchlist is editable
-    const [likedTmdbIds, setLikedTmdbIds] = useState(() =>
-        loadArrayFromStorage("likedTmdbIds")
-    );
-    const [dislikedTmdbIds, setDislikedTmdbIds] = useState(() =>
-        loadArrayFromStorage("dislikedTmdbIds")
-    );
+    const [likedTmdbIds, setLikedTmdbIds] = useState([]);
+    const [dislikedTmdbIds, setDislikedTmdbIds] = useState([]);
 
     // Map of DB record id - TMDB id, shared with Search page via localStorage
     const [recordTmdbMap, setRecordTmdbMap] = useState(() =>
@@ -116,17 +112,6 @@ export default function WatchListPage() {
         }
     }, [watched]);
 
-    // Keep liked/disliked in sync with localStorage
-    useEffect(() => {
-        localStorage.setItem("likedTmdbIds", JSON.stringify(likedTmdbIds));
-    }, [likedTmdbIds]);
-
-    useEffect(() => {
-        localStorage.setItem(
-            "dislikedTmdbIds",
-            JSON.stringify(dislikedTmdbIds)
-        );
-    }, [dislikedTmdbIds]);
 
     useEffect(() => {
         localStorage.setItem(
@@ -236,18 +221,6 @@ export default function WatchListPage() {
             setDetails({ id: movie.id, tmdbId: finalTmdbId, ...data, ...patch });
             setShowDetails(true);
 
-            // Cache TMDB id on the search results and in recordTmdbMap
-            if (finalTmdbId != null) {
-                setMovies((prev) =>
-                    prev.map((m) =>
-                        m.id === movie.id ? { ...m, tmdbId: finalTmdbId ?? m.tmdbId } : m
-                    )
-                );
-                setRecordTmdbMap((prev) => ({
-                    ...prev,
-                    [movie.id]: finalTmdbId,
-                }));
-            }
         } catch (e) {
             console.error(e);
         }
@@ -341,12 +314,10 @@ export default function WatchListPage() {
 
             const data = await fetchWatchlistSubset(ids, params);
 
+            setMovies(data);
+
             // Attach tmdbId from our persisted map, if we know it
             const withTmdb = data.map((m) => {
-                const mapped = recordTmdbMap[m.id];
-                if (mapped && m.tmdbId == null) {
-                    return { ...m, tmdbId: mapped };
-                }
                 return m;
             });
 
@@ -369,12 +340,9 @@ export default function WatchListPage() {
                 const { watchedIds } = await loadLists();
                 console.log("watched set after loadLists ->", watchedIds);
 
-                const {
-                    likedTmdbIds: srvLiked,
-                    dislikedTmdbIds: srvDisliked,
-                } = await fetchReactions().catch(() => ({ likedTmdbIds: [], dislikedTmdbIds: [] }));
-                setLikedTmdbIds(srvLiked.map(Number));
-                setDislikedTmdbIds(srvDisliked.map(Number));
+                const reactions = await fetchReactions().catch(() => ({ likedTmdbIds: [], dislikedTmdbIds: [] }));
+                setLikedTmdbIds(reactions.likedTmdbIds);
+                setDislikedTmdbIds(reactions.dislikedTmdbIds)
 
                 await doSearch(watchedIds); // perfoms intail search using  new ids
             } catch (e) {
@@ -473,7 +441,7 @@ export default function WatchListPage() {
             if (wasWatched && tmdbIdNum != null && Number.isFinite(tmdbIdNum)) {
                 const reaction = "clear";
                 applyLocalReaction(tmdbIdNum, reaction);
-                updateReaction(tmdbIdNum, reaction).catch(console.error);
+                updateReaction(tmdbIdNum, reaction).catch(console.error)
             }
         } catch (e) {
             console.error(e);
@@ -648,9 +616,7 @@ export default function WatchListPage() {
                             const tmdbIdNum =
                                 m.tmdbId != null
                                     ? Number(m.tmdbId)
-                                    : recordTmdbMap[m.id] != null
-                                        ? Number(recordTmdbMap[m.id])
-                                        : null;
+                                    : Number(m.id);
 
                             const likedFlag =
                                 tmdbIdNum != null && likedTmdbIds.includes(tmdbIdNum);

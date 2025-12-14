@@ -78,12 +78,9 @@ export default function ToWatchListPage() {
     );
 
     // liked / disliked TMDB ids – cleared when removed from watched list
-    const [likedTmdbIds, setLikedTmdbIds] = useState(() =>
-        loadArrayFromStorage("likedTmdbIds")
-    );
-    const [dislikedTmdbIds, setDislikedTmdbIds] = useState(() =>
-        loadArrayFromStorage("dislikedTmdbIds")
-    );
+    // removing completely because why would a watched movie be on the water later list??
+    const [likedTmdbIds, setLikedTmdbIds] = useState([]);
+    const [dislikedTmdbIds, setDislikedTmdbIds] = useState([]);
 
     // recordId - tmdbId map
     const [recordTmdbMap, setRecordTmdbMap] = useState(() =>
