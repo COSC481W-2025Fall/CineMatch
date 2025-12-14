@@ -24,6 +24,7 @@ export default function MovieDetails({
                                          isLiked = false,
                                          isDisliked = false,
                                          canModifyLists = true,
+                                         onNavigate, // function to open prequel / sequel
                                      }) {
     // for login redirection
     const navigate = useNavigate();
@@ -49,6 +50,8 @@ export default function MovieDetails({
         watchProviders,
         tagline, // for later
         trailerUrl,
+        prequel,
+        sequel,
     } = details;
 
     // make genre list both genre and genres because fixing records doesnt seem to work
@@ -272,6 +275,44 @@ export default function MovieDetails({
                                     >
                                         Source: JustWatch
                                     </div>
+                                </div>
+                            )}
+
+                            {/* prequel sequel links*/}
+                            {(prequel || sequel) && onNavigate && (
+                                <div style={{ marginBottom: 12, display: "flex", gap: "16px" }}>
+                                    {prequel && (
+                                        <div>
+                                            <strong>Prequel: </strong>
+                                            <span
+                                                onClick={() => onNavigate(prequel)}
+                                                style={{
+                                                    color: "#f7e135",
+                                                    cursor: "pointer",
+                                                    textDecoration: "underline",
+                                                    fontWeight: "600"
+                                                }}
+                                            >
+                                                {prequel.title}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {sequel && (
+                                        <div>
+                                            <strong>Sequel: </strong>
+                                            <span
+                                                onClick={() => onNavigate(sequel)}
+                                                style={{
+                                                    color: "#f7e135",
+                                                    cursor: "pointer",
+                                                    textDecoration: "underline",
+                                                    fontWeight: "600"
+                                                }}
+                                            >
+                                                {sequel.title}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

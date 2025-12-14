@@ -427,6 +427,37 @@ function App() {
                         if (trailer) trailerUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
                     }
 
+                    // check for prequel and sequel
+                    if (tmdb.belongs_to_collection && tmdb.belongs_to_collection.id) {
+                        const collectionUrl = new URL(`https://api.themoviedb.org/3/collection/${tmdb.belongs_to_collection.id}`);
+                        collectionUrl.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
+                        try {
+                            const collRes = await fetch(collectionUrl.toString(), { headers: { accept: "application/json" } });
+                            if (collRes.ok) {
+                                const collectionData = await collRes.json();
+                                // sort by release date to determine order
+                                const parts = (collectionData.parts || []).sort((a, b) => {
+                                    return new Date(a.release_date || "9999-12-31") - new Date(b.release_date || "9999-12-31");
+                                });
+                                const currentIndex = parts.findIndex(p => p.id === tmdbId);
+                                if (currentIndex !== -1) {
+                                    if (currentIndex > 0) {
+                                        // prequel
+                                        const prev = parts[currentIndex - 1];
+                                        patch.prequel = { id: prev.id, tmdbId: prev.id, title: prev.title };
+                                    }
+                                    if (currentIndex < parts.length - 1) {
+                                        // sequel exists
+                                        const next = parts[currentIndex + 1];
+                                        patch.sequel = { id: next.id, tmdbId: next.id, title: next.title };
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Collection fetch error:", e);
+                        }
+                    }
+
                     // fill patch objects
 
                     // removed outdated comments here from old database logic
@@ -444,6 +475,16 @@ function App() {
 
                     if (trailerUrl) {
                         patch.trailerUrl = trailerUrl
+                    }
+
+
+                    if (!data.title) {
+                        patch.title = tmdb.title;
+                        patch.year = tmdb.release_date ? parseInt(tmdb.release_date.slice(0, 4)) : null;
+                        patch.description = tmdb.overview;
+                        patch.posterUrl = tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : null;
+                        patch.backdropUrl = tmdb.backdrop_path ? `https://image.tmdb.org/t/p/original${tmdb.backdrop_path}` : null;
+                        patch.rating = tmdb.vote_average;
                     }
 
                     console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime, "providers:", watchProviders.length);
@@ -1272,6 +1313,7 @@ function App() {
                                 ? details.runtime
                                 : null
                         }
+                        onNavigate={openDetails}
                     />
                 )}
 

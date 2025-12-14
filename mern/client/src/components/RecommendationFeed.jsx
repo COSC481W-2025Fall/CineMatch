@@ -156,6 +156,37 @@ export default function RecommendationFeed() {
                     const trailer = videos.find(v => v.site === "YouTube" && v.type === "Trailer");
                     if (trailer) currentDetails.trailerUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
 
+                    // check for prequel / sequel in collection
+                    if (tmdb.belongs_to_collection && tmdb.belongs_to_collection.id) {
+                        const collectionUrl = new URL(`https://api.themoviedb.org/3/collection/${tmdb.belongs_to_collection.id}`);
+                        collectionUrl.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
+                        try {
+                            const collRes = await fetch(collectionUrl.toString(), { headers: { accept: "application/json" } });
+                            if (collRes.ok) {
+                                const collectionData = await collRes.json();
+                                // sort by release date to determine order
+                                const parts = (collectionData.parts || []).sort((a, b) => {
+                                    return new Date(a.release_date || "9999-12-31") - new Date(b.release_date || "9999-12-31");
+                                });
+                                const currentIndex = parts.findIndex(p => p.id === tmdbId);
+                                if (currentIndex !== -1) {
+                                    if (currentIndex > 0) {
+                                        // prequel exists
+                                        const prev = parts[currentIndex - 1];
+                                        currentDetails.prequel = { id: prev.id, tmdbId: prev.id, title: prev.title };
+                                    }
+                                    if (currentIndex < parts.length - 1) {
+                                        // sequel exists
+                                        const next = parts[currentIndex + 1];
+                                        currentDetails.sequel = { id: next.id, tmdbId: next.id, title: next.title };
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error("Collection fetch error:", e);
+                        }
+                    }
+
                     // patch
                     if (topCast.length > 0) currentDetails.topCast = topCast;
                     if (runtime) currentDetails.runtime = runtime;
@@ -509,6 +540,7 @@ export default function RecommendationFeed() {
                     canModifyLists={canModifyLists}
                     castLimit={CAST_LIMIT}
                     runtime={typeof details?.runtime === "number" ? details.runtime : null}
+                    onNavigate={openDetails}
                 />
             )}
         </>
