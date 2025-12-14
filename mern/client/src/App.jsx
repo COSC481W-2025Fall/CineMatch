@@ -388,7 +388,6 @@ function App() {
     // TMDB details loader
     // ----------------------------------------------------
 
-    // make some changes to this to make sure all information is fetched
     async function openDetails(movie) {
         try {
             const res = await fetch(`${API_BASE}/record/details/${movie.id}`);
@@ -451,7 +450,6 @@ function App() {
                     let watchType = null;
 
                     // use US by default, not important for other areas rn since it changes by location
-
                     if (tmdb && tmdb["watch/providers"] && tmdb["watch/providers"].results && tmdb["watch/providers"].results.US) {
                         const us = tmdb["watch/providers"].results.US;
                         if (us.flatrate && us.flatrate.length > 0) {
@@ -466,40 +464,50 @@ function App() {
                     // get trailer
                     let trailerUrl = null;
                     if (tmdb && tmdb.videos && tmdb.videos.results) {
-                        const trailer = tmdb.videos.results.find(v => v.site === "YouTube" && v.type === "Trailer");
+                        const trailer = tmdb.videos.results.find(
+                            (v) => v.site === "YouTube" && v.type === "Trailer"
+                        );
                         if (trailer) trailerUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
                     }
 
                     // check for prequel and sequel
                     if (tmdb.belongs_to_collection && tmdb.belongs_to_collection.id) {
-                        const collectionUrl = new URL(`https://api.themoviedb.org/3/collection/${tmdb.belongs_to_collection.id}`);
-                        collectionUrl.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
                         try {
-                            const collRes = await fetch(collectionUrl.toString(), { headers: { accept: "application/json" } });
+                            const collRes = await fetch(
+                                `${API_BASE}/record/collection/${tmdb.belongs_to_collection.id}`
+                            );
                             if (collRes.ok) {
                                 const collectionData = await collRes.json();
                                 // sort by release date to determine order
                                 const parts = (collectionData.parts || []).sort((a, b) => {
-                                    return new Date(a.release_date || "9999-12-31") - new Date(b.release_date || "9999-12-31");
+                                    return new Date(a.release_date || "9999-12-31") -
+                                        new Date(b.release_date || "9999-12-31");
                                 });
-                                const currentIndex = parts.findIndex(p => p.id === tmdbId);
+                                const currentIndex = parts.findIndex((p) => p.id === tmdbId);
                                 if (currentIndex !== -1) {
                                     if (currentIndex > 0) {
                                         // prequel
                                         const prev = parts[currentIndex - 1];
-                                        patch.prequel = { id: prev.id, tmdbId: prev.id, title: prev.title };
+                                        patch.prequel = {
+                                            id: prev.id,
+                                            tmdbId: prev.id,
+                                            title: prev.title,
+                                        };
                                     }
                                     if (currentIndex < parts.length - 1) {
                                         // sequel exists
                                         const next = parts[currentIndex + 1];
-                                        patch.sequel = { id: next.id, tmdbId: next.id, title: next.title };
+                                        patch.sequel = {
+                                            id: next.id,
+                                            tmdbId: next.id,
+                                            title: next.title,
+                                        };
                                     }
                                 }
                             }
                         } catch (e) {
                             console.error("Collection fetch error:", e);
                         }
-
                     }
 
                     // fill patch objects
@@ -524,10 +532,16 @@ function App() {
 
                     if (!data.title) {
                         patch.title = tmdb.title;
-                        patch.year = tmdb.release_date ? parseInt(tmdb.release_date.slice(0, 4)) : null;
+                        patch.year = tmdb.release_date
+                            ? parseInt(tmdb.release_date.slice(0, 4))
+                            : null;
                         patch.description = tmdb.overview;
-                        patch.posterUrl = tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : null;
-                        patch.backdropUrl = tmdb.backdrop_path ? `https://image.tmdb.org/t/p/original${tmdb.backdrop_path}` : null;
+                        patch.posterUrl = tmdb.poster_path
+                            ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}`
+                            : null;
+                        patch.backdropUrl = tmdb.backdrop_path
+                            ? `https://image.tmdb.org/t/p/original${tmdb.backdrop_path}`
+                            : null;
                         patch.rating = tmdb.vote_average;
                     }
 
