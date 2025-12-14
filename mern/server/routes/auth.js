@@ -6,7 +6,7 @@ import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import { RateLimiterMongo } from "rate-limiter-flexible";
 import { ObjectId } from "mongodb";
-import usersDb from "../db/usersConnections.js"; 
+import usersDb from "../db/usersConnections.js";
 import { sendMail } from "../utils/email.js";
 import { newRawToken, hashToken, tokenMatches } from "../utils/oneTimeToken.js";
 
@@ -19,6 +19,19 @@ const router = Router();
 const ACCESS_TTL  = process.env.JWT_ACCESS_TTL  || "15m";
 const REFRESH_TTL = process.env.JWT_REFRESH_TTL || "7d";
 const isProd = process.env.NODE_ENV === "production";
+
+
+const SERVER_ORIGIN = process.env.SERVER_ORIGIN || "http://localhost:5050";
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+
+
+function userIdToString(id) {
+    if (!id) return "";
+    if (typeof id === "string") return id;
+    if (typeof id.toHexString === "function") return id.toHexString();
+    if (typeof id.toString === "function") return id.toString();
+    return String(id);
+}
 
 /* ACTIVE_KEYS holds all active secrets */
 const ACTIVE_KEYS = (() => {
@@ -50,12 +63,27 @@ function verifyByKid(token) {
     return jwt.verify(token, secret);
 }
 // Access token: short-lived, basic user identity
-function signAccess(user) {
+/*function signAccess(user) {
     return signWithKid({ email: user.email, sub: String(user._id) }, ACCESS_TTL);
-}
+}*/
 // Refresh token: longer-lived, includes a jti (token id)
-function signRefresh(user, jti) {
+/*function signRefresh(user, jti) {
     return signWithKid({ email: user.email, sub: String(user._id), jti }, REFRESH_TTL);
+}*/
+
+
+function signAccess(user) {
+    return signWithKid(
+        { email: user.email, sub: userIdToString(user._id) },
+        ACCESS_TTL
+    );
+}
+
+function signRefresh(user, jti) {
+    return signWithKid(
+        { email: user.email, sub: userIdToString(user._id), jti },
+        REFRESH_TTL
+    );
 }
 
 /* Refresh token helpers */
@@ -140,7 +168,7 @@ router.post('/register', async (req, res) => {
             displayName: displayName || normalized.split('@')[0],
             passwordHash,
             refreshTokens: [],
-            emailVerified: false,    // Assume false to ensure verification 
+            emailVerified: false,    // Assume false to ensure verification
             createdAt: new Date(),
         };
 
@@ -166,7 +194,7 @@ router.post('/register', async (req, res) => {
     }
 });
 
-router.post('/refresh', async (req, res) => {
+/*router.post('/refresh', async (req, res) => {
     try {
         const token = req.cookies?.rt;
         if (!token) return res.status(401).json({ error: 'Missing refresh cookie' });
@@ -178,10 +206,25 @@ router.post('/refresh', async (req, res) => {
             return res.status(401).json({ error: 'Invalid/expired refresh token' });
         }
 
-        const user = await Users.findOne(
+        /*const user = await Users.findOne(
             { _id: usersDb.bson.ObjectId.createFromHexString(payload.sub) },
             { projection: { email: 1, displayName: 1, refreshTokens: 1 } }
-        );
+        );*/
+/*
+	const { ObjectId } = usersDb.bson;
+
+	let userId;
+	try {
+    		userId = new ObjectId(payload.sub);
+	} catch (err) {
+    		return res.status(401).json({ error: "Invalid refresh token subject" });
+	}
+
+	const user = await Users.findOne(
+    		{ _id: userId },
+    		{ projection: { email: 1, displayName: 1, refreshTokens: 1 } }
+	);
+
         if (!user) return res.status(401).json({ error: 'User not found' });
 
         // Ensure token matches a stored hashed one
@@ -211,7 +254,92 @@ router.post('/refresh', async (req, res) => {
     } catch (e) {
         return res.status(500).json({ error: String(e?.message || e) });
     }
+});*/
+
+router.post("/refresh", async (req, res) => {
+    try {
+        const token = req.cookies?.rt;
+        if (!token) {
+            return res.status(401).json({ error: "Missing refresh cookie" });
+        }
+
+        // --- verify JWT itself ---
+        let payload;
+        try {
+            payload = verifyByKid(token);
+        } catch (err) {
+            console.error("REFRESH verifyByKid failed:", err);
+            return res.status(401).json({ error: "Invalid/expired refresh token" });
+        }
+
+        if (!payload?.sub) {
+            return res.status(401).json({ error: "Invalid refresh token payload" });
+        }
+
+        let sub = String(payload.sub);
+        const m = sub.match(/^ObjectId\("([0-9a-fA-F]{24})"\)$/);
+        if (m) sub = m[1];
+
+        let userId;
+        try {
+            userId = new ObjectId(sub);   // uses the imported { ObjectId } from "mongodb"
+        } catch (err) {
+            console.error("REFRESH invalid sub / ObjectId:", payload.sub, err);
+            return res.status(401).json({ error: "Invalid refresh token subject" });
+        }
+
+
+        const user = await Users.findOne(
+            { _id: userId },
+            { projection: { email: 1, displayName: 1, refreshTokens: 1 } }
+        );
+        if (!user) {
+            return res.status(401).json({ error: "User not found" });
+        }
+
+        let matched = false;
+        for (const r of user.refreshTokens || []) {
+            try {
+                if (await bcrypt.compare(token, r.hash)) {
+                    matched = true;
+                    break;
+                }
+            } catch (cmpErr) {
+                console.error("REFRESH bcrypt.compare error:", cmpErr);
+            }
+        }
+        if (!matched) {
+            return res.status(401).json({ error: "Refresh token not recognized" });
+        }
+
+        await removeRefresh(user._id, token);
+
+        const newJti = crypto.randomUUID();
+        const newRefresh = signRefresh(user, newJti);
+        await storeRefresh(user._id, newJti, newRefresh);
+
+        const newAccess = signAccess(user);
+
+        res.cookie("rt", newRefresh, {
+            ...cookieOpts,
+            maxAge: 1000 * 60 * 60 * 24 * 30,
+        });
+
+        return res.json({
+            accessToken: newAccess,
+            user: {
+                id: String(user._id),
+                email: user.email,
+                displayName: user.displayName,
+            },
+        });
+    } catch (e) {
+        console.error("REFRESH route fatal error:", e);
+        return res.status(500).json({ error: String(e?.message || e) });
+    }
 });
+
+
 
 // Login (rate-limited)- requires verified email, issues access and refresh tokens
 router.post('/login', async (req, res) => {
@@ -324,14 +452,125 @@ router.get("/verify-email", async (req, res) => {
     await EmailVerifications.deleteMany({ userId });
 
     const redirectTo = new URL(
-        "/verify-success",
-        process.env.CLIENT_ORIGIN || "http://localhost:5173"
+        "/verify-success", CLIENT_ORIGIN
     );
     return res.redirect(302, redirectTo.toString());
 });
 
-// Start password reset flow
+
 router.post("/forgot", authLimiter, async (req, res) => {
+    try {
+        const { email } = req.body || {};
+        if (!email) {
+            // Don't leak anything; still return ok
+            return res.status(200).json({ ok: true });
+        }
+
+        const normalized = String(email).trim().toLowerCase();
+
+        const user = await Users.findOne(
+            { email: normalized },
+            { projection: { _id: 1, email: 1, emailVerified: 1 } }
+        );
+
+        console.log("[/forgot] request for:", normalized, "-> found:", !!user, "verified:", user?.emailVerified);
+
+        if (!user) {
+            // Email not in DB – respond the same so we don't leak which emails exist
+            return res.status(200).json({ ok: true });
+        }
+
+        const isVerified = user.emailVerified === undefined ? true : !!user.emailVerified;
+        if (!isVerified) {
+            console.log("[/forgot] user exists but email not verified, skipping reset mail");
+            return res.status(200).json({ ok: true });
+        }
+
+        const raw = newRawToken();
+        const hash = await hashToken(raw);
+        const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
+
+        await PasswordResets.deleteMany({ userId: user._id });
+        await PasswordResets.insertOne({ userId: user._id, hash, expiresAt });
+
+        const base = CLIENT_ORIGIN || process.env.CLIENT_ORIGIN || "http://localhost:5173";
+        const url = new URL("/reset-password", base);
+        url.searchParams.set("token", raw);
+        url.searchParams.set("u", String(user._id));
+        const link = url.toString();
+
+        console.log("[/forgot] sending reset email to:", user.email, "link:", link);
+
+        await sendMail({
+            to: user.email,
+            subject: "Reset your CineMatch password",
+            text: `Reset your password: ${link}`,
+            html: `<p>We received a password reset request. If this was you, click the button:</p>
+                   <p><a href="${link}" style="padding:10px 16px; background:#222; color:#fff; text-decoration:none; border-radius:6px;">Reset password</a></p>
+                   <p>If you didn’t request this, ignore this email.</p>`,
+        });
+
+        return res.status(200).json({ ok: true });
+    } catch (err) {
+        console.error("FORGOT ERROR:", err);
+        // Still return ok so we don't leak anything to the client
+        return res.status(200).json({ ok: true });
+    }
+});
+
+
+
+/*router.post("/forgot", authLimiter, async (req, res) => {
+    const { email } = req.body || {};
+    if (!email) return res.status(200).json({ ok: true });
+
+    const normalized = String(email).trim().toLowerCase();
+    const user = await Users.findOne(
+        { email: normalized },
+        { projection: { _id: 1, email: 1, emailVerified: 1 } }
+    );
+
+    // if (user && user.emailVerified) {
+    if (user) {
+        const raw = newRawToken();
+        const hash = await hashToken(raw);
+        const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
+
+        await PasswordResets.deleteMany({ userId: user._id });
+        await PasswordResets.insertOne({ userId: user._id, hash, expiresAt });
+
+        const origin = CLIENT_ORIGIN || "http://localhost:5173"; // or whatever your dev client origin is
+        const url = new URL("/reset-password", origin);
+        url.searchParams.set("token", raw);
+        url.searchParams.set("u", String(user._id));
+        const link = url.toString();
+
+        try {
+            await sendMail({
+                to: user.email,
+                subject: "Reset your CineMatch password",
+                text: `Reset your password: ${link}`,
+                html: `<p>We received a password reset request. If this was you, click the button:</p>
+                 <p><a href="${link}" style="padding:10px 16px; background:#222; color:#fff; text-decoration:none; border-radius:6px;">Reset password</a></p>
+                 <p>If you didn’t request this, ignore this email.</p>`,
+            });
+            console.log("[forgot] password reset email sent to", user.email);
+        } catch (err) {
+            console.error("[forgot] sendMail failed:", err);
+            // you can still return ok: true here to avoid leaking info, but you now see the real error server-side
+        }
+    }
+
+    return res.status(200).json({ ok: true });
+});*/
+
+
+
+
+
+
+// Start password reset flow
+/*router.post("/forgot", authLimiter, async (req, res) => {
     const { email } = req.body || {};
     if (!email) return res.status(200).json({ ok: true });
 
@@ -346,7 +585,7 @@ router.post("/forgot", authLimiter, async (req, res) => {
         await PasswordResets.deleteMany({ userId: user._id });
         await PasswordResets.insertOne({ userId: user._id, hash, expiresAt });
 
-        const url = new URL("/reset-password", process.env.CLIENT_ORIGIN || "http://localhost:5173");
+        const url = new URL("/reset-password", CLIENT_ORIGIN);
         url.searchParams.set("token", raw);
         url.searchParams.set("u", String(user._id));
         const link = url.toString();
@@ -363,6 +602,43 @@ router.post("/forgot", authLimiter, async (req, res) => {
 
     return res.status(200).json({ ok: true });
 });
+*/
+
+/*
+router.post("/forgot", authLimiter, async (req, res) => {
+    const { email } = req.body || {};
+    if (!email) return res.status(200).json({ ok: true });
+
+    const normalized = String(email).trim().toLowerCase();
+    const user = await Users.findOne({ email: normalized }, { projection: { _id:1, email:1, emailVerified:1 } });
+
+    if (user && user.emailVerified) {
+        const raw = newRawToken();
+        const hash = await hashToken(raw);
+        const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
+
+        await PasswordResets.deleteMany({ userId: user._id });
+        await PasswordResets.insertOne({ userId: user._id, hash, expiresAt });
+
+        const url = new URL("/reset-password", CLIENT_ORIGIN);
+        url.searchParams.set("token", raw);
+        url.searchParams.set("u", String(user._id));
+        const link = url.toString();
+
+        sendMail({
+            to: user.email,
+            subject: "Reset your CineMatch password",
+            text: `Reset your password: ${link}`,
+            html: `<p>We received a password reset request. If this was you, click the button:</p>
+             <p><a href="${link}" style="padding:10px 16px; background:#222; color:#fff; text-decoration:none; border-radius:6px;">Reset password</a></p>
+             <p>If you didn’t request this, ignore this email.</p>`,
+        });
+    }
+
+    return res.status(200).json({ ok: true });
+});
+*/
+
 
 // Complete password reset
 router.post("/reset", async (req, res) => {
@@ -392,13 +668,15 @@ router.post("/reset", async (req, res) => {
 });
 
 /*  Helpers  */
-async function queueVerifyEmail(user) {
+/*async function queueVerifyEmail(user) {
     const raw = newRawToken();
     const hash = await hashToken(raw);
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
     await EmailVerifications.insertOne({ userId: user._id, hash, expiresAt });
 
-    const url = new URL("/auth/verify-email", process.env.SERVER_ORIGIN || "http://localhost:5173");
+    const apiBase = process.env.SERVER_ORIGIN || "http://localhost:3000/api";
+
+    const url = new URL("/auth/verify-email", apiBase );
     url.searchParams.set("token", raw);
     url.searchParams.set("u", String(user._id));
 
@@ -411,7 +689,38 @@ async function queueVerifyEmail(user) {
            <p><a href="${link}" style="padding:10px 16px; background:#222; color:#fff; text-decoration:none; border-radius:6px;">Confirm email</a></p>
            <p>If the button doesn’t work, copy this link:<br>${link}</p>`,
     });
+}*/
+
+
+async function queueVerifyEmail(user) {
+    const raw = newRawToken();
+    const hash = await hashToken(raw);
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
+    await EmailVerifications.insertOne({ userId: user._id, hash, expiresAt });
+
+    // This should be the *backend* origin (no /api here)
+    const apiOrigin = process.env.SERVER_ORIGIN || "http://localhost:3000";
+
+    // External URL we want users to click:
+    //   https://cinematch.live/api/auth/verify-email?token=...&u=...
+    const url = new URL("/api/auth/verify-email", apiOrigin);
+
+    url.searchParams.set("token", raw);
+    url.searchParams.set("u", String(user._id));
+
+    const link = url.toString();
+
+    await sendMail({
+        to: user.email,
+        subject: "Confirm your CineMatch email",
+        text: `Welcome to CineMatch! Confirm your email: ${link}`,
+        html: `<p>Welcome to <b>CineMatch</b>! Click the button to confirm your email.</p>
+               <p><a href="${link}" style="padding:10px 16px; background:#222; color:#fff; text-decoration:none; border-radius:6px;">Confirm email</a></p>
+               <p>If the button doesn’t work, copy this link:<br>${link}</p>`
+    });
 }
+
+
 
 // Quick endpoint to test email is sending from the server
 /*router.post("/test-email", async (req, res) => {

@@ -87,10 +87,10 @@ router.get("/", async (req, res) => {
             ///////////////
         }
 
-                // SEARCH BY ACTOR (supports single or multiple actors, AND logic)
+        // SEARCH BY ACTOR (supports single or multiple actors, AND logic)
         if (actor) {
 
-                // Works with:
+            // Works with:
             //   ?actor=Tom Hanks
             //   ?actor=Tom Hanks,Brad Pitt   // comma-separated
             let actorList = [];
@@ -512,6 +512,37 @@ router.post("/bulk", async (req, res) => {
         return res.status(500).json({ error: "Server error" });
     }
 });
+
+router.get("/tmdb/:id", async (req, res) => {
+    try {
+        const tmdbId = Number(req.params.id);
+        if (!Number.isFinite(tmdbId)) {
+            return res.status(400).json({ error: "Invalid TMDB id" });
+        }
+
+        const url = new URL(`https://api.themoviedb.org/3/movie/${tmdbId}`);
+        url.searchParams.set("api_key", process.env.VITE_TMDB_API_KEY);
+        url.searchParams.set("append_to_response", "credits,watch/providers");
+
+        const tmdbRes = await fetch(url.toString(), {
+            headers: { accept: "application/json" },
+        });
+
+        if (!tmdbRes.ok) {
+            return res
+                .status(tmdbRes.status)
+                .json({ error: `TMDB error HTTP ${tmdbRes.status}` });
+        }
+
+        const data = await tmdbRes.json();
+        return res.json(data);
+    } catch (err) {
+        console.error("GET /record/tmdb/:id error:", err);
+        return res.status(500).json({ error: "Server error" });
+    }
+});
+
+
 
 
 export default router;
