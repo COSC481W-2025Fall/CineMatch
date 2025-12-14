@@ -41,12 +41,12 @@ app.use(cors({
 
 app.use(express.json());
 app.use(cookieParser());
-app.use("/api/me", meRouter);
 
-// ROUTES 
+
+// ROUTES
 // Auth endpoints (register, login, refresh, logout)
 app.use('/auth', authRouter);
-
+app.use('/me', meRouter);
 
 // Public data routes (leave these public unless you want to require auth)
 app.use('/record/actors', actors);
@@ -57,7 +57,7 @@ app.use('/record', records);
 // protect /feed with access token (change as you like)
 app.use('/feed', feedRouter);
 
-// DEBUG ENDPOINT 
+// DEBUG ENDPOINT
 import db from './db/connection.js';
 app.get('/__debug', async (_req, res) => {
   try {
