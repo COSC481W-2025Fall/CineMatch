@@ -393,6 +393,7 @@ function App() {
             const res = await fetch(`${API_BASE}/record/details/${movie.id}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
+
             // replace whole conversion call and check with this
             const tmdbId = movie.id;
             console.log("[TMDB] Using ID:", tmdbId);
@@ -404,7 +405,8 @@ function App() {
                 const numOfActors = CAST_LIMIT;
 
                 const tmdbRes = await fetch(
-                    `${API_BASE}/record/tmdb/${tmdbId}?append_to_response=credits,watch/providers,videos`
+                    `${API_BASE}/record/tmdb/${tmdbId}?append_to_response=credits,watch/providers,videos`,
+                    { headers: { accept: "application/json" } }
                 );
 
                 if (tmdbRes.ok) {
@@ -467,21 +469,26 @@ function App() {
                         const trailer = tmdb.videos.results.find(
                             (v) => v.site === "YouTube" && v.type === "Trailer"
                         );
-                        if (trailer) trailerUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
+                        if (trailer) {
+                            trailerUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
+                        }
                     }
 
                     // check for prequel and sequel
                     if (tmdb.belongs_to_collection && tmdb.belongs_to_collection.id) {
                         try {
                             const collRes = await fetch(
-                                `${API_BASE}/record/collection/${tmdb.belongs_to_collection.id}`
+                                `${API_BASE}/record/collection/${tmdb.belongs_to_collection.id}`,
+                                { headers: { accept: "application/json" } }
                             );
                             if (collRes.ok) {
                                 const collectionData = await collRes.json();
                                 // sort by release date to determine order
                                 const parts = (collectionData.parts || []).sort((a, b) => {
-                                    return new Date(a.release_date || "9999-12-31") -
-                                        new Date(b.release_date || "9999-12-31");
+                                    return (
+                                        new Date(a.release_date || "9999-12-31") -
+                                        new Date(b.release_date || "9999-12-31")
+                                    );
                                 });
                                 const currentIndex = parts.findIndex((p) => p.id === tmdbId);
                                 if (currentIndex !== -1) {
@@ -568,11 +575,11 @@ function App() {
 
             setDetails({ id: movie.id, tmdbId: finalTmdbId, ...data, ...patch });
             setShowDetails(true);
-
         } catch (e) {
             console.error(e);
         }
     }
+
 
 
 
