@@ -393,8 +393,7 @@ function App() {
             const res = await fetch(`${API_BASE}/record/details/${movie.id}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-
-            // replace whole conversion call and check with this
+            
             const rawTmdbId =
                 movie.tmdbId != null && movie.tmdbId !== ""
                     ? movie.tmdbId
@@ -404,7 +403,6 @@ function App() {
                 rawTmdbId != null && rawTmdbId !== ""
                     ? Number(rawTmdbId)
                     : null;
-
 
 
             let patch = {}; // empty
@@ -584,6 +582,7 @@ function App() {
             console.error(e);
         }
     }
+
 
 
 
