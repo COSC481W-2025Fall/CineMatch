@@ -284,7 +284,7 @@ router.get("/tmdb/:id", async (req, res) => {
 });
 
 
-router.get("/record/collection/:collectionId", async (req, res) => {
+router.get("/collection/:collectionId", async (req, res) => {
     try {
         const { collectionId } = req.params;
 
