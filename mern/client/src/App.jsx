@@ -37,6 +37,16 @@ const GENRES = [
     "Western",
 ];
 
+// rating map
+const AGE_RATINGS_DATA = [
+    { id: 0, name: "Not Rated" },
+    { id: 1, name: "G" },
+    { id: 2, name: "PG" },
+    { id: 3, name: "PG-13" },
+    { id: 4, name: "R" },
+    { id: 5, name: "NC-17" },
+];
+
 // utilities (top of file)
 function shuffleArray(array) {
     const arr = [...array]; // makes a shallow copy of the original array
@@ -48,7 +58,7 @@ function shuffleArray(array) {
 }
 
 // Renders clickable chips for the active filters
-function ActiveFilterBar({ params, selectedGenres, visible, onRemove }) {
+function ActiveFilterBar({ params, selectedGenres, selectedAgeRatings, visible, onRemove }) {
     if (!visible) return null; // don't show chips until a search has run
 
     const chips = [];
@@ -94,6 +104,12 @@ function ActiveFilterBar({ params, selectedGenres, visible, onRemove }) {
 
     // Genres — one chip per selected genre (carry index so we can remove the exact one)
     (selectedGenres || []).forEach((g, i) => push("genre", g, `Genre: ${g}`, i));
+
+    // rating chips (maybe condense this into one chip later?)
+    (selectedAgeRatings || []).forEach((id, i) => {
+        const label = AGE_RATINGS_DATA.find(r => r.id === id)?.name || id;
+        push("age_rating", id, `Age: ${label}`, i);
+    });
 
     if (!chips.length) return null; // nothing to show
 
@@ -215,20 +231,30 @@ function App() {
     const [genreDropdownOpen, setGenreDropdownOpen] = useState(false);
     const [selectedGenres, setSelectedGenres] = useState([]);
 
+    const [ageRatingDropdownOpen, setAgeRatingDropdownOpen] = useState(false);
+    const [selectedAgeRatings, setSelectedAgeRatings] = useState([]);
+
     // Frozen copies of the last submitted filters (chips read from these)
     const [appliedParams, setAppliedParams] = useState(params);
     const [appliedGenres, setAppliedGenres] = useState(selectedGenres);
+    const [appliedAgeRatings, setAppliedAgeRatings] = useState(selectedAgeRatings);
     const [hasSearched, setHasSearched] = useState(false);
 
     // track latest applied filters
     const appliedParamsRef = useRef(appliedParams);
     const appliedGenresRef = useRef(appliedGenres);
+    const appliedAgeRatingsRef = useRef(appliedAgeRatings);
 
     // ----------------------------------------------------
     // Navigation helpers
     // ----------------------------------------------------
     function toggleDropdown() {
         setGenreDropdownOpen((prev) => !prev);
+    }
+
+    // toggle for age ratings
+    function toggleAgeRatingDropdown() {
+        setAgeRatingDropdownOpen((prev) => !prev);
     }
 
     function handleGenreToggle(genre) {
@@ -257,6 +283,34 @@ function App() {
 
     function isGenreChecked(genre) {
         return selectedGenres.includes(genre);
+    }
+
+    // helpers for age ratings
+    function handleAgeRatingToggle(id) {
+        const newSelected = [...selectedAgeRatings];
+        if (selectedAgeRatings.includes(id)) {
+            const index = newSelected.indexOf(id);
+            newSelected.splice(index, 1);
+        } else {
+            newSelected.push(id);
+        }
+        setSelectedAgeRatings(newSelected);
+    }
+
+    function getAgeRatingLabel() {
+        if (selectedAgeRatings.length === 0) {
+            return "AGE RATING...";
+        } else {
+            return selectedAgeRatings.length + " SELECTED";
+        }
+    }
+
+    function getAgeDropdownArrowClass() {
+        return ageRatingDropdownOpen ? "dropdown-arrow open" : "dropdown-arrow";
+    }
+
+    function isAgeRatingChecked(id) {
+        return selectedAgeRatings.includes(id);
     }
 
     // ----------------------------------------------------
@@ -463,7 +517,7 @@ function App() {
         setStatus("Loading…"); // show loading message while we fetch
         try {
             // separate genre from other overrides
-            const { genre: overrideGenre, ...otherOverrides } = overrideQuery || {};
+            const { genre: overrideGenre, age_rating: overrideAgeRating, ...otherOverrides } = overrideQuery || {};
 
             // start from current inputs unless we received an override (chip removal, clear, etc.)
             // ghost fix: use otherOverrides instead of overrideQuery to keep genre out of nextParams
@@ -478,6 +532,12 @@ function App() {
                     ? [...(overrideGenre || [])]
                     : [...appliedGenres]
                 : [...selectedGenres];
+
+            let nextAgeRatings = overrideQuery
+                ? Object.prototype.hasOwnProperty.call(overrideQuery, "age_rating")
+                    ? [...(overrideAgeRating || [])]
+                    : [...appliedAgeRatings]
+                : [...selectedAgeRatings];
 
             // ACTORS handling:
             // - merge previously applied actors with what's typed ONLY for normal searches
@@ -510,6 +570,7 @@ function App() {
             const query = {
                 ...nextParams,
                 ...(nextGenres.length ? { genre: nextGenres } : {}),
+                ...(nextAgeRatings.length ? { age_rating: nextAgeRatings } : {}),
             };
 
             // ask backend for results
@@ -528,6 +589,7 @@ function App() {
                 (!nextParams.title || !nextParams.title.trim()) &&
                 (!nextParams.keyword || !nextParams.keyword.trim()) &&
                 !nextGenres.length &&
+                !nextAgeRatings.length &&
                 !nextParams.year_min &&
                 !nextParams.year_max &&
                 !nextParams.rating_min &&
@@ -539,8 +601,12 @@ function App() {
 
             setAppliedParams(nextParams);
             appliedParamsRef.current = nextParams;
+
             setAppliedGenres(nextGenres);
             appliedGenresRef.current = nextGenres;
+
+            setAppliedAgeRatings(nextAgeRatings);
+            appliedAgeRatingsRef.current = nextAgeRatings;
 
             if (!opts.isClear) setHasSearched(true);
         } catch (err) {
@@ -556,6 +622,7 @@ function App() {
         // start from the applied filters, this matches what's on screen
         const baseParams = { ...appliedParamsRef.current };
         let baseGenres = [...appliedGenresRef.current];
+        let baseAgeRatings = [...appliedAgeRatingsRef.current];
 
         // remove one item from a comma list (case-insensitive)
         const removeFromCommaList = (raw, valueToRemove) =>
@@ -599,6 +666,15 @@ function App() {
                     baseGenres = baseGenres.filter((g) => g !== chip.value);
                 }
                 break;
+
+            // rating removal
+            case "age_rating":
+                if (typeof chip.idx === "number") {
+                    baseAgeRatings = baseAgeRatings.filter((_, i) => i !== chip.idx);
+                } else {
+                    baseAgeRatings = baseAgeRatings.filter((r) => r !== chip.value);
+                }
+                break;
             default:
                 break;
         }
@@ -606,17 +682,20 @@ function App() {
         // Update refs right away so the next click sees the new states
         appliedParamsRef.current = baseParams;
         appliedGenresRef.current = baseGenres;
+        appliedAgeRatingsRef.current = baseAgeRatings;
 
         // keep sidebar inputs/checkboxes same with what we removed
         setParams((prev) => ({ ...prev, ...baseParams }));
         setSelectedGenres(baseGenres);
+        setSelectedAgeRatings(baseAgeRatings);
 
         // UI: hide the chip right away (don't wait for the fetch)
         setAppliedParams(baseParams);
         setAppliedGenres(baseGenres);
+        setAppliedAgeRatings(baseAgeRatings);
 
         // run the search again with updated filters
-        doSearch({ ...baseParams, genre: baseGenres }, { fromChip: true });
+        doSearch({ ...baseParams, genre: baseGenres, age_rating: baseAgeRatings }, { fromChip: true }); // added in ratings
     }
 
     function clearFilters() {
@@ -634,15 +713,19 @@ function App() {
         // Reset all states
         setParams(emptyParams);
         setSelectedGenres([]);
+        setSelectedAgeRatings([]);
+
         setAppliedParams(emptyParams);
         setAppliedGenres([]);
+        setAppliedAgeRatings([]);
 
         // reset refs
         appliedParamsRef.current = emptyParams;
         appliedGenresRef.current = [];
+        appliedAgeRatingsRef.current = [];
 
         // Run search with empty filters
-        doSearch({ ...emptyParams, genre: [] }, { fromChip: true, isClear: true });
+        doSearch({ ...emptyParams, genre: [], age_rating: [] }, { fromChip: true, isClear: true });
     }
 
     useEffect(() => {
@@ -891,6 +974,32 @@ function App() {
                                 </div>
                             )}
                         </li>
+
+                        {/* age ratings drop down hurr durr copy genre dropdown */}
+                        <li className="filter-item genre-dropdown" key="AgeRating">
+                            <div
+                                className="filter-link genre-header"
+                                onClick={toggleAgeRatingDropdown}
+                            >
+                                <span className="genre-label">{getAgeRatingLabel()}</span>
+                                <span className={getAgeDropdownArrowClass()}>▼</span>
+                            </div>
+                            {ageRatingDropdownOpen && (
+                                <div className="genre-checkbox-list">
+                                    {AGE_RATINGS_DATA.map((rating) => (
+                                        <label key={rating.id} className="genre-checkbox-item">
+                                            <input
+                                                type="checkbox"
+                                                checked={isAgeRatingChecked(rating.id)}
+                                                onChange={() => handleAgeRatingToggle(rating.id)}
+                                            />
+                                            <span>{rating.name}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </li>
+
                     </ul>
 
                     <button
@@ -948,6 +1057,7 @@ function App() {
                     <ActiveFilterBar
                         params={appliedParams}
                         selectedGenres={appliedGenres}
+                        selectedAgeRatings={appliedAgeRatings}
                         visible={hasSearched}
                         onRemove={handleRemoveChip}
                     />
@@ -1140,7 +1250,6 @@ function App() {
                         inToWatch={!!inToWatch}
                         onMarkWatched={onMarkWatched}
                         onAddToWatch={onAddToWatch}
-
                         canModifyLists={canModifyLists}
                         // Read-only like/dislike state (no editing here)
                         isLiked={!!isLiked}

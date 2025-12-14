@@ -66,7 +66,8 @@ router.get("/", async (req, res) => {
             title, name, // these should be the same thing, will fix later
             director, actor, genre, keyword,
             year_min, year_max,
-            rating_min, rating_max
+            rating_min, rating_max,
+            age_rating
         } = req.query;
 
         const filter = {};
@@ -126,6 +127,17 @@ router.get("/", async (req, res) => {
                     filter.$and.push({ genres: { $regex: g.trim(), $options: "i" } });
                 }
             });
+        }
+
+        // age rating search
+        if (age_rating) {
+            const ratings = (Array.isArray(age_rating) ? age_rating : age_rating.split(","))
+                .map(Number)
+                .filter(n => Number.isFinite(n));
+
+            if (ratings.length > 0) {
+                filter.age_rating = { $in: ratings };
+            }
         }
 
         if (keyword) {
@@ -188,7 +200,7 @@ router.post("/bulk", async (req, res) => {
 
         const {
             title, director, actor, genre, keyword,
-            year, rating
+            year, rating, age_rating
         } = req.body?.params || {};
 
         const filter = { id: { $in: ids } };
@@ -204,6 +216,16 @@ router.post("/bulk", async (req, res) => {
         if (rating) {
             const rNum = Number(rating);
             if (!Number.isNaN(rNum)) filter.rating = { $gte: rNum };
+        }
+
+        // age ratings
+        if (age_rating) {
+            const ratings = (Array.isArray(age_rating) ? age_rating : age_rating.split(","))
+                .map(Number)
+                .filter(n => Number.isFinite(n));
+            if (ratings.length > 0) {
+                filter.age_rating = { $in: ratings };
+            }
         }
 
         // simplified this a lot, seems to work well
