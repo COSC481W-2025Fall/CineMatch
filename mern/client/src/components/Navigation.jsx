@@ -8,6 +8,7 @@ import {
   faMagnifyingGlass,
   faClapperboard,
   faCircleInfo,
+    faBars // eric what awful IDE did you use that does this indentation i litterly cant indent by a single space on webstorm
 } from "@fortawesome/free-solid-svg-icons";
 import { faUser } from "@fortawesome/free-regular-svg-icons";
 import NotificationModal from "./NotificationModal.jsx";
@@ -74,7 +75,7 @@ export default function Navigation({ sidebarCollapsed, setSidebarCollapsed }) {
                 style={{ visibility: showSearchToggle ? "visible" : "hidden" }}
                 disabled={!showSearchToggle}
             >
-              <FontAwesomeIcon icon={faMagnifyingGlass} />
+                <FontAwesomeIcon icon={faBars} />
             </button>
 
             {/* Mobile: movie list icon -> Feed / WatchList / To-Watch */}
