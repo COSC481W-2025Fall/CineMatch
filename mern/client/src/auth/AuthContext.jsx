@@ -52,7 +52,7 @@ export function AuthProvider({ children }) {
 
         (async () => {
             try {
-                const data = await refresh(); 
+                const data = await refresh();
                 if (cancelled) return;
 
                 if (data?.accessToken) {

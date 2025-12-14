@@ -1,8 +1,7 @@
 // src/auth/ForgotPassword.jsx
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-
-const API_BASE = import.meta.env.VITE_API_BASE || ""; // "" for same-origin
+import { forgotPassword } from "./api.js"; // use the helper
 
 export default function ForgotPassword() {
     const [email, setEmail] = useState("");
@@ -20,14 +19,10 @@ export default function ForgotPassword() {
         try {
             setBusy(true);
             // Always returns 200 (even if email not found / not verified) to prevent enumeration
-            await fetch(`${API_BASE}/auth/forgot`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({ email: addr }),
-            });
+            await forgotPassword(addr);
             setDone(true);
         } catch (err) {
+            console.error("forgotPassword error:", err);
             setError(err?.message || "Something went wrong. Try again.");
         } finally {
             setBusy(false);
@@ -35,7 +30,10 @@ export default function ForgotPassword() {
     }
 
     return (
-        <div className="auth-page">
+        <div
+            className="auth-page"
+            style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}
+        >
             <form className="auth-card" onSubmit={onSubmit} noValidate>
                 <h1>Forgot password</h1>
 

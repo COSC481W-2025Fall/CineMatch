@@ -26,5 +26,5 @@ export async function sendMail({ to, subject, text, html, from }) {
     // await transporter.verify();
 
     const info = await transporter.sendMail({ from: mailFrom, to, subject, text, html });
-    return info; 
+    return info;
 }

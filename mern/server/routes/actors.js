@@ -10,14 +10,14 @@ const router = Router();
 // routes/record.js
 router.get("/", async (req, res) => {
   try {
-   
+
     const { name,movie } = req.query;
-    const filter = {};                
+    const filter = {};
     if (name) filter.name = { $regex: name, $options: "i" };
     if (movie) filter.role = { $regex: movie, $options: "i" };
 
 
-const docs = await db.collection("actors").find(filter).limit(50).toArray();
+    const docs = await db.collection("actors").find(filter).limit(50).toArray();
     res.json(docs);
   } catch (err) {
     console.error(err);

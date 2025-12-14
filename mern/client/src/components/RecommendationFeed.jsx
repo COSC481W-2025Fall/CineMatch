@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Navigation from "./Navigation.jsx";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
-import { authedFetch, refresh } from "../auth/api.js";
+import { API_BASE, authedFetch, refresh } from "../auth/api.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
@@ -63,7 +63,7 @@ export default function RecommendationFeed() {
 
     // load watched / to-watch lists from the server
     async function loadLists() {
-        const res = await authedFetch("/api/me/lists");
+        const res = await authedFetch("/me/lists");
         if (res.status === 401) {
             throw new Error("Not authenticated (401). Open /login first.");
         }
@@ -90,7 +90,7 @@ export default function RecommendationFeed() {
 
     // server-side toggle for watched / to-watch
     async function toggleList(list, id) {
-        const res = await authedFetch(`/api/me/lists/${list}`, {
+        const res = await authedFetch(`/me/lists/${list}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -110,7 +110,7 @@ export default function RecommendationFeed() {
     // Rewrote openDetails in feed because old one is excruciatingly slow...
     async function openDetails(rec) {
         try {
-            const movieId = rec.id != null ? rec.id : null;
+            const movieId = rec.tmdbId ?? rec.id;
 
             if (movieId == null) {
                 const title = rec?.title ?? "";
@@ -129,16 +129,12 @@ export default function RecommendationFeed() {
                 return;
             }
 
-            const res = await fetch(`/record/details/${movieId}`);
+            const res = await fetch(`${API_BASE}/record/details/${movieId}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
-            const tmdbId =
-                typeof data.tmdbId === "number"
-                    ? data.tmdbId
-                    : typeof rec.tmdbId === "number"
-                        ? rec.tmdbId
-                        : null;
+            const tmdbId = movieId;
+            //console.log("[TMDB] Using ID:", tmdbId);
 
             let patch = {};
 
@@ -210,7 +206,7 @@ export default function RecommendationFeed() {
 
             setDetails({
                 id: movieId,
-                tmdbId: patch.tmdbId ?? tmdbId ?? null,
+                tmdbId: patch.tmdbId ?? movieId,
                 ...data,
                 ...patch,
                 posterUrl,
@@ -241,7 +237,7 @@ export default function RecommendationFeed() {
                 dislikedTmdbIds: freshDisliked,
                 limit: Math.max(1, Number(limit) || DEFAULT_LIMIT),
             };
-            const resp = await fetch("/feed", { // Send a POST request to the /feed endpoint
+            const resp = await fetch(`${API_BASE}/feed`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
@@ -274,7 +270,7 @@ export default function RecommendationFeed() {
     useEffect(() => {
         (async () => {
             try {
-                await refresh().catch(() => {});
+                //await refresh().catch(() => {});
                 await loadLists();
             } catch (e) {
                 console.error("Failed to load lists for feed:", e);

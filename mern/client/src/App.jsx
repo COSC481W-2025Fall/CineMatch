@@ -8,10 +8,9 @@ import {
     getLikedTmdbIds,
     getDislikedTmdbIds,
 } from "./components/likeDislikeStorage";
-import { authedFetch, refresh } from "./auth/api.js";
-import { useAuth } from "./auth/AuthContext.jsx";
+import { API_BASE, authedFetch, refresh } from "./auth/api.js";
+import {  useAuth } from "./auth/AuthContext.jsx";
 
-const API_BASE = "";
 
 // get TMDB key from .env file
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
@@ -162,32 +161,68 @@ function App() {
 
     async function loadListsIntoApp() {
         try {
-            // Ensure we have an access token if the refresh cookie exists
-            await refresh().catch(() => {});
 
-            const res = await authedFetch("/api/me/lists");
-            if (!res.ok) {
-                console.warn("loadListsIntoApp failed", res.status);
+            //await refresh().catch(() => {});
+
+            const res = await authedFetch("/me/lists");
+
+
+            if (res.status === 401) {
+                console.warn("loadListsIntoApp: not logged in (401), using empty lists");
+                setWatched(new Set());
+                setToWatch(new Set());
                 return;
             }
 
-            const raw = await res.json();
-            // Accept either {watchedIds,toWatchIds} or {watched,toWatch}
-            const w = Array.isArray(raw.watchedIds) ? raw.watchedIds
-                : Array.isArray(raw.watched)       ? raw.watched
-                    : [];
+            if (!res.ok) {
+                console.warn("loadListsIntoApp failed:", res.status);
+                setWatched(new Set());
+                setToWatch(new Set());
+                return;
+            }
 
-            const t = Array.isArray(raw.toWatchIds)    ? raw.toWatchIds
-                : Array.isArray(raw.toWatch)           ? raw.toWatch
-                    : Array.isArray(raw["to-watch"])       ? raw["to-watch"]  //  add this
-                        : [];
+            let raw;
+            try {
+                raw = await res.json();
+            } catch (err) {
+                console.warn("loadListsIntoApp: failed to parse JSON from /api/me/lists", err);
+                setWatched(new Set());
+                setToWatch(new Set());
+                return;
+            }
 
-            setWatched(new Set(w.map(Number)));
-            setToWatch(new Set(t.map(Number)));
+            const watchedArr =
+                Array.isArray(raw?.watchedIds) ? raw.watchedIds :
+                    Array.isArray(raw?.watched)    ? raw.watched    :
+                        [];
+
+            const toWatchArr =
+                Array.isArray(raw?.toWatchIds)   ? raw.toWatchIds :
+                    Array.isArray(raw?.toWatch)      ? raw.toWatch    :
+                        Array.isArray(raw?.["to-watch"]) ? raw["to-watch"] :
+                            [];
+
+            const watchedSet = new Set(
+                watchedArr
+                    .map(Number)
+                    .filter((n) => Number.isFinite(n) && n >= 0)
+            );
+
+            const toWatchSet = new Set(
+                toWatchArr
+                    .map(Number)
+                    .filter((n) => Number.isFinite(n) && n >= 0)
+            );
+
+            setWatched(watchedSet);
+            setToWatch(toWatchSet);
         } catch (e) {
             console.warn("loadListsIntoApp error:", e);
+            setWatched(new Set());
+            setToWatch(new Set());
         }
     }
+
 
     useEffect(() => {
         if (!user) {
@@ -309,7 +344,7 @@ function App() {
     // ----------------------------------------------------
     async function openDetails(movie) {
         try {
-            const res = await fetch(`/record/details/${movie.id}`);
+            const res = await fetch(`${API_BASE}/record/details/${movie.id}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             // replace whole conversion call and check with this
@@ -321,12 +356,10 @@ function App() {
             // if found then pull actors, runtime, and watch providers
             if (tmdbId !== null && tmdbId !== undefined) {
                 const numOfActors = CAST_LIMIT;
-                const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
-                url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
 
-                url.searchParams.set("append_to_response", "credits,watch/providers"); // add where to watch to the append
 
-                const tmdbRes = await fetch(url.toString(), {headers: {accept: "application/json"}});
+                const tmdbRes = await fetch(`${API_BASE}/record/tmdb/${tmdbId}`);
+
                 if (tmdbRes.ok) {
                     const tmdb = await tmdbRes.json();
 
@@ -369,7 +402,13 @@ function App() {
                     let watchProviders = [];
 
                     // use US by default, not important for other areas rn since it changes by location
-                    if (tmdb && tmdb["watch/providers"] && tmdb["watch/providers"].results && tmdb["watch/providers"].results.US && tmdb["watch/providers"].results.US.flatrate) {
+                    if (
+                        tmdb &&
+                        tmdb["watch/providers"] &&
+                        tmdb["watch/providers"].results &&
+                        tmdb["watch/providers"].results.US &&
+                        tmdb["watch/providers"].results.US.flatrate
+                    ) {
                         watchProviders = tmdb["watch/providers"].results.US.flatrate;
                     }
 
@@ -388,7 +427,14 @@ function App() {
                         patch.watchProviders = watchProviders;
                     }
 
-                    console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime, "providers:", watchProviders.length);
+                    console.log(
+                        "[TMDB TEST] topCast:",
+                        topCast,
+                        "runtime:",
+                        runtime,
+                        "providers:",
+                        watchProviders.length
+                    );
                 }
             }
 
@@ -512,13 +558,30 @@ function App() {
             const data = await fetchMovies(query);
 
             // Attach tmdbId from our persisted map, if we know it
-            const withTmdb = data.map((m) => {
+            /*const withTmdb = data.map((m) => {
+                const mapped = recordTmdbMap[m.id];
+                if (mapped && m.tmdbId == null) {
+                    return { ...m, tmdbId: mapped };
+                }
+                return m;
+            });*/
+
+            const rows = Array.isArray(data)
+                ? data
+                : Array.isArray(data?.results)
+                    ? data.results
+                    : [];
+
+            // Attach tmdbId from our persisted map, if we know it
+            const withTmdb = rows.map((m) => {
                 const mapped = recordTmdbMap[m.id];
                 if (mapped && m.tmdbId == null) {
                     return { ...m, tmdbId: mapped };
                 }
                 return m;
             });
+
+
 
             // determine if this is a "no filters" search (shuffle results)
             const noSearch =
@@ -666,7 +729,7 @@ function App() {
 
         // Call API (requires logged-in user, authedFetch sets Authorization if you’ve logged in)
         try {
-            const res = await authedFetch(`/api/me/lists/${list}`, {
+            const res = await authedFetch(`/me/lists/${list}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action, id }),
@@ -996,6 +1059,7 @@ function App() {
                                 ? details.runtime
                                 : null
                         }
+                        canModifyLists={canModifyLists}
                     />
                 )}
 

@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import Navigation from "./Navigation.jsx";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
-import { authedFetch, refresh, fetchReactions, updateReaction } from "../auth/api.js";
+import { API_BASE, authedFetch, refresh, fetchReactions, updateReaction } from "../auth/api.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
@@ -141,7 +141,7 @@ export default function WatchListPage() {
 
     async function openDetails(movie) {
         try {
-            const res = await fetch(`/record/details/${movie.id}`);
+            const res = await fetch(`${API_BASE}/record/details/${movie.id}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             // replace whole conversion call and check with this
@@ -273,7 +273,7 @@ export default function WatchListPage() {
 
     // Function to fetch authoritative lists from the server
     async function loadLists() {
-        const res = await authedFetch("/api/me/lists");
+        const res = await authedFetch("/me/lists");
         if (res.status === 401) {
             throw new Error("Not authenticated (401). Open /login first.");
         }
@@ -316,7 +316,7 @@ export default function WatchListPage() {
             },
         };
 
-        const res = await fetch("/record/bulk", {
+        const res = await fetch(`${API_BASE}/record/bulk`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
@@ -366,7 +366,7 @@ export default function WatchListPage() {
     useEffect(() => {
         (async () => {
             try {
-                await refresh().catch(() => {});   //refresh token in needed
+                //await refresh().catch(() => {});   //refresh token in needed
                 const { watchedIds } = await loadLists();
                 console.log("watched set after loadLists ->", watchedIds);
 
@@ -430,7 +430,7 @@ export default function WatchListPage() {
     );
 
     async function toggleList(list, id) { // Handles the server-side API call to toggle a movie's status
-        const res = await authedFetch(`/api/me/lists/${list}`, {
+        const res = await authedFetch(`/me/lists/${list}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: (list === "watched" && watched.has(id)) || (list === "to-watch" && toWatch.has(id)) ? "remove" : "add", id }),

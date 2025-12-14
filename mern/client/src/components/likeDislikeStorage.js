@@ -10,8 +10,8 @@ function readIds(key) {
     if (!Array.isArray(arr)) return [];
     // Normalize to numbers
     return arr
-      .map((x) => Number(x))
-      .filter((n) => Number.isFinite(n));
+        .map((x) => Number(x))
+        .filter((n) => Number.isFinite(n));
   } catch {
     return [];
   }
@@ -20,11 +20,11 @@ function readIds(key) {
 function writeIds(key, arr) {
   // Remove duplicates and store as numbers
   const nums = Array.from(
-    new Set(
-      arr
-        .map((x) => Number(x))
-        .filter((n) => Number.isFinite(n))
-    )
+      new Set(
+          arr
+              .map((x) => Number(x))
+              .filter((n) => Number.isFinite(n))
+      )
   );
   localStorage.setItem(key, JSON.stringify(nums));
 }

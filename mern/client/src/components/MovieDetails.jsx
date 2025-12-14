@@ -22,6 +22,7 @@ export default function MovieDetails({
                                          onLike,    // optional
                                          isLiked = false,
                                          isDisliked = false,
+                                         likesEditable = true,
                                          canModifyLists = true,
                                      }) {
     if (!details) return null; // If no movie details are provided, render nothing
@@ -67,10 +68,24 @@ export default function MovieDetails({
         : {};
 
     // Defensive fallbacks so missing handlers don't crash on click
-    const handleMarkWatched =
-        typeof onMarkWatched === "function" ? onMarkWatched : () => {};
-    const handleAddToWatch =
-        typeof onAddToWatch === "function" ? onAddToWatch : () => {};
+    const handleMarkWatched = () => {
+        if (typeof onMarkWatched !== "function") return;
+        if (!canModifyLists) {
+            window.alert("You must be logged in to use watch lists. Please log in or register to use this feature.");
+            return;
+        }
+        onMarkWatched();
+    };
+
+    const handleAddToWatch = () => {
+        if (typeof onAddToWatch !== "function") return;
+        if (!canModifyLists) {
+            window.alert("You must be logged in to use watch lists. Please log in or register to use this feature.");
+            return;
+        }
+        onAddToWatch();
+    };
+
     const handleLike = typeof onLike === "function" ? onLike : () => {};
     const handleDislike = typeof onDislike === "function" ? onDislike : () => {};
 
@@ -177,8 +192,7 @@ export default function MovieDetails({
                                                         height: 45,
                                                         borderRadius: 8,
                                                         cursor: "help",
-                                                        boxShadow:
-                                                            "0 2px 4px rgba(0,0,0,0.3)",
+                                                        boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
                                                     }}
                                                 />
                                             );
@@ -222,13 +236,8 @@ export default function MovieDetails({
                             {/* Buttons (swapped meanings) */}
                             <div style={{ display: "flex", gap: 8 }}>
                                 <button
-                                    className={`go-btn ${
-                                        !canModifyLists ? "go-btn-disabled" : ""
-                                    }`}
-                                    onClick={
-                                        canModifyLists ? handleMarkWatched : undefined
-                                    }
-                                    disabled={!canModifyLists}
+                                    className="go-btn"
+                                    onClick={handleMarkWatched}
                                     aria-pressed={!!isWatched}
                                 >
                                     {isWatched
@@ -237,13 +246,8 @@ export default function MovieDetails({
                                 </button>
 
                                 <button
-                                    className={`go-btn ${
-                                        !canModifyLists ? "go-btn-disabled" : ""
-                                    }`}
-                                    onClick={
-                                        canModifyLists ? handleAddToWatch : undefined
-                                    }
-                                    disabled={!canModifyLists}
+                                    className="go-btn"
+                                    onClick={handleAddToWatch}
                                     aria-pressed={!!inToWatch}
                                 >
                                     {inToWatch
@@ -253,7 +257,7 @@ export default function MovieDetails({
                             </div>
 
                             {/* Like / Dislike row */}
-                            {(onLike || onDislike) && (
+                            {(onLike || onDislike) && likesEditable && (
                                 <div style={{ display: "flex", gap: 8 }}>
                                     {onLike && (
                                         <button
@@ -295,9 +299,7 @@ export default function MovieDetails({
                                             onClick={handleDislike}
                                             aria-pressed={!!isDisliked}
                                         >
-                                            {isDisliked
-                                                ? "Disliked 👎"
-                                                : "Dislike 👎"}
+                                            {isDisliked ? "Disliked 👎" : "Dislike 👎"}
                                         </button>
                                     )}
                                 </div>

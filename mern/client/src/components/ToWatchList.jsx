@@ -4,10 +4,10 @@ import { Link } from "react-router-dom";
 import Navigation from "./Navigation.jsx";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
-import { authedFetch, refresh } from "../auth/api.js";
+import { API_BASE, authedFetch, refresh } from "../auth/api.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 
-const API_BASE = "";
+
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
 const GENRES = [
@@ -101,7 +101,7 @@ export default function ToWatchListPage() {
 
     async function openDetails(movie) {
         try {
-            const res = await fetch(`/record/details/${movie.id}`);
+            const res = await fetch(`${API_BASE}/record/details/${movie.id}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             // replace whole conversion call and check with this
@@ -243,7 +243,7 @@ export default function ToWatchListPage() {
 
     // Function to fetch authoritative lists from the server
     async function loadLists() {
-        const res = await authedFetch("/api/me/lists");
+        const res = await authedFetch("/me/lists");
         if (res.status === 401) {
             throw new Error("Not authenticated (401). Open /login first.");
         }
@@ -285,7 +285,7 @@ export default function ToWatchListPage() {
             },
         };
 
-        const res = await fetch("/record/bulk", {
+        const res = await fetch(`${API_BASE}/record/bulk`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
@@ -336,7 +336,7 @@ export default function ToWatchListPage() {
     useEffect(() => {
         (async () => {
             try {
-                await refresh().catch(() => {}); // ok if it fails
+                //await refresh().catch(() => {}); // ok if it fails
                 const { toWatchIds } = await loadLists();
                 await doSearch(toWatchIds);      // search using fresh IDs
             } catch (e) {
@@ -391,7 +391,7 @@ export default function ToWatchListPage() {
 
     // Update lists server-side then refresh and re-searches
     async function toggleList(list, id) {
-        const res = await authedFetch(`/api/me/lists/${list}`, {
+        const res = await authedFetch(`/me/lists/${list}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
