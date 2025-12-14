@@ -17,7 +17,7 @@ const GENRES = [
 ];
 
 const CAST_LIMIT = 5; // cast limit
-
+/*
 // localStorage helpers
 function loadSetFromStorage(key) {
     try {
@@ -42,6 +42,8 @@ function loadArrayFromStorage(key) {
         return [];
     }
 }
+
+ */
 
 // recordId - tmdbId map (from Search page)
 function loadMapFromStorage(key) {
@@ -109,12 +111,11 @@ export default function ToWatchListPage() {
             // if found then pull actors, runtime, and watch providers
             if (tmdbId !== null && tmdbId !== undefined) {
                 const numOfActors = CAST_LIMIT;
-                const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
-                url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
 
-                url.searchParams.set("append_to_response", "credits,watch/providers,videos"); // add where to watch to the append and trailer
+                const tmdbRes = await fetch(
+                    `${API_BASE}/record/tmdb/${tmdbId}?append_to_response=credits,watch/providers,videos`
+                );
 
-                const tmdbRes = await fetch(url.toString(), {headers: {accept: "application/json"}});
                 if (tmdbRes.ok) {
                     const tmdb = await tmdbRes.json();
 
@@ -172,33 +173,44 @@ export default function ToWatchListPage() {
                     // get trailer
                     let trailerUrl = null;
                     if (tmdb && tmdb.videos && tmdb.videos.results) {
-                        const trailer = tmdb.videos.results.find(v => v.site === "YouTube" && v.type === "Trailer");
+                        const trailer = tmdb.videos.results.find(
+                            (v) => v.site === "YouTube" && v.type === "Trailer"
+                        );
                         if (trailer) trailerUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
                     }
 
                     // check for prequel and sequel
                     if (tmdb.belongs_to_collection && tmdb.belongs_to_collection.id) {
-                        const collectionUrl = new URL(`https://api.themoviedb.org/3/collection/${tmdb.belongs_to_collection.id}`);
-                        collectionUrl.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
                         try {
-                            const collRes = await fetch(collectionUrl.toString(), { headers: { accept: "application/json" } });
+                            const collRes = await fetch(
+                                `${API_BASE}/record/collection/${tmdb.belongs_to_collection.id}`
+                            );
                             if (collRes.ok) {
                                 const collectionData = await collRes.json();
                                 // sort by release date to determine order
                                 const parts = (collectionData.parts || []).sort((a, b) => {
-                                    return new Date(a.release_date || "9999-12-31") - new Date(b.release_date || "9999-12-31");
+                                    return new Date(a.release_date || "9999-12-31") -
+                                        new Date(b.release_date || "9999-12-31");
                                 });
-                                const currentIndex = parts.findIndex(p => p.id === tmdbId);
+                                const currentIndex = parts.findIndex((p) => p.id === tmdbId);
                                 if (currentIndex !== -1) {
                                     if (currentIndex > 0) {
-                                        // prequel exists
+                                        // prequel
                                         const prev = parts[currentIndex - 1];
-                                        patch.prequel = { id: prev.id, tmdbId: prev.id, title: prev.title };
+                                        patch.prequel = {
+                                            id: prev.id,
+                                            tmdbId: prev.id,
+                                            title: prev.title,
+                                        };
                                     }
                                     if (currentIndex < parts.length - 1) {
                                         // sequel exists
                                         const next = parts[currentIndex + 1];
-                                        patch.sequel = { id: next.id, tmdbId: next.id, title: next.title };
+                                        patch.sequel = {
+                                            id: next.id,
+                                            tmdbId: next.id,
+                                            title: next.title,
+                                        };
                                     }
                                 }
                             }
@@ -227,16 +239,29 @@ export default function ToWatchListPage() {
                         patch.trailerUrl = trailerUrl;
                     }
 
-                    if (!data.title && tmdb.title) {
+                    if (!data.title) {
                         patch.title = tmdb.title;
-                        patch.year = tmdb.release_date ? parseInt(tmdb.release_date.slice(0, 4)) : null;
+                        patch.year = tmdb.release_date
+                            ? parseInt(tmdb.release_date.slice(0, 4))
+                            : null;
                         patch.description = tmdb.overview;
-                        patch.posterUrl = tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : null;
-                        patch.backdropUrl = tmdb.backdrop_path ? `https://image.tmdb.org/t/p/original${tmdb.backdrop_path}` : null;
+                        patch.posterUrl = tmdb.poster_path
+                            ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}`
+                            : null;
+                        patch.backdropUrl = tmdb.backdrop_path
+                            ? `https://image.tmdb.org/t/p/original${tmdb.backdrop_path}`
+                            : null;
                         patch.rating = tmdb.vote_average;
                     }
 
-                    console.log("[TMDB TEST] topCast:", topCast, "runtime:", runtime, "providers:", watchProviders.length);
+                    console.log(
+                        "[TMDB TEST] topCast:",
+                        topCast,
+                        "runtime:",
+                        runtime,
+                        "providers:",
+                        watchProviders.length
+                    );
                 }
             }
 
@@ -253,18 +278,6 @@ export default function ToWatchListPage() {
             setDetails({ id: movie.id, tmdbId: finalTmdbId, ...data, ...patch });
             setShowDetails(true);
 
-            // Cache TMDB id on the search results and in recordTmdbMap
-            if (finalTmdbId != null) {
-                setMovies((prev) =>
-                    prev.map((m) =>
-                        m.id === movie.id ? { ...m, tmdbId: finalTmdbId ?? m.tmdbId } : m
-                    )
-                );
-                setRecordTmdbMap((prev) => ({
-                    ...prev,
-                    [movie.id]: finalTmdbId,
-                }));
-            }
         } catch (e) {
             console.error(e);
         }

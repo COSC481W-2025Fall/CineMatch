@@ -33,7 +33,7 @@ const GENRES = [
 const CAST_LIMIT = 5;
 
 // localStorage helpers
-function loadSetFromStorage(key) {
+/*function loadSetFromStorage(key) {
     try {
         const raw = localStorage.getItem(key);
         if (!raw) return new Set();
@@ -62,6 +62,7 @@ function loadArrayFromStorage(key) {
         return [];
     }
 }
+ */
 
 // recordId - tmdbId map
 function loadMapFromStorage(key) {
@@ -137,12 +138,11 @@ export default function WatchListPage() {
             // if found then pull actors, runtime, and watch providers
             if (tmdbId !== null && tmdbId !== undefined) {
                 const numOfActors = CAST_LIMIT;
-                const url = new URL("https://api.themoviedb.org/3/movie/" + tmdbId);
-                url.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
 
-                url.searchParams.set("append_to_response", "credits,watch/providers,videos"); // add where to watch to the append and trailer
-
-                const tmdbRes = await fetch(url.toString(), {headers: {accept: "application/json"}});
+                const tmdbRes = await fetch(
+                    `${API_BASE}/record/tmdb/${tmdbId}?append_to_response=credits,watch/providers,videos`,
+                    { headers: { accept: "application/json" } }
+                );
                 if (tmdbRes.ok) {
                     const tmdb = await tmdbRes.json();
 
@@ -205,10 +205,11 @@ export default function WatchListPage() {
 
                     // check for prequel and sequel
                     if (tmdb.belongs_to_collection && tmdb.belongs_to_collection.id) {
-                        const collectionUrl = new URL(`https://api.themoviedb.org/3/collection/${tmdb.belongs_to_collection.id}`);
-                        collectionUrl.searchParams.set("api_key", import.meta.env.VITE_TMDB_API_KEY);
                         try {
-                            const collRes = await fetch(collectionUrl.toString(), { headers: { accept: "application/json" } });
+                            const collRes = await fetch(
+                                `${API_BASE}/record/collection/${tmdb.belongs_to_collection.id}`,
+                                { headers: { accept: "application/json" } }
+                            );
                             if (collRes.ok) {
                                 const collectionData = await collRes.json();
                                 // sort by release date to determine order
@@ -284,6 +285,7 @@ export default function WatchListPage() {
             console.error(e);
         }
     }
+
 
     // Filters
     const [params, setParams] = useState({
