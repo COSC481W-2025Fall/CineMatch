@@ -26,7 +26,6 @@ export default function MovieDetails({
                                          onLike,    // optional
                                          isLiked = false,
                                          isDisliked = false,
-                                         likesEditable = true,
                                          canModifyLists = true,
                                          onNavigate, // function to open prequel / sequel
                                      }) {
@@ -53,6 +52,7 @@ export default function MovieDetails({
         director,
         watchProviders,
         watchType,
+        tagline, // for later
         trailerUrl,
         prequel,
         sequel,
@@ -110,28 +110,10 @@ export default function MovieDetails({
         : {};
 
     // Defensive fallbacks so missing handlers don't crash on click
-    const handleMarkWatched = () => {
-        if (typeof onMarkWatched !== "function") return;
-        if (!canModifyLists) {
-            window.alert(
-                "You must be logged in to use watch lists. Please log in or register to use this feature."
-            );
-            return;
-        }
-        onMarkWatched();
-    };
-
-    const handleAddToWatch = () => {
-        if (typeof onAddToWatch !== "function") return;
-        if (!canModifyLists) {
-            window.alert(
-                "You must be logged in to use watch lists. Please log in or register to use this feature."
-            );
-            return;
-        }
-        onAddToWatch();
-    };
-
+    const handleMarkWatched =
+        typeof onMarkWatched === "function" ? onMarkWatched : () => {};
+    const handleAddToWatch =
+        typeof onAddToWatch === "function" ? onAddToWatch : () => {};
     const handleLike = typeof onLike === "function" ? onLike : () => {};
     const handleDislike = typeof onDislike === "function" ? onDislike : () => {};
 
@@ -157,50 +139,20 @@ export default function MovieDetails({
                 <div style={backgroundLayerStyle} />
 
                 {/* dedicated content layer too */}
-                <div
-                    style={{
-                        position: "relative",
-                        zIndex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                        height: "100%",
-                    }}
-                >
-                    <button
-                        className="modal-close"
-                        onClick={onClose}
-                        aria-label="Close"
-                    >
+                <div style={{ position: "relative", zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+
+                    <button className="modal-close" onClick={onClose} aria-label="Close">
                         ×
                     </button>
 
-                    <div
-                        className="modal-header"
-                        style={{
-                            flex: 1,
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: "20px",
-                        }}
-                    >
+                    <div className="modal-header" style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: "20px" }}>
                         {" "}
                         {/* wrapper for poster*/}
-                        <div
-                            style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: "12px",
-                                width: "220px",
-                                flexShrink: 0,
-                            }}
-                        >
+                        <div style={{ display: "flex", flexDirection: "column", gap: "12px", width: "220px", flexShrink: 0 }}>
                             {/* Use a placeholder image if no poster URL is provided */}
                             {/* Poster */}
                             <img
-                                src={
-                                    posterUrl ||
-                                    "https://placehold.co/220x330?text=No+Poster"
-                                }
+                                src={posterUrl || "https://placehold.co/220x330?text=No+Poster"}
                                 alt={title || ""}
                                 width={220}
                                 height={330}
@@ -209,8 +161,7 @@ export default function MovieDetails({
                                     borderRadius: "12px",
                                     objectFit: "cover", // Ensures image fills the box without stretching
                                     boxShadow: "0 8px 25px rgba(0,0,0,0.6)", // Deeper, more professional shadow
-                                    border:
-                                        "1px solid rgba(255, 255, 255, 0.1)", // Subtle glass-like border
+                                    border: "1px solid rgba(255, 255, 255, 0.1)", // Subtle glass-like border
                                     backgroundColor: "#1a1a1a", // Dark background prevents white flashes
                                 }}
                             />
@@ -223,8 +174,7 @@ export default function MovieDetails({
                             <h2
                                 style={{
                                     margin: "0 0 8px",
-                                    textShadow:
-                                        "0 2px 4px rgba(0,0,0,0.8)",
+                                    textShadow: "0 2px 4px rgba(0,0,0,0.8)",
                                 }}
                             >
                                 {title ?? "Untitled"}
@@ -232,15 +182,10 @@ export default function MovieDetails({
                             {/*add text shadow to make it easy to read on light background*/}
                             <div
                                 className="muted"
-                                style={{
-                                    marginBottom: 8,
-                                    color: "rgba(255,255,255,0.8)",
-                                }}
+                                style={{ marginBottom: 8, color: "rgba(255,255,255,0.8)" }}
                             >
                                 {year ?? "—"}
-                                {rating != null
-                                    ? ` • ⭐ ${Number(rating).toFixed(1)}`
-                                    : ""}
+                                {rating != null ? ` • ⭐ ${Number(rating).toFixed(1)}` : ""}
                                 {runtimeText ? ` • ${runtimeText}` : ""}
                                 {ageRating ? ` • ${ageRating}` : ""}
                             </div>
@@ -248,42 +193,32 @@ export default function MovieDetails({
                             {/* condensed logic, list none listed for cases of no director */}
                             <div style={{ marginBottom: 12 }}>
                                 <strong>
-                                    {hasDirectors &&
-                                    directorList.length > 1
+                                    {hasDirectors && directorList.length > 1
                                         ? "Directors:"
                                         : "Director:"}
                                 </strong>{" "}
-                                {hasDirectors
-                                    ? directorList.join(", ")
-                                    : "None Listed"}
+                                {hasDirectors ? directorList.join(", ") : "None Listed"}
                             </div>
 
                             {/* Only show up the top cast members */}
-                            {Array.isArray(topCast) &&
-                                topCast.length > 0 && (
-                                    <div
-                                        style={{ marginBottom: 12 }}
-                                    >
-                                        <strong>Top cast:</strong>{" "}
-                                        {topCast
-                                            .slice(
-                                                0,
-                                                typeof topCastCount ===
-                                                "number"
-                                                    ? topCastCount
-                                                    : topCast.length
-                                            )
-                                            .join(", ")}
-                                    </div>
-                                )}
+                            {Array.isArray(topCast) && topCast.length > 0 && (
+                                <div style={{ marginBottom: 12 }}>
+                                    <strong>Top cast:</strong>{" "}
+                                    {topCast
+                                        .slice(
+                                            0,
+                                            typeof topCastCount === "number"
+                                                ? topCastCount
+                                                : topCast.length
+                                        )
+                                        .join(", ")}
+                                </div>
+                            )}
 
                             {/*change to genre list*/}
                             {genreList.length > 0 && (
-                                <div
-                                    style={{ marginBottom: 12 }}
-                                >
-                                    <strong>Genres:</strong>{" "}
-                                    {genreList.join(", ")}
+                                <div style={{ marginBottom: 12 }}>
+                                    <strong>Genres:</strong> {genreList.join(", ")}
                                 </div>
                             )}
 
@@ -293,8 +228,7 @@ export default function MovieDetails({
                                         marginTop: 12,
                                         marginBottom: 12,
                                         lineHeight: 1.5,
-                                        textShadow:
-                                            "0 1px 2px rgba(0,0,0,0.8)",
+                                        textShadow: "0 1px 2px rgba(0,0,0,0.8)",
                                     }}
                                 >
                                     {description}
@@ -302,104 +236,62 @@ export default function MovieDetails({
                             )}
 
                             {/*where to watch icons*/}
-                            {Array.isArray(watchProviders) &&
-                                watchProviders.length > 0 && (
-                                    <div
-                                        style={{ marginBottom: 12 }}
-                                    >
-                                        <strong
-                                            style={{
-                                                display: "block",
-                                                marginBottom: 6,
-                                            }}
-                                        >
-                                            {watchType === "rent"
-                                                ? "Rent It On:"
-                                                : "Stream It On:"}
-                                        </strong>
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                flexWrap: "wrap",
-                                                gap: 8,
-                                            }}
-                                        >
-                                            {watchProviders.map(
-                                                (
-                                                    provider,
-                                                    index
-                                                ) => {
-                                                    if (
-                                                        typeof provider ===
-                                                        "object" &&
-                                                        provider.logo_path
-                                                    ) {
-                                                        return (
-                                                            <img
-                                                                key={
-                                                                    index
-                                                                }
-                                                                src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
-                                                                alt={
-                                                                    provider.provider_name
-                                                                }
-                                                                title={
-                                                                    provider.provider_name
-                                                                } // show name on hover, maybe add click to go to website
-                                                                style={{
-                                                                    width: 45, // no automatic sizing for now
-                                                                    height: 45,
-                                                                    borderRadius: 8,
-                                                                    cursor:
-                                                                        "help",
-                                                                    boxShadow:
-                                                                        "0 2px 4px rgba(0,0,0,0.3)",
-                                                                }}
-                                                            />
-                                                        );
-                                                    }
-                                                    return null;
-                                                }
-                                            )}
-                                        </div>
-                                        <div
-                                            style={{
-                                                fontSize: "0.7em",
-                                                opacity: 0.6,
-                                                marginTop: 4,
-                                            }}
-                                        >
-                                            Source: JustWatch
-                                        </div>
+                            {Array.isArray(watchProviders) && watchProviders.length > 0 && (
+                                <div style={{ marginBottom: 12 }}>
+                                    <strong style={{ display: "block", marginBottom: 6 }}>
+                                        {watchType === "rent" ? "Rent It On:" : "Stream It On:"}
+                                    </strong>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                        {watchProviders.map((provider, index) => {
+                                            if (
+                                                typeof provider === "object" &&
+                                                provider.logo_path
+                                            ) {
+                                                return (
+                                                    <img
+                                                        key={index}
+                                                        src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                                                        alt={provider.provider_name}
+                                                        title={provider.provider_name} // show name on hover, maybe add click to go to website
+                                                        style={{
+                                                            width: 45, // no automatic sizing for now
+                                                            height: 45,
+                                                            borderRadius: 8,
+                                                            cursor: "help",
+                                                            boxShadow:
+                                                                "0 2px 4px rgba(0,0,0,0.3)",
+                                                        }}
+                                                    />
+                                                );
+                                            }
+                                            return null;
+                                        })}
                                     </div>
-                                )}
+                                    <div
+                                        style={{
+                                            fontSize: "0.7em",
+                                            opacity: 0.6,
+                                            marginTop: 4,
+                                        }}
+                                    >
+                                        Source: JustWatch
+                                    </div>
+                                </div>
+                            )}
 
                             {/* prequel sequel links*/}
                             {(prequel || sequel) && onNavigate && (
-                                <div
-                                    style={{
-                                        marginBottom: 12,
-                                        display: "flex",
-                                        gap: "16px",
-                                    }}
-                                >
+                                <div style={{ marginBottom: 12, display: "flex", gap: "16px" }}>
                                     {prequel && (
                                         <div>
-                                            <strong>
-                                                Prequel:{" "}
-                                            </strong>
+                                            <strong>Prequel: </strong>
                                             <span
-                                                onClick={() =>
-                                                    onNavigate(
-                                                        prequel
-                                                    )
-                                                }
+                                                onClick={() => onNavigate(prequel)}
                                                 style={{
                                                     color: "#f7e135",
                                                     cursor: "pointer",
-                                                    textDecoration:
-                                                        "underline",
-                                                    fontWeight: "600",
+                                                    textDecoration: "underline",
+                                                    fontWeight: "600"
                                                 }}
                                             >
                                                 {prequel.title}
@@ -408,21 +300,14 @@ export default function MovieDetails({
                                     )}
                                     {sequel && (
                                         <div>
-                                            <strong>
-                                                Sequel:{" "}
-                                            </strong>
+                                            <strong>Sequel: </strong>
                                             <span
-                                                onClick={() =>
-                                                    onNavigate(
-                                                        sequel
-                                                    )
-                                                }
+                                                onClick={() => onNavigate(sequel)}
                                                 style={{
                                                     color: "#f7e135",
                                                     cursor: "pointer",
-                                                    textDecoration:
-                                                        "underline",
-                                                    fontWeight: "600",
+                                                    textDecoration: "underline",
+                                                    fontWeight: "600"
                                                 }}
                                             >
                                                 {sequel.title}
@@ -435,30 +320,13 @@ export default function MovieDetails({
                     </div>
 
                     {/* mobile fix kinda */}
-                    <div
-                        style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: "20px",
-                            marginTop: "12px",
-                            alignItems: "center",
-                        }}
-                    >
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", marginTop: "12px", alignItems: "center" }}>
+
                         {/* trailer button new */}
-                        <div
-                            style={{ width: "220px", flexShrink: 0 }}
-                        >
+                        <div style={{ width: "220px", flexShrink: 0 }}>
                             {/* trailer button */}
                             <a
-                                href={
-                                    trailerUrl ||
-                                    `https://www.youtube.com/results?search_query=${encodeURIComponent(
-                                        (title || "") +
-                                        " " +
-                                        (year || "") +
-                                        " official trailer"
-                                    )}`
-                                }
+                                href={trailerUrl || `https://www.youtube.com/results?search_query=${encodeURIComponent((title || "") + " " + (year || "") + " official trailer")}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="go-btn"
@@ -471,93 +339,50 @@ export default function MovieDetails({
                                 }}
                             >
                                 {/*if it finds an official trailer, go right to that, otherwise search by name and year + official trailer on yt*/}
-                                {trailerUrl
-                                    ? "View official trailer"
-                                    : "Search for trailer"}
+                                {trailerUrl ? "View official trailer" : "Search for trailer"}
                             </a>
                         </div>
 
                         {/* action section - added wrap for small screens */}
-                        <div
-                            style={{
-                                flex: 1,
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: "8px",
-                                alignItems: "center",
-                                minWidth: "300px",
-                            }}
-                        >
+                        <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center", minWidth: "300px" }}>
                             {/* Buttons (swapped meanings) */}
                             <button
                                 className="go-btn"
-                                onClick={() =>
-                                    handleAction(handleMarkWatched)
-                                }
+                                onClick={() => handleAction(handleMarkWatched)}
                                 aria-pressed={!!isWatched}
-                                style={{
-                                    flex: 1,
-                                    whiteSpace: "nowrap",
-                                }}
+                                style={{ flex: 1, whiteSpace: "nowrap" }}
                             >
-                                {isWatched
-                                    ? "Unmark As Watched"
-                                    : "Mark As Watched"}
+                                {isWatched ? "Unmark As Watched" : "Mark As Watched"}
                             </button>
 
                             <button
                                 className="go-btn"
-                                onClick={() =>
-                                    handleAction(handleAddToWatch)
-                                }
+                                onClick={() => handleAction(handleAddToWatch)}
                                 aria-pressed={!!inToWatch}
-                                style={{
-                                    flex: 1,
-                                    whiteSpace: "nowrap",
-                                }}
+                                style={{ flex: 1, whiteSpace: "nowrap" }}
                             >
-                                {inToWatch
-                                    ? "Remove Watch Later"
-                                    : "Add to Watch Later"}
+                                {inToWatch ? "Remove Watch Later" : "Add to Watch Later"}
                             </button>
 
                             {/* Like / Dislike row */}
-                            {(onLike || onDislike) && likesEditable && (
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        gap: 8,
-                                        flex: 1,
-                                    }}
-                                >
+                            {(onLike || onDislike) && (
+                                <>
                                     {onLike && (
                                         <button
                                             type="button"
                                             className="go-btn"
                                             style={{
                                                 flex: 0.5,
-                                                fontWeight: isLiked
-                                                    ? 700
-                                                    : 400,
-                                                backgroundColor: isLiked
-                                                    ? "rgba(0, 128, 0, 0.85)"
-                                                    : undefined,
-                                                borderColor: isLiked
-                                                    ? "rgba(0, 128, 0, 0.85)"
-                                                    : undefined,
-                                                color: isLiked
-                                                    ? "#fff"
-                                                    : undefined,
+                                                fontWeight: isLiked ? 700 : 400,
+                                                backgroundColor: isLiked ? "rgba(0, 128, 0, 0.85)" : undefined,
+                                                borderColor: isLiked ? "rgba(0, 128, 0, 0.85)" : undefined,
+                                                color: isLiked ? "#fff" : undefined,
                                             }}
-                                            onClick={() =>
-                                                handleAction(handleLike)
-                                            }
+                                            onClick={() => handleAction(handleLike)}
                                             aria-pressed={!!isLiked}
                                             title="Like"
                                         >
-                                            <FontAwesomeIcon
-                                                icon={faThumbsUp}
-                                            />
+                                            <FontAwesomeIcon icon={faThumbsUp} />
                                         </button>
                                     )}
 
@@ -567,33 +392,19 @@ export default function MovieDetails({
                                             className="go-btn"
                                             style={{
                                                 flex: 0.5,
-                                                fontWeight: isDisliked
-                                                    ? 700
-                                                    : 400,
-                                                backgroundColor: isDisliked
-                                                    ? "rgba(180, 0, 0, 0.85)"
-                                                    : undefined,
-                                                borderColor: isDisliked
-                                                    ? "rgba(180, 0, 0, 0.85)"
-                                                    : undefined,
-                                                color: isDisliked
-                                                    ? "#fff"
-                                                    : undefined,
+                                                fontWeight: isDisliked ? 700 : 400,
+                                                backgroundColor: isDisliked ? "rgba(180, 0, 0, 0.85)" : undefined,
+                                                borderColor: isDisliked ? "rgba(180, 0, 0, 0.85)" : undefined,
+                                                color: isDisliked ? "#fff" : undefined,
                                             }}
-                                            onClick={() =>
-                                                handleAction(
-                                                    handleDislike
-                                                )
-                                            }
+                                            onClick={() => handleAction(handleDislike)}
                                             aria-pressed={!!isDisliked}
                                             title="Dislike"
                                         >
-                                            <FontAwesomeIcon
-                                                icon={faThumbsDown}
-                                            />
+                                            <FontAwesomeIcon icon={faThumbsDown} />
                                         </button>
                                     )}
-                                </div>
+                                </>
                             )}
                         </div>
                     </div>
