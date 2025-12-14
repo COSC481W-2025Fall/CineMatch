@@ -261,15 +261,41 @@ router.get("/tmdb/:id", async (req, res) => {
             return res.status(400).json({ error: "Invalid TMDB id" });
         }
 
+        if (!process.env.VITE_TMDB_API_KEY) {
+            console.error("[TMDB] API key not configured");
+            return res.status(500).json({ error: "TMDB API key is not configured on the server" });
+        }
+
         const url = new URL(`https://api.themoviedb.org/3/movie/${tmdbId}`);
         url.searchParams.set("api_key", process.env.VITE_TMDB_API_KEY);
-        url.searchParams.set("append_to_response", "credits,watch/providers");
+
+        const baseAppend = "credits,watch/providers";
+        const extraAppend = req.query.append_to_response || ""; 
+
+        const appendSet = new Set(
+            `${baseAppend},${extraAppend}`
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+        );
+        const appendStr = Array.from(appendSet).join(",");
+
+        url.searchParams.set("append_to_response", appendStr);
+
+        console.log("[TMDB MOVIE] Fetching:", url.toString());
 
         const tmdbRes = await fetch(url.toString(), {
             headers: { accept: "application/json" },
         });
 
         if (!tmdbRes.ok) {
+            const text = await tmdbRes.text().catch(() => "");
+            console.error(
+                "[TMDB MOVIE] TMDB error",
+                tmdbRes.status,
+                tmdbRes.statusText,
+                text
+            );
             return res
                 .status(tmdbRes.status)
                 .json({ error: `TMDB error HTTP ${tmdbRes.status}` });
@@ -282,6 +308,7 @@ router.get("/tmdb/:id", async (req, res) => {
         return res.status(500).json({ error: "Server error" });
     }
 });
+
 
 
 router.get("/collection/:collectionId", async (req, res) => {
