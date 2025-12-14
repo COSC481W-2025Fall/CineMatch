@@ -406,7 +406,7 @@ export default function ToWatchListPage() {
     useEffect(() => {
         if (!loaded) return;
         doSearch();
-    }, [params, toWatchKey, loaded]);
+    }, [toWatchKey, loaded]);
 
     function handleChange(e) {
         const { id, value } = e.target;
@@ -461,7 +461,7 @@ export default function ToWatchListPage() {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-        const { toWatchIds } = await loadLists();
+        const { toWatchIds } = loadLists();
         await doSearch(toWatchIds);
     }
 
