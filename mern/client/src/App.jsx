@@ -1140,6 +1140,8 @@ function App() {
                         inToWatch={!!inToWatch}
                         onMarkWatched={onMarkWatched}
                         onAddToWatch={onAddToWatch}
+
+                        canModifyLists={canModifyLists}
                         // Read-only like/dislike state (no editing here)
                         isLiked={!!isLiked}
                         isDisliked={!!isDisliked}

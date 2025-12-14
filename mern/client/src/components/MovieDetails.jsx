@@ -1,5 +1,6 @@
 // src/components/MovieDetails.jsx
 import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 function formatRuntime(minutes) {
     if (typeof minutes !== "number" || minutes < 0) return null;
@@ -24,6 +25,10 @@ export default function MovieDetails({
                                          isDisliked = false,
                                          canModifyLists = true,
                                      }) {
+    // for login redirection
+    const navigate = useNavigate();
+    const location = useLocation();
+
     if (!details) return null; // If no movie details are provided, render nothing
 
     const {
@@ -103,6 +108,16 @@ export default function MovieDetails({
         typeof onAddToWatch === "function" ? onAddToWatch : () => {};
     const handleLike = typeof onLike === "function" ? onLike : () => {};
     const handleDislike = typeof onDislike === "function" ? onDislike : () => {};
+
+    // gate actions heind the login
+    function handleAction(actionFn) {
+        if (!canModifyLists) {
+            // redirect to login and save to return to later
+            navigate("/login", { state: { from: location } });
+        } else {
+            actionFn();
+        }
+    }
 
     // Clicking the backdrop closes the modal
     return (
@@ -262,13 +277,9 @@ export default function MovieDetails({
                                 {/* Buttons (swapped meanings) */}
                                 <div style={{ display: "flex", gap: 8 }}>
                                     <button
-                                        className={`go-btn ${
-                                            !canModifyLists ? "go-btn-disabled" : ""
-                                        }`}
-                                        onClick={
-                                            canModifyLists ? handleMarkWatched : undefined
-                                        }
-                                        disabled={!canModifyLists}
+                                        className="go-btn"
+                                        onClick={() => handleAction(handleMarkWatched)}
+                                        // removed disabled
                                         aria-pressed={!!isWatched}
                                     >
                                         {isWatched
@@ -277,13 +288,9 @@ export default function MovieDetails({
                                     </button>
 
                                     <button
-                                        className={`go-btn ${
-                                            !canModifyLists ? "go-btn-disabled" : ""
-                                        }`}
-                                        onClick={
-                                            canModifyLists ? handleAddToWatch : undefined
-                                        }
-                                        disabled={!canModifyLists}
+                                        className="go-btn"
+                                        onClick={() => handleAction(handleAddToWatch)}
+                                        // removed disabled
                                         aria-pressed={!!inToWatch}
                                     >
                                         {inToWatch
@@ -310,7 +317,7 @@ export default function MovieDetails({
                                                         : undefined,
                                                     color: isLiked ? "#fff" : undefined,
                                                 }}
-                                                onClick={handleLike}
+                                                onClick={() => handleAction(handleLike)}
                                                 aria-pressed={!!isLiked}
                                             >
                                                 {isLiked ? "Liked 👍" : "Like 👍"}
@@ -332,7 +339,7 @@ export default function MovieDetails({
                                                         : undefined,
                                                     color: isDisliked ? "#fff" : undefined,
                                                 }}
-                                                onClick={handleDislike}
+                                                onClick={() => handleAction(handleDislike)}
                                                 aria-pressed={!!isDisliked}
                                             >
                                                 {isDisliked
