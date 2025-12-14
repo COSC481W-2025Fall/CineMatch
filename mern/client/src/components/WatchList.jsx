@@ -130,13 +130,21 @@ export default function WatchListPage() {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             // replace whole conversion call and check with this
-            const tmdbId = movie.id;
+            const rawTmdbId =
+                movie.tmdbId != null && movie.tmdbId !== ""
+                    ? movie.tmdbId
+                    : movie.id;
+
+            const tmdbId =
+                rawTmdbId != null && rawTmdbId !== ""
+                    ? Number(rawTmdbId)
+                    : null;
             //console.log("[TMDB] Using ID:", tmdbId);
 
             let patch = {}; // empty
 
             // if found then pull actors, runtime, and watch providers
-            if (tmdbId !== null && tmdbId !== undefined) {
+            if (tmdbId !== null && Number.isFinite(tmdbId)) {
                 const numOfActors = CAST_LIMIT;
 
                 const tmdbRes = await fetch(
@@ -216,7 +224,7 @@ export default function WatchListPage() {
                                 const parts = (collectionData.parts || []).sort((a, b) => {
                                     return new Date(a.release_date || "9999-12-31") - new Date(b.release_date || "9999-12-31");
                                 });
-                                const currentIndex = parts.findIndex(p => p.id === tmdbId);
+                                const currentIndex = parts.findIndex(p => Number(p.id) === tmdbId);
                                 if (currentIndex !== -1) {
                                     if (currentIndex > 0) {
                                         // prequel exists
@@ -274,8 +282,8 @@ export default function WatchListPage() {
                     ? patch.tmdbId
                     : typeof data.tmdbId === "number"
                         ? data.tmdbId
-                        : typeof movie.tmdbId === "number"
-                            ? movie.tmdbId
+                        : movie.tmdbId != null && movie.tmdbId !== ""
+                            ? Number(movie.tmdbId)
                             : null;
 
             setDetails({ id: movie.id, tmdbId: finalTmdbId, ...data, ...patch });
@@ -285,6 +293,7 @@ export default function WatchListPage() {
             console.error(e);
         }
     }
+
 
 
     // Filters

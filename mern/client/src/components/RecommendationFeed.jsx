@@ -124,53 +124,82 @@ export default function RecommendationFeed() {
             };
 
             // check for local ID first
+            let data = {};
             if (movieId != null) {
                 const res = await fetch(`${API_BASE}/record/details/${movieId}`);
                 if (res.ok) {
-                    const localData = await res.json();
-                    currentDetails = { ...currentDetails, ...localData };
+                    data = await res.json();
+                    currentDetails = { ...currentDetails, ...data };
                 }
             }
 
-            const tmdbId =
-                currentDetails.tmdbId ??
-                (typeof currentDetails.id === "number"
-                    ? currentDetails.id
-                    : null);
+            const rawTmdbId =
+                currentDetails.tmdbId != null && currentDetails.tmdbId !== ""
+                    ? currentDetails.tmdbId
+                    : currentDetails.id;
 
-            // get tmdb api to fill in and get watch providers
-            if (tmdbId) {
+            const tmdbId =
+                rawTmdbId != null && rawTmdbId !== ""
+                    ? Number(rawTmdbId)
+                    : null;
+
+            console.log("[TMDB FEED] Using ID:", tmdbId);
+
+            let patch = {}; // empty
+
+            // if found then pull actors, runtime, and watch providers
+            if (tmdbId !== null && Number.isFinite(tmdbId)) {
+                const numOfActors = CAST_LIMIT;
+
                 const tmdbRes = await fetch(
                     `${API_BASE}/record/tmdb/${tmdbId}?append_to_response=credits,watch/providers,videos`,
                     { headers: { accept: "application/json" } }
                 );
+
                 if (tmdbRes.ok) {
                     const tmdb = await tmdbRes.json();
 
-                    // cast
-                    let tmdbCast = tmdb.credits?.cast || [];
-                    tmdbCast.sort(
-                        (a, b) => (a.order || 999) - (b.order || 999)
-                    );
-                    const topCast = tmdbCast
-                        .slice(0, CAST_LIMIT)
-                        .map((p) => p.name)
-                        .filter(Boolean);
+                    // get cast (actors) from tmdb.credits.cast
+                    // tmdbCast will be empty if invalid
+                    let tmdbCast = [];
+                    if (tmdb && tmdb.credits && tmdb.credits.cast && Array.isArray(tmdb.credits.cast)) {
+                        tmdbCast = tmdb.credits.cast;
+                    }
 
-                    // runtime
-                    const runtime = tmdb.runtime || null;
+                    // sort cast
+                    // ao/bo are order of ab, fixes an issue where cast is not grabbed in order
+                    tmdbCast.sort(function (a, b) // TMDB defines "order" (0 is the top credit). If missing, treat as very large (999).
+                    {
+                        let ao = 999;
+                        let bo = 999;
+                        if (a && typeof a.order === "number") ao = a.order;
+                        if (b && typeof b.order === "number") bo = b.order;
+                        return ao - bo;
+                    });
+
+                    // get the first X number of actors
+                    const topActors = tmdbCast.slice(0, numOfActors);
+                    // build an array of cast names with strings
+                    const topCast = [];
+                    for (let i = 0; i < topActors.length; i++) {
+                        const person = topActors[i];
+                        if (person && typeof person.name === "string" && person.name.length > 0) {
+                            topCast.push(person.name);
+                        }
+                    }
+
+                    // read runtime in min if it exists and is a number otherwise leave it as null
+                    let runtime = null;
+                    if (tmdb && typeof tmdb.runtime === "number") {
+                        runtime = tmdb.runtime;
+                    }
 
                     // get where to watch
                     let watchProviders = [];
                     let watchType = null;
 
                     // use US by default, not important for other areas rn since it changes by location
-                    if (
-                        tmdb &&
-                        tmdb["watch/providers"] &&
-                        tmdb["watch/providers"].results &&
-                        tmdb["watch/providers"].results.US
-                    ) {
+                    if (tmdb && tmdb["watch/providers"] && tmdb["watch/providers"].results && tmdb["watch/providers"].results.US) {
                         const us = tmdb["watch/providers"].results.US;
                         if (us.flatrate && us.flatrate.length > 0) {
                             watchProviders = us.flatrate;
@@ -181,21 +210,19 @@ export default function RecommendationFeed() {
                         }
                     }
 
-                    // trailer
-                    const videos = tmdb.videos?.results || [];
-                    const trailer = videos.find(
-                        (v) =>
-                            v.site === "YouTube" && v.type === "Trailer"
-                    );
-                    if (trailer)
-                        currentDetails.trailerUrl =
-                            `https://www.youtube.com/watch?v=${trailer.key}`;
+                    // trailer (direct YouTube URL)
+                    let trailerUrl = null;
+                    if (tmdb && tmdb.videos && tmdb.videos.results) {
+                        const trailer = tmdb.videos.results.find(
+                            (v) => v.site === "YouTube" && v.type === "Trailer"
+                        );
+                        if (trailer) {
+                            trailerUrl = `https://www.youtube.com/watch?v=${trailer.key}`;
+                        }
+                    }
 
                     // check for prequel / sequel in collection
-                    if (
-                        tmdb.belongs_to_collection &&
-                        tmdb.belongs_to_collection.id
-                    ) {
+                    if (tmdb.belongs_to_collection && tmdb.belongs_to_collection.id) {
                         try {
                             const collRes = await fetch(
                                 `${API_BASE}/record/collection/${tmdb.belongs_to_collection.id}`,
@@ -204,28 +231,20 @@ export default function RecommendationFeed() {
                             if (collRes.ok) {
                                 const collectionData = await collRes.json();
                                 // sort by release date to determine order
-                                const parts = (collectionData.parts || []).sort(
-                                    (a, b) => {
-                                        return (
-                                            new Date(
-                                                a.release_date ||
-                                                "9999-12-31"
-                                            ) -
-                                            new Date(
-                                                b.release_date ||
-                                                "9999-12-31"
-                                            )
-                                        );
-                                    }
-                                );
+                                const parts = (collectionData.parts || []).sort((a, b) => {
+                                    return (
+                                        new Date(a.release_date || "9999-12-31") -
+                                        new Date(b.release_date || "9999-12-31")
+                                    );
+                                });
                                 const currentIndex = parts.findIndex(
-                                    (p) => p.id === tmdbId
+                                    (p) => Number(p.id) === tmdbId
                                 );
                                 if (currentIndex !== -1) {
                                     if (currentIndex > 0) {
                                         // prequel exists
                                         const prev = parts[currentIndex - 1];
-                                        currentDetails.prequel = {
+                                        patch.prequel = {
                                             id: prev.id,
                                             tmdbId: prev.id,
                                             title: prev.title,
@@ -234,7 +253,7 @@ export default function RecommendationFeed() {
                                     if (currentIndex < parts.length - 1) {
                                         // sequel exists
                                         const next = parts[currentIndex + 1];
-                                        currentDetails.sequel = {
+                                        patch.sequel = {
                                             id: next.id,
                                             tmdbId: next.id,
                                             title: next.title,
@@ -247,49 +266,81 @@ export default function RecommendationFeed() {
                         }
                     }
 
-                    // patch
-                    if (topCast.length > 0) currentDetails.topCast = topCast;
-                    if (runtime) currentDetails.runtime = runtime;
+
+                    // removed outdated comments here from old database logic
+                    patch.tmdbId = tmdbId;
+                    if (topCast.length > 0) {
+                        patch.topCast = topCast;
+                    }
+                    if (runtime !== null) {
+                        patch.runtime = runtime;
+                    }
+                    // add watchers to patch and pass to detail view
                     if (watchProviders.length > 0) {
-                        currentDetails.watchProviders = watchProviders;
-                        currentDetails.watchType = watchType;
+                        patch.watchProviders = watchProviders;
+                        patch.watchType = watchType;
                     }
 
-                    if (!currentDetails.id) {
-                        if (!currentDetails.description)
-                            currentDetails.description = tmdb.overview;
+                    if (trailerUrl) {
+                        patch.trailerUrl = trailerUrl;
+                    }
+
+                    // Only fill from TMDB if we don't already have a title
+                    if (!data.title) {
+                        patch.title = tmdb.title;
+                        patch.year = tmdb.release_date
+                            ? parseInt(tmdb.release_date.slice(0, 4))
+                            : null;
+                        patch.description = tmdb.overview;
+
                         if (!currentDetails.posterUrl && tmdb.poster_path) {
-                            currentDetails.posterUrl =
-                                `${TMDB_IMG}${tmdb.poster_path}`;
+                            patch.posterUrl = `${TMDB_IMG}${tmdb.poster_path}`;
                         }
-                        if (
-                            !currentDetails.backdropUrl &&
-                            tmdb.backdrop_path
-                        ) {
-                            currentDetails.backdropUrl =
+                        if (!currentDetails.backdropUrl && tmdb.backdrop_path) {
+                            patch.backdropUrl =
                                 `https://image.tmdb.org/t/p/original${tmdb.backdrop_path}`;
                         }
-                        if (
-                            (!currentDetails.genres ||
-                                currentDetails.genres.length === 0) &&
-                            tmdb.genres
-                        ) {
-                            currentDetails.genres = tmdb.genres.map(
-                                (g) => g.name
-                            );
+                        patch.rating = tmdb.vote_average;
+
+                        if ((!currentDetails.genres || currentDetails.genres.length === 0) && tmdb.genres) {
+                            patch.genres = tmdb.genres.map((g) => g.name);
                         }
                     }
 
-                    currentDetails.tmdbId = tmdbId; // change to just ID
+                    console.log(
+                        "[TMDB FEED TEST] topCast:",
+                        topCast,
+                        "runtime:",
+                        runtime,
+                        "providers:",
+                        watchProviders.length
+                    );
                 }
             }
 
-            setDetails(currentDetails);
+            // ensure tmdbId is present in details
+            const finalTmdbId =
+                typeof patch.tmdbId === "number"
+                    ? patch.tmdbId
+                    : typeof currentDetails.tmdbId === "number"
+                        ? currentDetails.tmdbId
+                        : typeof data.tmdbId === "number"
+                            ? data.tmdbId
+                            : null;
+
+            const finalDetails = {
+                ...currentDetails,
+                ...patch,
+                tmdbId: finalTmdbId,
+            };
+
+            setDetails(finalDetails);
             setShowDetails(true);
         } catch (e) {
             console.error("Error opening details:", e);
         }
     }
+
 
 
     // helper to get local details

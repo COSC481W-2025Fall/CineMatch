@@ -404,7 +404,6 @@ function App() {
                     ? Number(rawTmdbId)
                     : null;
 
-            console.log("[TMDB] Using ID:", tmdbId);
 
             let patch = {}; // empty
 
@@ -564,14 +563,6 @@ function App() {
                         patch.rating = tmdb.vote_average;
                     }
 
-                    console.log(
-                        "[TMDB TEST] topCast:",
-                        topCast,
-                        "runtime:",
-                        runtime,
-                        "providers:",
-                        watchProviders.length
-                    );
                 }
             }
 

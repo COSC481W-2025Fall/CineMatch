@@ -270,7 +270,7 @@ router.get("/tmdb/:id", async (req, res) => {
         url.searchParams.set("api_key", process.env.VITE_TMDB_API_KEY);
 
         const baseAppend = "credits,watch/providers";
-        const extraAppend = req.query.append_to_response || ""; 
+        const extraAppend = req.query.append_to_response || "";
 
         const appendSet = new Set(
             `${baseAppend},${extraAppend}`
