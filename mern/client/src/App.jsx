@@ -393,7 +393,7 @@ function App() {
             const res = await fetch(`${API_BASE}/record/details/${movie.id}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
-            
+
             const rawTmdbId =
                 movie.tmdbId != null && movie.tmdbId !== ""
                     ? movie.tmdbId

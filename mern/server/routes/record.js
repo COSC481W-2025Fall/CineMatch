@@ -302,5 +302,36 @@ router.get("/record/collection/:id", async (req, res) => {
     }
 });
 
+router.get("/collection/:collectionId", async (req, res) => {
+    try {
+        const { collectionId } = req.params;
+        const apiKey = process.env.TMDB_API_KEY;
+        if (!apiKey) {
+            return res.status(500).json({ error: "TMDB_API_KEY not configured" });
+        }
+
+        const url = new URL(
+            `https://api.themoviedb.org/3/collection/${collectionId}`
+        );
+        url.searchParams.set("api_key", apiKey);
+
+        const tmdbRes = await fetch(url.toString(), {
+            headers: { accept: "application/json" },
+        });
+
+        if (!tmdbRes.ok) {
+            return res
+                .status(tmdbRes.status)
+                .json({ error: `TMDB collection fetch failed: HTTP ${tmdbRes.status}` });
+        }
+
+        const data = await tmdbRes.json();
+        res.json(data);
+    } catch (err) {
+        console.error("TMDB collection error", err);
+        res.status(500).json({ error: "Failed to fetch TMDB collection" });
+    }
+});
+
 
 export default router;
