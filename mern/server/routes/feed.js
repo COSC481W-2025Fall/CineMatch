@@ -367,45 +367,62 @@ router.post("/", async (req, res) => {
             .toArray();
 
         function scoreCandidate(doc) {
-            let score = 0;
-
             const genres = String(doc.genres || "")
                 .split(",")
                 .map((g) => normalizeLabel(g))
                 .filter(Boolean);
+
             const keywords = String(doc.keywords || "")
                 .split(",")
                 .map((k) => normalizeLabel(k))
                 .filter(Boolean);
 
+            let sharedGenres = 0;
+            let sharedKeywords = 0;
+            let penalty = 0;
+
             for (const g of genres) {
                 if (genreWeight[g]) {
-                    score += genreWeight[g] * 2;
+                    sharedGenres++;
                 }
                 if (dislikedGenreSet.has(g)) {
-                    score -= 4;
+                    penalty += 10;
                 }
             }
 
             for (const k of keywords) {
                 if (keywordWeight[k]) {
-                    score += keywordWeight[k];
+                    sharedKeywords++;
                 }
             }
 
+            if (sharedGenres === 0 && sharedKeywords === 0) {
+                return -Infinity;
+            }
+
+            let score = 0;
+
+            score += sharedGenres * 5;
+            score += sharedKeywords * 3;
+
             if (typeof doc.rating === "number") {
-                score += doc.rating / 2;
+                score += doc.rating * 0.3;
             }
             if (typeof doc.popularity === "number") {
-                score += doc.popularity / 3000;
+                score += doc.popularity / 5000;
             }
+
+            score -= penalty;
 
             return score;
         }
 
         let scored = candidates
             .map((doc) => ({ doc, score: scoreCandidate(doc) }))
-            .filter((x) => x.score > 0);
+            .filter((x) => Number.isFinite(x.score) && x.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, limit)
+            .map(({ doc }) => formatMovieForFeed(doc));
 
         if (scored.length) {
             scored.sort((a, b) => b.score - a.score);
