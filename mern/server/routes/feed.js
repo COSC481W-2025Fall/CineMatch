@@ -769,58 +769,83 @@ router.post("/", async (req, res) => {
         let ratingSum = 0;
         let ratingCount = 0;
 
+        const W_GENRE_FROM_WATCHED   = 2;
+        const W_GENRE_FROM_LIKED     = 1;
+
+        const W_KEYWORD_FROM_WATCHED = 2;
+        const W_KEYWORD_FROM_LIKED   = 1;
+
+        const W_ACTOR_FROM_WATCHED   = 6;
+        const W_ACTOR_FROM_LIKED     = 1.5;
+
+        const W_DIRECTOR_FROM_WATCHED = 3;
+        const W_DIRECTOR_FROM_LIKED   = 1;
+
+        const W_TITLE_FROM_WATCHED   = 4;   
+        const W_TITLE_FROM_LIKED     = 1;
+
         for (const doc of profileDocs) {
-            let baseBoost = 0;
-            if (watched.has(doc.id)) baseBoost += 1;
-            if (liked.has(doc.id))   baseBoost += 4;
-            if (baseBoost <= 0) continue;
+            const isWatched = watched.has(doc.id);
+            const isLiked   = liked.has(doc.id);
+
+            if (!isWatched && !isLiked) continue;
 
             const genres = String(doc.genres || "")
                 .split(",")
-                .map((g) => normalizeLabel(g))
+                .map(normalizeLabel)
                 .filter(Boolean);
 
             const keywords = String(doc.keywords || "")
                 .split(",")
-                .map((k) => normalizeLabel(k))
+                .map(normalizeLabel)
                 .filter(Boolean);
 
             const actors = String(doc.actors || "")
                 .split(",")
-                .map((a) => normalizeLabel(a))
+                .map(normalizeLabel)
                 .filter(Boolean);
 
             const directors = String(doc.directors || "")
                 .split(",")
-                .map((d) => normalizeLabel(d))
+                .map(normalizeLabel)
                 .filter(Boolean);
 
             const titleTokens = String(doc.name || "")
-                .split(/\s+/)
-                .map((t) => normalizeLabel(t))
-                .filter(Boolean);
+                .split(/[^A-Za-z0-9]+/)
+                .map(normalizeLabel)
+                .filter((t) => t.length >= 3);
+
+            const genreBoost   = (isWatched ? W_GENRE_FROM_WATCHED   : 0) + (isLiked ? W_GENRE_FROM_LIKED   : 0);
+            const keywordBoost = (isWatched ? W_KEYWORD_FROM_WATCHED : 0) + (isLiked ? W_KEYWORD_FROM_LIKED : 0);
+
+            const actorBoost   = (isWatched ? W_ACTOR_FROM_WATCHED   : 0) + (isLiked ? W_ACTOR_FROM_LIKED   : 0);
+
+            const directorBoost= (isWatched ? W_DIRECTOR_FROM_WATCHED: 0) + (isLiked ? W_DIRECTOR_FROM_LIKED: 0);
+
+            const titleBoost   = (isWatched ? W_TITLE_FROM_WATCHED   : 0) + (isLiked ? W_TITLE_FROM_LIKED   : 0);
 
             for (const g of genres) {
-                genreWeight[g] = (genreWeight[g] || 0) + baseBoost;
+                genreWeight[g] = (genreWeight[g] || 0) + genreBoost;
             }
             for (const k of keywords) {
-                keywordWeight[k] = (keywordWeight[k] || 0) + baseBoost;
+                keywordWeight[k] = (keywordWeight[k] || 0) + keywordBoost;
             }
             for (const a of actors) {
-                actorWeight[a] = (actorWeight[a] || 0) + baseBoost * 5;
+                actorWeight[a] = (actorWeight[a] || 0) + actorBoost;
             }
             for (const d of directors) {
-                directorWeight[d] = (directorWeight[d] || 0) + baseBoost * 3;
+                directorWeight[d] = (directorWeight[d] || 0) + directorBoost;
             }
             for (const t of titleTokens) {
-                titleTokenWeight[t] = (titleTokenWeight[t] || 0) + baseBoost * 2;
+                titleTokenWeight[t] = (titleTokenWeight[t] || 0) + titleBoost;
             }
 
-            if (typeof doc.date === "number") {
+
+            if (isWatched && typeof doc.date === "number") {
                 yearSum += doc.date;
                 yearCount += 1;
             }
-            if (typeof doc.rating === "number") {
+            if (isWatched && typeof doc.rating === "number") {
                 ratingSum += doc.rating;
                 ratingCount += 1;
             }
