@@ -266,7 +266,7 @@ async function fetchGenres(tmdbId) {
     }
 });*/
 
-router.post("/", async (req, res) => {
+/*router.post("/", async (req, res) => {
     try {
         const {
             watchedIds = [],
@@ -445,6 +445,266 @@ router.post("/", async (req, res) => {
         console.error("POST /feed error:", err);
         res.status(500).json({ error: "Server error" });
     }
+});*/
+
+router.post("/", async (req, res) => {
+    try {
+        const {
+            watchedIds = [],
+            likedTmdbIds = [],
+            dislikedTmdbIds = [],
+            limit: rawLimit,
+        } = req.body || {};
+
+        const limit = Math.max(1, Math.min(50, Number(rawLimit) || 20));
+
+
+        const watched = new Set(
+            watchedIds.map(Number).filter((n) => Number.isFinite(n) && n > 0)
+        );
+        const liked = new Set(
+            likedTmdbIds.map(Number).filter((n) => Number.isFinite(n) && n > 0)
+        );
+        const disliked = new Set(
+            dislikedTmdbIds.map(Number).filter((n) => Number.isFinite(n) && n > 0)
+        );
+
+        const col = db.collection("general");
+
+
+        const hasProfile = watched.size > 0 || liked.size > 0;
+        if (!hasProfile && disliked.size === 0) {
+            const docs = await col
+                .find({})
+                .sort({ popularity: -1, date: -1 })
+                .limit(limit)
+                .toArray();
+            return res.json({ items: docs.map(formatMovieForFeed) });
+        }
+
+
+        const profileIds = [...new Set([...watched, ...liked])];
+
+        let profileDocs = [];
+        if (profileIds.length > 0) {
+            profileDocs = await col
+                .find({ id: { $in: profileIds } })
+                .project({
+                    id: 1,
+                    genres: 1,
+                    keywords: 1,
+                    actors: 1,
+                    directors: 1,
+                    date: 1,
+                    rating: 1,
+                    name: 1,
+                })
+                .toArray();
+        }
+
+        const genreWeight    = Object.create(null);
+        const keywordWeight  = Object.create(null);
+        const actorWeight    = Object.create(null);
+        const directorWeight = Object.create(null);
+        const titleWeight    = Object.create(null);
+
+        let yearSum = 0;
+        let yearCount = 0;
+        let ratingSum = 0;
+        let ratingCount = 0;
+
+        function bumpMap(map, tokens, weight) {
+            for (const raw of tokens) {
+                const key = normalizeLabel(raw);
+                if (!key) continue;
+                map[key] = (map[key] || 0) + weight;
+            }
+        }
+
+        for (const doc of profileDocs) {
+            let baseBoost = 0;
+            if (watched.has(doc.id)) baseBoost += 1;
+            if (liked.has(doc.id))   baseBoost += 4;
+            if (baseBoost <= 0) continue;
+
+            const genres = String(doc.genres || "").split(",");
+            const keywords = String(doc.keywords || "").split(",");
+            const actors = String(doc.actors || "").split(",");
+            const directors = String(doc.directors || "").split(",");
+            const titleTokens = String(doc.name || "")
+                .split(/[^A-Za-z0-9]+/)
+                .filter((t) => t.length >= 3);
+
+
+            bumpMap(genreWeight, genres, baseBoost * 1.5);
+            bumpMap(keywordWeight, keywords, baseBoost * 1.5);
+            bumpMap(actorWeight, actors, baseBoost * 4);
+            bumpMap(titleWeight, titleTokens, baseBoost * 4);
+            bumpMap(directorWeight, directors, baseBoost * 2.5);
+
+            const y = Number(doc.date);
+            if (Number.isFinite(y)) {
+                yearSum += y * baseBoost;
+                yearCount += baseBoost;
+            }
+            const r = Number(doc.rating);
+            if (Number.isFinite(r)) {
+                ratingSum += r * baseBoost;
+                ratingCount += baseBoost;
+            }
+        }
+
+        const avgYear   = yearCount   > 0 ? yearSum / yearCount : null;
+        const avgRating = ratingCount > 0 ? ratingSum / ratingCount : null;
+
+        const dislikedGenreSet    = new Set();
+        const dislikedActorSet    = new Set();
+        const dislikedDirectorSet = new Set();
+        const dislikedTitleSet    = new Set();
+
+        if (disliked.size > 0) {
+            const dislikedDocs = await col
+                .find({ id: { $in: [...disliked] } })
+                .project({ genres: 1, actors: 1, directors: 1, name: 1 })
+                .toArray();
+
+            for (const doc of dislikedDocs) {
+                const genres = String(doc.genres || "").split(",");
+                const actors = String(doc.actors || "").split(",");
+                const directors = String(doc.directors || "").split(",");
+                const titleTokens = String(doc.name || "")
+                    .split(/[^A-Za-z0-9]+/)
+                    .filter((t) => t.length >= 3);
+
+                for (const g of genres) {
+                    const k = normalizeLabel(g);
+                    if (k) dislikedGenreSet.add(k);
+                }
+                for (const a of actors) {
+                    const k = normalizeLabel(a);
+                    if (k) dislikedActorSet.add(k);
+                }
+                for (const d of directors) {
+                    const k = normalizeLabel(d);
+                    if (k) dislikedDirectorSet.add(k);
+                }
+                for (const t of titleTokens) {
+                    const k = normalizeLabel(t);
+                    if (k) dislikedTitleSet.add(k);
+                }
+            }
+        }
+
+        const excludeIds = [...new Set([...watched, ...disliked])];
+        const baseFilter =
+            excludeIds.length > 0 ? { id: { $nin: excludeIds } } : {};
+
+        const candidates = await col
+            .find(baseFilter)
+            .sort({ popularity: -1, date: -1 })
+            .limit(800)
+            .toArray();
+
+        function scoreCandidate(doc) {
+            const genres = String(doc.genres || "").split(",");
+            const keywords = String(doc.keywords || "").split(",");
+            const actors = String(doc.actors || "").split(",");
+            const directors = String(doc.directors || "").split(",");
+            const titleTokens = String(doc.name || "")
+                .split(/[^A-Za-z0-9]+/)
+                .filter((t) => t.length >= 3);
+
+            let score = 0;
+
+            for (const aRaw of actors) {
+                const a = normalizeLabel(aRaw);
+                if (!a) continue;
+                if (actorWeight[a]) score += actorWeight[a] * 4;
+                if (dislikedActorSet.has(a)) score -= 15;
+            }
+
+            for (const dRaw of directors) {
+                const d = normalizeLabel(dRaw);
+                if (!d) continue;
+                if (directorWeight[d]) score += directorWeight[d] * 2.5;
+                if (dislikedDirectorSet.has(d)) score -= 10;
+            }
+
+            for (const gRaw of genres) {
+                const g = normalizeLabel(gRaw);
+                if (!g) continue;
+                if (genreWeight[g]) score += genreWeight[g] * 1.5;
+                if (dislikedGenreSet.has(g)) score -= 6;
+            }
+
+            for (const kRaw of keywords) {
+                const k = normalizeLabel(kRaw);
+                if (!k) continue;
+                if (keywordWeight[k]) score += keywordWeight[k] * 1.5;
+            }
+
+            for (const tRaw of titleTokens) {
+                const t = normalizeLabel(tRaw);
+                if (!t) continue;
+                if (titleWeight[t]) score += titleWeight[t] * 4;
+                if (dislikedTitleSet.has(t)) score -= 12;
+            }
+
+            if (score === 0) return -Infinity;
+
+            const y = Number(doc.date);
+            if (avgYear !== null && Number.isFinite(y)) {
+                const diff = Math.abs(y - avgYear);
+                const yearBonus = Math.max(0, 10 - diff);
+                score += yearBonus * 0.4;
+            }
+
+            const r = Number(doc.rating);
+            if (Number.isFinite(r)) {
+                score += r * 0.4;
+                if (avgRating !== null) {
+                    const diffR = Math.abs(r - avgRating);
+                    const ratingBonus = Math.max(0, 4 - diffR);
+                    score += ratingBonus * 0.5;
+                }
+            }
+
+            if (typeof doc.popularity === "number") {
+                score += doc.popularity / 5000;
+            }
+
+            return score;
+        }
+
+        const scored = candidates
+            .map((doc) => ({ doc, score: scoreCandidate(doc) }))
+            .filter((x) => Number.isFinite(x.score) && x.score > 0)
+            .sort((a, b) => b.score - a.score);
+
+        if (scored.length) {
+            const POOL_SIZE = Math.min(scored.length, limit * 3);
+            const pool = scored.slice(0, POOL_SIZE);
+
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+
+            const selected = pool.slice(0, limit).map(({ doc }) => formatMovieForFeed(doc));
+            return res.json({ items: selected });
+        }
+
+        const docs = await col
+            .find(baseFilter)
+            .sort({ popularity: -1, date: -1 })
+            .limit(limit)
+            .toArray();
+        return res.json({ items: docs.map(formatMovieForFeed) });
+    } catch (err) {
+        console.error("POST /feed error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
 });
+
 
 export default router;
