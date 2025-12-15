@@ -380,6 +380,7 @@ export default function RecommendationFeed() {
                 dislikedTmdbIds: freshDisliked,
                 limit: Math.max(1, Number(limit) || DEFAULT_LIMIT),
             };
+            console.log("[FEED] request body:", body);
             const resp = await fetch(`${API_BASE}/feed`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
