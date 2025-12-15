@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Navigation from "./Navigation.jsx";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
-import { authedFetch, refresh } from "../auth/api.js";
+import { authedFetch, refresh, fetchReactions } from "../auth/api.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
@@ -251,26 +251,25 @@ export default function RecommendationFeed() {
     }
 
     async function buildRecommendations() {
-        const freshLiked = loadArrayFromStorage("likedTmdbIds");
-        const freshDisliked = loadArrayFromStorage("dislikedTmdbIds");
+        const { likedTmdbIds, dislikedTmdbIds } = await fetchReactions();
 
-        setLikedTmdbIds(freshLiked);
-        setDislikedTmdbIds(freshDisliked);
+        setLikedTmdbIds(likedTmdbIds);
+        setDislikedTmdbIds(dislikedTmdbIds);
 
-        if (watchedIds.size === 0) { // Check if the user has watched any movies yet
+        if (watchedIds.size === 0) {
             setStatus("Your watched movies list is empty, mark some as watched to get recommendations!.");
             setRecs([]);
             return;
         }
         setStatus("Building your feed…");
         try {
-            const body = {// Prepare the request body with watched IDs and the desired limit
+            const body = {
                 watchedIds: Array.from(watchedIds),
-                likedTmdbIds: freshLiked,
-                dislikedTmdbIds: freshDisliked,
+                likedTmdbIds: likedTmdbIds,
+                dislikedTmdbIds: dislikedTmdbIds,
                 limit: Math.max(1, Number(limit) || DEFAULT_LIMIT),
             };
-            const resp = await fetch("/feed", { // Send a POST request to the /feed endpoint
+            const resp = await fetch("/feed", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
@@ -286,7 +285,6 @@ export default function RecommendationFeed() {
             if (tmdbIdsToCheck.length > 0) {
                 const localDetails = await fetchLocalDetails(tmdbIdsToCheck);
                 localDetails.forEach((d) => {
-                    // Index by the ID (which corresponds to TMDB ID)
                     localDataMap[d.id] = d;
                 });
             }
@@ -297,9 +295,9 @@ export default function RecommendationFeed() {
                 if (local) {
                     return {
                         ...item,
-                        ...local,        // overwrite from database for the sake of consistancy (especially for poster / backdrops)
-                        tmdbId: item.tmdbId, // keep ID ref
-                        id: local.id,    // make watched work
+                        ...local,
+                        tmdbId: item.tmdbId,
+                        id: local.id,
                         genres: local.genre,
                         overview: local.description || item.overview,
                         posterUrl: local.posterUrl
@@ -313,7 +311,7 @@ export default function RecommendationFeed() {
                 if (item.tmdbId == null) return true;
                 const idNum = Number(item.tmdbId);
                 if (!Number.isFinite(idNum)) return true;
-                return !freshDisliked.includes(idNum);
+                return !dislikedTmdbIds.includes(idNum);
             });
 
             setRecs(filtered);
