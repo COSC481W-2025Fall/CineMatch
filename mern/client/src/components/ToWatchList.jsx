@@ -16,6 +16,15 @@ const GENRES = [
     "Science Fiction", "Thriller", "War", "Western"
 ];
 
+const AGE_RATINGS_DATA = [
+    { id: 0, name: "Not Rated" },
+    { id: 1, name: "G" },
+    { id: 2, name: "PG" },
+    { id: 3, name: "PG-13" },
+    { id: 4, name: "R" },
+    { id: 5, name: "NC-17" },
+];
+
 const CAST_LIMIT = 5; // cast limit
 /*
 // localStorage helpers
@@ -309,8 +318,13 @@ export default function ToWatchListPage() {
     const [params, setParams] = useState({
         actor: "",
         director: "",
-        genre: "",
         title: "",
+        keyword: "",
+        year_min: "",
+        year_max: "",
+        rating_min: "",
+        rating_max: "",
+        genre: "",
         year: "",
         rating: "",
     });
@@ -428,17 +442,23 @@ export default function ToWatchListPage() {
 
     // use /record/bulk to fetch only to-watch movies
     async function fetchWatchlistSubset(ids, p = {}) {
+        const finalGenres = selectedGenres.length ? selectedGenres : [];
+        const finalAgeRatings = selectedAgeRatings.length ? selectedAgeRatings : [];
+
         const body = {
             ids,
             params: {
                 actor: p.actor || "",
                 director: p.director || "",
-                genre: p.genre || "",
                 title: p.title || "",
+                keyword: p.keyword || "",
+
                 year_min: p.year_min || p.year || "",
                 year_max: p.year_max || "",
                 rating_min: p.rating_min || p.rating || "",
                 rating_max: p.rating_max || "",
+                ...(finalGenres.length ? { genre: finalGenres } : {}),
+                ...(finalAgeRatings.length ? { age_rating: finalAgeRatings } : {}),
             },
         };
 
@@ -607,8 +627,9 @@ export default function ToWatchListPage() {
         setParams({
             actor: "",
             director: "",
-            genre: "",
             title: "",
+            keyword: "",
+            genre: "",
             year: "",
             rating: "",
             year_min: "",
@@ -618,6 +639,8 @@ export default function ToWatchListPage() {
         });
         setSelectedGenres([]);
         setGenreDropdownOpen(false);
+        setSelectedAgeRatings([]);
+        setAgeRatingDropdownOpen(false);
         doSearch();
     }
 
