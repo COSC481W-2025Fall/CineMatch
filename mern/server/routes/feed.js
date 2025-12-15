@@ -619,7 +619,7 @@ router.post("/", async (req, res) => {
             for (const aRaw of actors) {
                 const a = normalizeLabel(aRaw);
                 if (!a) continue;
-                if (actorWeight[a]) score += actorWeight[a] * 4;
+                if (actorWeight[a]) score += actorWeight[a] * 5;
                 if (dislikedActorSet.has(a)) score -= 15;
             }
 
@@ -646,7 +646,7 @@ router.post("/", async (req, res) => {
             for (const tRaw of titleTokens) {
                 const t = normalizeLabel(tRaw);
                 if (!t) continue;
-                if (titleWeight[t]) score += titleWeight[t] * 4;
+                if (titleWeight[t]) score += titleWeight[t] * 5;
                 if (dislikedTitleSet.has(t)) score -= 12;
             }
 
