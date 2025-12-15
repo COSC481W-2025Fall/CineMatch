@@ -235,11 +235,13 @@ body {
     font-family:'Magz', cursive; font-size:30px; color:#f7e135; font-style:italic;
     margin:0 auto; text-shadow:2px 2px 4px rgba(0,0,0,.5); transform:scaleX(1.5);
     transition: all 0.3s ease;
+    text-decoration: none;
 }
 
 .logo:hover {
     transform: scaleX(1.55) translateY(-2px);
     text-shadow: 3px 3px 6px rgba(0,0,0,.7);
+    text-decoration: none;
 }
 
 .main-container {
@@ -768,6 +770,7 @@ body {
         margin: 0;
         justify-self: center;
         transform: scaleX(1.35);
+        text-decoration: none;
     }
 
     .nav-icon-btn {
@@ -909,6 +912,7 @@ body {
 @media (max-width: 480px) {
     .logo {
         font-size: 20px;
+        text-decoration: none;
     }
 
     .nav-icon-btn {
