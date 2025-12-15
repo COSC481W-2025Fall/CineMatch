@@ -197,19 +197,18 @@ router.post("/bulk", async (req, res) => {
         const rawIds = req.body?.ids || [];
         const ids = rawIds.map(Number).filter((n) => Number.isFinite(n));
 
-        if (ids.length === 0) {
-            return res.status(200).json([]);
-        }
+        if (ids.length === 0) return res.status(200).json([]);
 
         const {
             title,
-            name,
             director,
             actor,
             genre,
             keyword,
+            year,
             year_min,
             year_max,
+            rating,
             rating_min,
             rating_max,
             age_rating,
@@ -218,63 +217,56 @@ router.post("/bulk", async (req, res) => {
         const filter = { id: { $in: ids } };
 
 
-        const qName = name ?? title;
-        if (qName) {
-            const cleanName = normalizeString(qName);
-            filter.search_name = { $regex: cleanName, $options: "i" };
+        if (title) {
+            filter.name = { $regex: title, $options: "i" };
         }
 
-        const yMin = Number(year_min);
-        const yMax = Number(year_max);
-        if (!Number.isNaN(yMin) || !Number.isNaN(yMax)) {
-            filter.date = {};
-            if (!Number.isNaN(yMin)) filter.date.$gte = yMin;
-            if (!Number.isNaN(yMax)) filter.date.$lte = yMax;
-        }
+        let dateFilter = null;
 
 
-        const rMin = Number(rating_min);
-        const rMax = Number(rating_max);
-        if (!Number.isNaN(rMin) || !Number.isNaN(rMax)) {
-            filter.rating = {};
-            if (!Number.isNaN(rMin)) filter.rating.$gte = rMin;
-            filter.rating.$lte = Number.isNaN(rMax) ? 10 : rMax;
-        }
-
-
-        if (director) {
-            const cleanDirector = normalizeString(director);
-            filter.search_directors = { $regex: cleanDirector, $options: "i" };
-        }
-
-        if (actor) {
-            const actorsList = actor
-                .split(",")
-                .map((a) => normalizeString(a))
-                .filter(Boolean);
-
-            if (actorsList.length > 0) {
-                filter.$and = filter.$and || [];
-                actorsList.forEach((a) => {
-                    filter.$and.push({
-                        search_actors: { $regex: a, $options: "i" },
-                    });
-                });
+        if (year) {
+            const yNum = Number(year);
+            if (!Number.isNaN(yNum)) {
+                dateFilter = yNum;
             }
         }
 
-        if (genre) {
-            const genreList = Array.isArray(genre) ? genre : genre.split(",");
-            filter.$and = filter.$and || [];
-            genreList.forEach((g) => {
-                if (g.trim()) {
-                    filter.$and.push({
-                        genres: { $regex: g.trim(), $options: "i" },
-                    });
-                }
-            });
+        const yMin = year_min !== undefined && year_min !== "" ? Number(year_min) : NaN;
+        const yMax = year_max !== undefined && year_max !== "" ? Number(year_max) : NaN;
+
+        if (!Number.isNaN(yMin) || !Number.isNaN(yMax)) {
+            const range = {};
+            if (!Number.isNaN(yMin)) range.$gte = yMin;
+            if (!Number.isNaN(yMax)) range.$lte = yMax;
+            dateFilter = range;
         }
 
+        if (dateFilter !== null) {
+            filter.date = dateFilter;
+        }
+
+        let ratingFilter = null;
+
+        if (rating) {
+            const rNum = Number(rating);
+            if (!Number.isNaN(rNum)) {
+                ratingFilter = { $gte: rNum };
+            }
+        }
+
+        const rMin = rating_min !== undefined && rating_min !== "" ? Number(rating_min) : NaN;
+        const rMax = rating_max !== undefined && rating_max !== "" ? Number(rating_max) : NaN;
+
+        if (!Number.isNaN(rMin) || !Number.isNaN(rMax)) {
+            const range = ratingFilter || {};
+            if (!Number.isNaN(rMin)) range.$gte = rMin;
+            if (!Number.isNaN(rMax)) range.$lte = rMax;
+            ratingFilter = range;
+        }
+
+        if (ratingFilter !== null) {
+            filter.rating = ratingFilter;
+        }
 
         if (age_rating) {
             const ratings = (Array.isArray(age_rating) ? age_rating : age_rating.split(","))
@@ -284,22 +276,21 @@ router.post("/bulk", async (req, res) => {
                 filter.age_rating = { $in: ratings };
             }
         }
+        
+        if (director) {
+            filter.directors = { $regex: director, $options: "i" };
+        }
 
+        if (actor) {
+            filter.actors = { $regex: actor, $options: "i" };
+        }
+
+        if (genre) {
+            filter.genres = { $regex: genre, $options: "i" };
+        }
 
         if (keyword) {
-            const keywordList = keyword
-                .split(",")
-                .map((k) => k.trim())
-                .filter(Boolean);
-
-            if (keywordList.length > 0) {
-                filter.$and = filter.$and || [];
-                keywordList.forEach((k) => {
-                    filter.$and.push({
-                        keywords: { $regex: k, $options: "i" },
-                    });
-                });
-            }
+            filter.keywords = { $regex: keyword, $options: "i" };
         }
 
         const docs = await db
@@ -309,12 +300,14 @@ router.post("/bulk", async (req, res) => {
             .toArray();
 
         const results = docs.map((doc) => formatMovie(doc));
+
         res.status(200).json(results);
     } catch (err) {
         console.error("POST /record/bulk error:", err);
         return res.status(500).json({ error: "Server error" });
     }
 });
+
 
 router.get("/tmdb/:id", async (req, res) => {
     try {
