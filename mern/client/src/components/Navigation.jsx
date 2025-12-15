@@ -124,7 +124,17 @@ export default function Navigation({ sidebarCollapsed, setSidebarCollapsed }) {
           </div>
 
           {/* CENTER: logo */}
-          <div className="logo">cineMatch</div>
+          <Link
+              to="/"
+              className={`logo${isHome ? " active" : ""}`}
+              onClick={() => {
+                setListsOpen(false);
+                setAccountOpen(false);
+              }}
+              aria-label="Go to homepage"
+          >
+            cineMatch
+          </Link>
 
           {/* RIGHT: desktop text buttons / mobile icons + avatar */}
           <div className="nav-right">
