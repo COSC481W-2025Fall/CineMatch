@@ -159,7 +159,7 @@ function App() {
     async function loadListsIntoApp() {
         try {
 
-            //await refresh().catch(() => {});
+            await refresh().catch(() => {});
 
             const res = await authedFetch("/me/lists");
 
