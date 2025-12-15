@@ -807,10 +807,10 @@ router.post("/", async (req, res) => {
                 keywordWeight[k] = (keywordWeight[k] || 0) + baseBoost;
             }
             for (const a of actors) {
-                actorWeight[a] = (actorWeight[a] || 0) + baseBoost * 3;
+                actorWeight[a] = (actorWeight[a] || 0) + baseBoost * 5;
             }
             for (const d of directors) {
-                directorWeight[d] = (directorWeight[d] || 0) + baseBoost * 2;
+                directorWeight[d] = (directorWeight[d] || 0) + baseBoost * 3;
             }
             for (const t of titleTokens) {
                 titleTokenWeight[t] = (titleTokenWeight[t] || 0) + baseBoost * 2;
@@ -926,7 +926,7 @@ router.post("/", async (req, res) => {
             for (const g of genres) {
                 if (genreWeight[g]) {
                     sharedGenres++;
-                    score += genreWeight[g] * 2;
+                    score += genreWeight[g] * 1;
                 }
                 if (dislikedGenreSet.has(g)) {
                     penalty += 10;
