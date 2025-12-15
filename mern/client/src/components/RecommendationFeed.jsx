@@ -347,7 +347,7 @@ export default function RecommendationFeed() {
     async function fetchLocalDetails(ids) {
         if (!ids || ids.length === 0) return [];
         try {
-            const res = await fetch("/record/bulk", {
+            const res = await fetch(`${API_BASE}/record/bulk`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ids }),
