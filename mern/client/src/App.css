@@ -107,12 +107,18 @@ body {
     transition: all 0.3s ease;
     text-align: center;
     flex: 1;
+    text-decoration: none;
 }
 
 .logo:hover {
     transform: scaleX(1.55) translateY(-2px);
     text-shadow: 3px 3px 6px rgba(0,0,0,.7);
     cursor: pointer;
+    text-decoration: none;
+}
+.logo:active {
+    text-decoration: none;
+    color: inherit;
 }
 
 /* Right side controls for help and profile */
