@@ -57,54 +57,56 @@ export default function ResetPassword() {
 
     return (
         <div className="auth-page">
-            <form className="auth-card" onSubmit={onSubmit} noValidate>
-                <h1>Reset password</h1>
+            <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: "20px" }}>
+                <form className="auth-card" onSubmit={onSubmit} noValidate>
+                    <h1>Reset password</h1>
 
-                {linkInvalid && (
-                    <div className="auth-error" style={{ marginBottom: 12 }}>
-                        This reset link is invalid. Request a new one on the{" "}
-                        <Link to="/forgot-password">Forgot Password</Link> page.
+                    {linkInvalid && (
+                        <div className="auth-error" style={{ marginBottom: 12 }}>
+                            This reset link is invalid. Request a new one on the{" "}
+                            <Link to="/forgot-password">Forgot Password</Link> page.
+                        </div>
+                    )}
+
+                    {done ? (
+                        <div className="auth-success">Password updated. Redirecting to login…</div>
+                    ) : (
+                        <>
+                            {error && <div className="auth-error">{error}</div>}
+
+                            <label htmlFor="password">New password</label>
+                            <input
+                                id="password"
+                                type="password"
+                                autoComplete="new-password"
+                                value={pw}
+                                onChange={(e) => setPw(e.target.value)}
+                                disabled={busy || linkInvalid}
+                                placeholder="••••••••"
+                            />
+
+                            <label htmlFor="confirm">Confirm password</label>
+                            <input
+                                id="confirm"
+                                type="password"
+                                autoComplete="new-password"
+                                value={confirm}
+                                onChange={(e) => setConfirm(e.target.value)}
+                                disabled={busy || linkInvalid}
+                                placeholder="••••••••"
+                            />
+
+                            <button className="go-btn" type="submit" disabled={busy || linkInvalid}>
+                                {busy ? "Updating…" : "Update password"}
+                            </button>
+                        </>
+                    )}
+
+                    <div className="auth-alt">
+                        <Link to="/login">Back to login</Link>
                     </div>
-                )}
-
-                {done ? (
-                    <div className="auth-success">Password updated. Redirecting to login…</div>
-                ) : (
-                    <>
-                        {error && <div className="auth-error">{error}</div>}
-
-                        <label htmlFor="password">New password</label>
-                        <input
-                            id="password"
-                            type="password"
-                            autoComplete="new-password"
-                            value={pw}
-                            onChange={(e) => setPw(e.target.value)}
-                            disabled={busy || linkInvalid}
-                            placeholder="••••••••"
-                        />
-
-                        <label htmlFor="confirm">Confirm password</label>
-                        <input
-                            id="confirm"
-                            type="password"
-                            autoComplete="new-password"
-                            value={confirm}
-                            onChange={(e) => setConfirm(e.target.value)}
-                            disabled={busy || linkInvalid}
-                            placeholder="••••••••"
-                        />
-
-                        <button className="go-btn" type="submit" disabled={busy || linkInvalid}>
-                            {busy ? "Updating…" : "Update password"}
-                        </button>
-                    </>
-                )}
-
-                <div className="auth-alt">
-                    <Link to="/login">Back to login</Link>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     );
 }
