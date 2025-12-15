@@ -443,7 +443,7 @@ export default function RecommendationFeed() {
     useEffect(() => {
         (async () => {
             try {
-                //await refresh().catch(() => {});
+                await refresh().catch(() => {});
                 await loadLists();
             } catch (e) {
                 console.error("Failed to load lists for feed:", e);

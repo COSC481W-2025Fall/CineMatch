@@ -481,7 +481,7 @@ export default function WatchListPage() {
     useEffect(() => {
         (async () => {
             try {
-                //await refresh().catch(() => {});   //refresh token in needed
+                await refresh().catch(() => {});   //refresh token in needed
                 const { watchedIds } = await loadLists();
                 //console.log("watched set after loadLists ->", watchedIds);
 

@@ -513,7 +513,7 @@ export default function ToWatchListPage() {
     useEffect(() => {
         (async () => {
             try {
-                //await refresh().catch(() => {}); // ok if it fails
+                await refresh().catch(() => {}); // ok if it fails
                 const { toWatchIds } = await loadLists();
                 await doSearch(toWatchIds);      // search using fresh IDs
             } catch (e) {
