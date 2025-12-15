@@ -447,7 +447,7 @@ async function fetchGenres(tmdbId) {
     }
 });*/
 
-router.post("/", async (req, res) => {
+/*router.post("/", async (req, res) => {
     try {
         const {
             watchedIds = [],
@@ -700,6 +700,317 @@ router.post("/", async (req, res) => {
             .limit(limit)
             .toArray();
         return res.json({ items: docs.map(formatMovieForFeed) });
+    } catch (err) {
+        console.error("POST /feed error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});*/
+
+router.post("/", async (req, res) => {
+    try {
+        const {
+            watchedIds = [],
+            likedTmdbIds = [],
+            dislikedTmdbIds = [],
+            limit: rawLimit,
+        } = req.body || {};
+
+        const limit = Math.max(1, Math.min(50, Number(rawLimit) || 20));
+
+        const watched = new Set(
+            watchedIds.map(Number).filter((n) => Number.isFinite(n) && n > 0)
+        );
+        const liked = new Set(
+            likedTmdbIds.map(Number).filter((n) => Number.isFinite(n) && n > 0)
+        );
+        const disliked = new Set(
+            dislikedTmdbIds.map(Number).filter((n) => Number.isFinite(n) && n > 0)
+        );
+
+        const col = db.collection("general");
+
+        const hasProfile = watched.size > 0 || liked.size > 0;
+        if (!hasProfile && disliked.size === 0) {
+            const docs = await col
+                .find({})
+                .sort({ popularity: -1, date: -1 })
+                .limit(limit)
+                .toArray();
+            return res.json({ items: docs.map(formatMovieForFeed) });
+        }
+
+        const profileIds = [...new Set([...watched, ...liked])];
+
+        let profileDocs = [];
+        if (profileIds.length > 0) {
+            profileDocs = await col
+                .find({ id: { $in: profileIds } })
+                .project({
+                    id: 1,
+                    genres: 1,
+                    keywords: 1,
+                    actors: 1,
+                    directors: 1,
+                    date: 1,
+                    rating: 1,
+                    name: 1,
+                })
+                .toArray();
+        }
+
+        const genreWeight   = Object.create(null);
+        const keywordWeight = Object.create(null);
+        const actorWeight   = Object.create(null);
+        const directorWeight= Object.create(null);
+        const titleTokenWeight = Object.create(null);
+
+        let yearSum = 0;
+        let yearCount = 0;
+        let ratingSum = 0;
+        let ratingCount = 0;
+
+        for (const doc of profileDocs) {
+            let baseBoost = 0;
+            if (watched.has(doc.id)) baseBoost += 1;
+            if (liked.has(doc.id))   baseBoost += 4;
+            if (baseBoost <= 0) continue;
+
+            const genres = String(doc.genres || "")
+                .split(",")
+                .map((g) => normalizeLabel(g))
+                .filter(Boolean);
+
+            const keywords = String(doc.keywords || "")
+                .split(",")
+                .map((k) => normalizeLabel(k))
+                .filter(Boolean);
+
+            const actors = String(doc.actors || "")
+                .split(",")
+                .map((a) => normalizeLabel(a))
+                .filter(Boolean);
+
+            const directors = String(doc.directors || "")
+                .split(",")
+                .map((d) => normalizeLabel(d))
+                .filter(Boolean);
+
+            const titleTokens = String(doc.name || "")
+                .split(/\s+/)
+                .map((t) => normalizeLabel(t))
+                .filter(Boolean);
+
+            for (const g of genres) {
+                genreWeight[g] = (genreWeight[g] || 0) + baseBoost;
+            }
+            for (const k of keywords) {
+                keywordWeight[k] = (keywordWeight[k] || 0) + baseBoost;
+            }
+            for (const a of actors) {
+                actorWeight[a] = (actorWeight[a] || 0) + baseBoost * 3;
+            }
+            for (const d of directors) {
+                directorWeight[d] = (directorWeight[d] || 0) + baseBoost * 2;
+            }
+            for (const t of titleTokens) {
+                titleTokenWeight[t] = (titleTokenWeight[t] || 0) + baseBoost * 2;
+            }
+
+            if (typeof doc.date === "number") {
+                yearSum += doc.date;
+                yearCount += 1;
+            }
+            if (typeof doc.rating === "number") {
+                ratingSum += doc.rating;
+                ratingCount += 1;
+            }
+        }
+
+        const avgYear   = yearCount   ? yearSum / yearCount   : null;
+        const avgRating = ratingCount ? ratingSum / ratingCount : null;
+
+        const dislikedGenreSet   = new Set();
+        const dislikedActorSet   = new Set();
+        const dislikedDirectorSet= new Set();
+
+        if (disliked.size > 0) {
+            const dislikedDocs = await col
+                .find({ id: { $in: [...disliked] } })
+                .project({ genres: 1, actors: 1, directors: 1 })
+                .toArray();
+
+            for (const doc of dislikedDocs) {
+                const genres = String(doc.genres || "")
+                    .split(",")
+                    .map((g) => normalizeLabel(g))
+                    .filter(Boolean);
+                const actors = String(doc.actors || "")
+                    .split(",")
+                    .map((a) => normalizeLabel(a))
+                    .filter(Boolean);
+                const directors = String(doc.directors || "")
+                    .split(",")
+                    .map((d) => normalizeLabel(d))
+                    .filter(Boolean);
+
+                for (const g of genres)    dislikedGenreSet.add(g);
+                for (const a of actors)    dislikedActorSet.add(a);
+                for (const d of directors) dislikedDirectorSet.add(d);
+            }
+        }
+
+        const excludeIds = [...new Set([...watched, ...disliked])];
+        const baseFilter =
+            excludeIds.length > 0 ? { id: { $nin: excludeIds } } : {};
+
+        const candidates = await col
+            .find(baseFilter)
+            .sort({ popularity: -1, date: -1 })
+            .limit(800) // a bit larger pool
+            .toArray();
+
+        function scoreCandidate(doc) {
+            const genres = String(doc.genres || "")
+                .split(",")
+                .map((g) => normalizeLabel(g))
+                .filter(Boolean);
+
+            const keywords = String(doc.keywords || "")
+                .split(",")
+                .map((k) => normalizeLabel(k))
+                .filter(Boolean);
+
+            const actors = String(doc.actors || "")
+                .split(",")
+                .map((a) => normalizeLabel(a))
+                .filter(Boolean);
+
+            const directors = String(doc.directors || "")
+                .split(",")
+                .map((d) => normalizeLabel(d))
+                .filter(Boolean);
+
+            const titleTokens = String(doc.name || "")
+                .split(/\s+/)
+                .map((t) => normalizeLabel(t))
+                .filter(Boolean);
+
+            let score = 0;
+            let sharedGenres = 0;
+            let sharedKeywords = 0;
+            let sharedActors = 0;
+            let sharedDirectors = 0;
+            let sharedTitleTokens = 0;
+            let penalty = 0;
+
+            for (const a of actors) {
+                if (actorWeight[a]) {
+                    sharedActors++;
+                    score += actorWeight[a] * 5;
+                }
+                if (dislikedActorSet.has(a)) {
+                    penalty += 40;
+                }
+            }
+
+            for (const d of directors) {
+                if (directorWeight[d]) {
+                    sharedDirectors++;
+                    score += directorWeight[d] * 3;
+                }
+                if (dislikedDirectorSet.has(d)) {
+                    penalty += 25;
+                }
+            }
+
+            for (const g of genres) {
+                if (genreWeight[g]) {
+                    sharedGenres++;
+                    score += genreWeight[g] * 2;
+                }
+                if (dislikedGenreSet.has(g)) {
+                    penalty += 10;
+                }
+            }
+
+            for (const k of keywords) {
+                if (keywordWeight[k]) {
+                    sharedKeywords++;
+                    score += keywordWeight[k]; // lower impact
+                }
+            }
+
+            for (const t of titleTokens) {
+                if (titleTokenWeight[t]) {
+                    sharedTitleTokens++;
+                    score += titleTokenWeight[t] * 2;
+                }
+            }
+
+            if (
+                sharedGenres === 0 &&
+                sharedKeywords === 0 &&
+                sharedActors === 0 &&
+                sharedDirectors === 0 &&
+                sharedTitleTokens === 0
+            ) {
+                return -Infinity;
+            }
+
+            if (avgYear !== null && typeof doc.date === "number") {
+                const diffYears = Math.abs(doc.date - avgYear);
+                const yearScore = Math.max(0, 8 - diffYears); // within ~8 yrs gets bonus
+                score += yearScore;
+            }
+
+            if (typeof doc.rating === "number") {
+                score += doc.rating * 0.5;
+
+                if (avgRating !== null) {
+                    const diffRating = Math.abs(doc.rating - avgRating);
+                    const ratingAffinity = Math.max(0, 4 - diffRating); // within ~4 pts
+                    score += ratingAffinity;
+                }
+            }
+
+            if (typeof doc.popularity === "number") {
+                score += doc.popularity / 8000;
+            }
+
+            score -= penalty;
+
+            return score;
+        }
+
+        const scoredEntries = candidates
+            .map((doc) => ({ doc, score: scoreCandidate(doc) }))
+            .filter((x) => Number.isFinite(x.score) && x.score > 0);
+
+        if (!scoredEntries.length) {
+
+            const docs = await col
+                .find(baseFilter)
+                .sort({ popularity: -1, date: -1 })
+                .limit(limit)
+                .toArray();
+            return res.json({ items: docs.map(formatMovieForFeed) });
+        }
+
+
+        scoredEntries.sort((a, b) => b.score - a.score);
+
+        const POOL_SIZE = Math.min(scoredEntries.length, limit * 3);
+        const pool = scoredEntries.slice(0, POOL_SIZE);
+
+        for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+
+        const selectedEntries = pool.slice(0, limit);
+        const items = selectedEntries.map(({ doc }) => formatMovieForFeed(doc));
+
+        return res.json({ items });
     } catch (err) {
         console.error("POST /feed error:", err);
         res.status(500).json({ error: "Server error" });
