@@ -769,20 +769,20 @@ router.post("/", async (req, res) => {
         let ratingSum = 0;
         let ratingCount = 0;
 
-        const W_GENRE_FROM_WATCHED   = 2;
-        const W_GENRE_FROM_LIKED     = 1;
+        const W_GENRE_FROM_WATCHED   = 1;
+        const W_GENRE_FROM_LIKED     = 4;
 
-        const W_KEYWORD_FROM_WATCHED = 2;
-        const W_KEYWORD_FROM_LIKED   = 1;
+        const W_KEYWORD_FROM_WATCHED = 1;
+        const W_KEYWORD_FROM_LIKED   = 3;
 
-        const W_ACTOR_FROM_WATCHED   = 6;
-        const W_ACTOR_FROM_LIKED     = 1.5;
+        const W_ACTOR_FROM_WATCHED   = 2;
+        const W_ACTOR_FROM_LIKED     = 9;
 
-        const W_DIRECTOR_FROM_WATCHED = 3;
-        const W_DIRECTOR_FROM_LIKED   = 1;
+        const W_DIRECTOR_FROM_WATCHED = 1;
+        const W_DIRECTOR_FROM_LIKED   = 5;
 
-        const W_TITLE_FROM_WATCHED   = 4;   
-        const W_TITLE_FROM_LIKED     = 1;
+        const W_TITLE_FROM_WATCHED   = 1;
+        const W_TITLE_FROM_LIKED     = 10;
 
         for (const doc of profileDocs) {
             const isWatched = watched.has(doc.id);
@@ -1021,8 +1021,11 @@ router.post("/", async (req, res) => {
             return res.json({ items: docs.map(formatMovieForFeed) });
         }
 
-
         scoredEntries.sort((a, b) => b.score - a.score);
+        const topEntries = scoredEntries.slice(0, limit);
+        const items = topEntries.map(({ doc }) => formatMovieForFeed(doc));
+        return res.json({ items });
+        /*scoredEntries.sort((a, b) => b.score - a.score);
 
         const POOL_SIZE = Math.min(scoredEntries.length, limit * 3);
         const pool = scoredEntries.slice(0, POOL_SIZE);
@@ -1035,7 +1038,7 @@ router.post("/", async (req, res) => {
         const selectedEntries = pool.slice(0, limit);
         const items = selectedEntries.map(({ doc }) => formatMovieForFeed(doc));
 
-        return res.json({ items });
+        return res.json({ items });*/
     } catch (err) {
         console.error("POST /feed error:", err);
         res.status(500).json({ error: "Server error" });
