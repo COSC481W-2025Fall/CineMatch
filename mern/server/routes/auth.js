@@ -143,7 +143,7 @@ const cookieOpts = {
     httpOnly: true,
     sameSite: isProd ? "none" : "lax",
     secure: isProd,
-    path: "/auth",
+    path: "/",
 };
 
 /* Routes */
