@@ -195,59 +195,121 @@ router.get("/details/:id", async (req, res) => {
 router.post("/bulk", async (req, res) => {
     try {
         const rawIds = req.body?.ids || [];
-        // filter out non numbers
-        const ids = rawIds.map(Number).filter(n => Number.isFinite(n));
+        const ids = rawIds.map(Number).filter((n) => Number.isFinite(n));
 
-        if (ids.length === 0) return res.status(200).json([]);
+        if (ids.length === 0) {
+            return res.status(200).json([]);
+        }
 
         const {
-            title, director, actor, genre, keyword,
-            year, rating, age_rating
+            title,
+            name,
+            director,
+            actor,
+            genre,
+            keyword,
+            year_min,
+            year_max,
+            rating_min,
+            rating_max,
+            age_rating,
         } = req.body?.params || {};
 
         const filter = { id: { $in: ids } };
 
-        // apply filters
-        if (title) filter.name = { $regex: title, $options: "i" };
 
-        if (year) {
-            const yNum = Number(year);
-            if (!Number.isNaN(yNum)) filter.date = yNum;
+        const qName = name ?? title;
+        if (qName) {
+            const cleanName = normalizeString(qName);
+            filter.search_name = { $regex: cleanName, $options: "i" };
         }
 
-        if (rating) {
-            const rNum = Number(rating);
-            if (!Number.isNaN(rNum)) filter.rating = { $gte: rNum };
+        const yMin = Number(year_min);
+        const yMax = Number(year_max);
+        if (!Number.isNaN(yMin) || !Number.isNaN(yMax)) {
+            filter.date = {};
+            if (!Number.isNaN(yMin)) filter.date.$gte = yMin;
+            if (!Number.isNaN(yMax)) filter.date.$lte = yMax;
         }
 
-        // age ratings
+
+        const rMin = Number(rating_min);
+        const rMax = Number(rating_max);
+        if (!Number.isNaN(rMin) || !Number.isNaN(rMax)) {
+            filter.rating = {};
+            if (!Number.isNaN(rMin)) filter.rating.$gte = rMin;
+            filter.rating.$lte = Number.isNaN(rMax) ? 10 : rMax;
+        }
+
+
+        if (director) {
+            const cleanDirector = normalizeString(director);
+            filter.search_directors = { $regex: cleanDirector, $options: "i" };
+        }
+
+        if (actor) {
+            const actorsList = actor
+                .split(",")
+                .map((a) => normalizeString(a))
+                .filter(Boolean);
+
+            if (actorsList.length > 0) {
+                filter.$and = filter.$and || [];
+                actorsList.forEach((a) => {
+                    filter.$and.push({
+                        search_actors: { $regex: a, $options: "i" },
+                    });
+                });
+            }
+        }
+
+        if (genre) {
+            const genreList = Array.isArray(genre) ? genre : genre.split(",");
+            filter.$and = filter.$and || [];
+            genreList.forEach((g) => {
+                if (g.trim()) {
+                    filter.$and.push({
+                        genres: { $regex: g.trim(), $options: "i" },
+                    });
+                }
+            });
+        }
+
+
         if (age_rating) {
             const ratings = (Array.isArray(age_rating) ? age_rating : age_rating.split(","))
                 .map(Number)
-                .filter(n => Number.isFinite(n));
+                .filter((n) => Number.isFinite(n));
             if (ratings.length > 0) {
                 filter.age_rating = { $in: ratings };
             }
         }
 
-        // simplified this a lot, seems to work well
-        if (director) filter.directors = { $regex: director, $options: "i" };
 
-        if (actor) filter.actors = { $regex: actor, $options: "i" };
+        if (keyword) {
+            const keywordList = keyword
+                .split(",")
+                .map((k) => k.trim())
+                .filter(Boolean);
 
-        if (genre) filter.genres = { $regex: genre, $options: "i" };
+            if (keywordList.length > 0) {
+                filter.$and = filter.$and || [];
+                keywordList.forEach((k) => {
+                    filter.$and.push({
+                        keywords: { $regex: k, $options: "i" },
+                    });
+                });
+            }
+        }
 
-        if (keyword) filter.keywords = { $regex: keyword, $options: "i" };
-
-        const docs = await db.collection("general")
+        const docs = await db
+            .collection("general")
             .find(filter)
-            .sort({ popularity: -1 }) // possible to expand this to what the indexes are but leaving at this for now
+            .sort({ popularity: -1, date: -1 })
             .toArray();
 
-        const results = docs.map(doc => formatMovie(doc));
-
+        const results = docs.map((doc) => formatMovie(doc));
         res.status(200).json(results);
-
     } catch (err) {
         console.error("POST /record/bulk error:", err);
         return res.status(500).json({ error: "Server error" });
