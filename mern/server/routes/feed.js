@@ -13,25 +13,6 @@ const WATCHED_WEIGHT   = 1;
 const LIKED_WEIGHT     = 10;
 const DISLIKED_WEIGHT  = -15;
 
-// Fetch genres helper
-async function fetchGenres(tmdbId) {
-    if (!tmdbId || !TMDB_API_KEY) return [];
-
-    const url = new URL(`${TMDB_BASE_URL}/movie/${tmdbId}`);
-    url.searchParams.set("api_key", TMDB_API_KEY);
-
-    const resp = await fetch(url.toString(), {
-        headers: { accept: "application/json" },
-    });
-    if (!resp.ok) return [];
-
-    const json = await resp.json();
-    const genres = Array.isArray(json?.genres) ? json.genres : [];
-    return genres
-        .map((g) => Number(g.id))
-        .filter((n) => Number.isFinite(n) && n > 0);
-}
-
 router.post("/", async (req, res) => {
     try {
         if (!TMDB_API_KEY) {
@@ -87,15 +68,6 @@ router.post("/", async (req, res) => {
         // Watched and disliked movies excluded from feed
         for (const id of watchedSet) exclude.add(id);
         for (const id of dislikedSet) exclude.add(id);
-
-        // Disliked movies genre list
-        const dislikedGenreSets = [];
-        for (const tmdbId of dislikedSet) {
-            const genres = await fetchGenres(tmdbId);
-            if (genres.length) {
-                dislikedGenreSets.push(new Set(genres));
-            }
-        }
 
         // Union of all seeded movies
         const seedIds = new Set([
@@ -163,30 +135,11 @@ router.post("/", async (req, res) => {
             await addRecsFromSeed(tmdbId, weight);
         }
 
-        // Disliked movie check
-        function tooCloseToDisliked(entry) {
-            if (!dislikedGenreSets.length) return false;
-            const recGenres = entry.genres || [];
-            if (!recGenres.length) return false;
-
-            // Exlude recommendations with 2 or more matching genres to a disliked movie
-            for (const dSet of dislikedGenreSets) {
-                let overlap = 0;
-                for (const g of recGenres) {
-                    if (dSet.has(g)) {
-                        overlap += 1;
-                        if (overlap >= 2) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
 
         const sorted = Array.from(agg.values())
-            // Filter recommended movies the user has watched, explicitly disliked, and is similar to disliked
-            .filter((x) => !exclude.has(x.id) && !tooCloseToDisliked(x))
+            // Filter recommended movies that the user has already explicitly watched or disliked
+            // weights only
+            .filter((x) => !exclude.has(x.id))
             // Sort by total score then rating
             .sort(
                 (a, b) =>
