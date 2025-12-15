@@ -276,7 +276,7 @@ router.post("/bulk", async (req, res) => {
                 filter.age_rating = { $in: ratings };
             }
         }
-        
+
         if (director) {
             filter.directors = { $regex: director, $options: "i" };
         }
@@ -286,7 +286,22 @@ router.post("/bulk", async (req, res) => {
         }
 
         if (genre) {
-            filter.genres = { $regex: genre, $options: "i" };
+            const genreList = Array.isArray(genre)
+                ? genre
+                : String(genre).split(",");
+
+            const cleaned = genreList
+                .map((g) => g.trim())
+                .filter(Boolean);
+
+            if (cleaned.length > 0) {
+                filter.$and = filter.$and || [];
+                cleaned.forEach((g) => {
+                    filter.$and.push({
+                        genres: { $regex: g, $options: "i" },
+                    });
+                });
+            }
         }
 
         if (keyword) {
