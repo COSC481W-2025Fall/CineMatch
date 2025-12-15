@@ -313,8 +313,10 @@ router.post("/", async (req, res) => {
         const keywordWeight = Object.create(null);
 
         for (const doc of profileDocs) {
-            const baseBoost =
-                liked.has(doc.id) ? 3 : watched.has(doc.id) ? 1 : 0;
+            let baseBoost = 0;
+            if (watched.has(doc.id)) baseBoost += 1;
+            if (liked.has(doc.id))   baseBoost += 4;
+
             if (baseBoost <= 0) continue;
 
             const genres = String(doc.genres || "")
@@ -395,29 +397,37 @@ router.post("/", async (req, res) => {
                 score += doc.rating / 2;
             }
             if (typeof doc.popularity === "number") {
-                score += doc.popularity / 1000;
+                score += doc.popularity / 3000;
             }
 
             return score;
         }
 
-        const scored = candidates
+        let scored = candidates
             .map((doc) => ({ doc, score: scoreCandidate(doc) }))
-            .filter((x) => x.score > 0)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, limit)
-            .map(({ doc }) => formatMovieForFeed(doc));
+            .filter((x) => x.score > 0);
 
-        if (!scored.length) {
-            const docs = await col
-                .find(baseFilter)
-                .sort({ popularity: -1, date: -1 })
-                .limit(limit)
-                .toArray();
-            return res.json({ items: docs.map(formatMovieForFeed) });
+        if (scored.length) {
+            scored.sort((a, b) => b.score - a.score);
+
+            const POOL_SIZE = Math.min(scored.length, limit * 3);
+            const pool = scored.slice(0, POOL_SIZE);
+
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+
+            const selected = pool.slice(0, limit);
+            return res.json({ items: selected.map(({ doc }) => formatMovieForFeed(doc)) });
         }
 
-        return res.json({ items: scored });
+        const docs = await col
+            .find(baseFilter)
+            .sort({ popularity: -1, date: -1 })
+            .limit(limit)
+            .toArray();
+        return res.json({ items: docs.map(formatMovieForFeed) });
     } catch (err) {
         console.error("POST /feed error:", err);
         res.status(500).json({ error: "Server error" });
