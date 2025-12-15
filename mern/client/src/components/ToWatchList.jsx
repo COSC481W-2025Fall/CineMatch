@@ -283,8 +283,8 @@ export default function ToWatchListPage() {
                     ? patch.tmdbId
                     : typeof data.tmdbId === "number"
                         ? data.tmdbId
-                        : typeof movie.tmdbId === "number"
-                            ? movie.tmdbId
+                        : movie.tmdbId != null && movie.tmdbId !== ""
+                            ? Number(movie.tmdbId)
                             : null;
 
             setDetails({ id: movie.id, tmdbId: finalTmdbId, ...data, ...patch });
@@ -294,7 +294,7 @@ export default function ToWatchListPage() {
         }
     }
 
-    const [params, setParams] = useState({
+    /*const [params, setParams] = useState({
         actor: "",
         director: "",
         genre: "",
@@ -305,6 +305,14 @@ export default function ToWatchListPage() {
         year_max: "",
         rating_min: "",
         rating_max: ""
+    });*/
+    const [params, setParams] = useState({
+        actor: "",
+        director: "",
+        genre: "",
+        title: "",
+        year: "",
+        rating: "",
     });
 
     const [movies, setMovies] = useState([]);
@@ -312,6 +320,73 @@ export default function ToWatchListPage() {
 
     const [selectedGenres, setSelectedGenres] = useState([]);
     const [genreDropdownOpen, setGenreDropdownOpen] = useState(false);
+
+
+    const [ageRatingDropdownOpen, setAgeRatingDropdownOpen] = useState(false);
+    const [selectedAgeRatings, setSelectedAgeRatings] = useState([]);
+
+    function toggleDropdown() {
+        setGenreDropdownOpen((prev) => !prev);
+    }
+
+    function toggleAgeRatingDropdown() {
+        setAgeRatingDropdownOpen((prev) => !prev);
+    }
+
+    function handleGenreToggle(genre) {
+        const newSelectedGenres = [...selectedGenres];
+
+        if (selectedGenres.includes(genre)) {
+            const index = newSelectedGenres.indexOf(genre);
+            newSelectedGenres.splice(index, 1);
+        } else {
+            newSelectedGenres.push(genre);
+        }
+        setSelectedGenres(newSelectedGenres);
+    }
+
+    function getGenreLabel() {
+        if (selectedGenres.length === 0) {
+            return "GENRE...";
+        } else {
+            return selectedGenres.length + " SELECTED";
+        }
+    }
+
+    function getDropdownArrowClass() {
+        return genreDropdownOpen ? "dropdown-arrow open" : "dropdown-arrow";
+    }
+
+    function isGenreChecked(genre) {
+        return selectedGenres.includes(genre);
+    }
+
+    function handleAgeRatingToggle(id) {
+        const newSelected = [...selectedAgeRatings];
+        if (selectedAgeRatings.includes(id)) {
+            const index = newSelected.indexOf(id);
+            newSelected.splice(index, 1);
+        } else {
+            newSelected.push(id);
+        }
+        setSelectedAgeRatings(newSelected);
+    }
+
+    function getAgeRatingLabel() {
+        if (selectedAgeRatings.length === 0) {
+            return "AGE RATING...";
+        } else {
+            return selectedAgeRatings.length + " SELECTED";
+        }
+    }
+
+    function getAgeDropdownArrowClass() {
+        return ageRatingDropdownOpen ? "dropdown-arrow open" : "dropdown-arrow";
+    }
+
+    function isAgeRatingChecked(id) {
+        return selectedAgeRatings.includes(id);
+    }
 
     const [loaded, setLoaded] = useState(false);
 
@@ -360,8 +435,10 @@ export default function ToWatchListPage() {
                 director: p.director || "",
                 genre: p.genre || "",
                 title: p.title || "",
-                year: p.year || "",
-                rating: p.rating || "",
+                year_min: p.year_min || p.year || "",
+                year_max: p.year_max || "",
+                rating_min: p.rating_min || p.rating || "",
+                rating_max: p.rating_max || "",
             },
         };
 
@@ -527,20 +604,21 @@ export default function ToWatchListPage() {
     };
 
     function clearFilters() {
-        // Reset all text + numeric filters
         setParams({
             actor: "",
             director: "",
+            genre: "",
             title: "",
+            year: "",
+            rating: "",
             year_min: "",
             year_max: "",
             rating_min: "",
-            rating_max: ""
+            rating_max: "",
         });
-        setSelectedGenres([]);// Reset genres
-        setGenreDropdownOpen(false); // Close genre dropdown (optional)
-        doSearch();// Re-run search with empty filters
-
+        setSelectedGenres([]);
+        setGenreDropdownOpen(false);
+        doSearch();
     }
 
     return (
@@ -583,38 +661,146 @@ export default function ToWatchListPage() {
             >
                 <aside className="sidebar">
                     <ul className="search-filters">
-                        {["Actor", "Director", "Genre", "Title", "Year", "Rating"].map(
-                            (label) => (
-                                <li className="filter-item" key={label}>
+                        {["Actor", "Director", "Title", "Keyword"].map((label) => (
+                            <li className="filter-item" key={label}>
+                                <div className="filter-link">
+                                    <input
+                                        id={`q${label}`}
+                                        className="filter-input"
+                                        placeholder={`${label.toUpperCase()}...`}
+                                        value={params[label.toLowerCase()] || ""}
+                                        onChange={handleChange}
+                                        onKeyDown={(e) => e.key === "Enter" && doSearch()}
+                                    />
+                                </div>
+                            </li>
+                        ))}
+
+                        {/* YEAR RANGE */}
+                        <li className="year-range" key="YearRange">
+                            <div className="year-label">YEAR</div>
+                            <div className="year-bubbles">
+                                <div className="filter-item">
                                     <div className="filter-link">
                                         <input
-                                            id={`q${label}`}
+                                            id="qYear_Min"
                                             className="filter-input"
-                                            placeholder={`${label.toUpperCase()}...`}
-                                            value={params[label.toLowerCase()] || ""}
+                                            type="number"
+                                            placeholder="MIN"
+                                            value={params.year_min}
                                             onChange={handleChange}
                                             onKeyDown={(e) => e.key === "Enter" && doSearch()}
                                         />
                                     </div>
-                                </li>
-                            )
-                        )}
-                        <li className="filter-item" key="GenreSelect">
-                            <div className="filter-link">
-                                <select
-                                    id="qGenre"
-                                    className="filter-select"
-                                    value={params.genre || ""}
-                                    onChange={handleChange}
-                                >
-                                    <option value="">GENRE...</option>
-                                    {GENRES.map((g) => (
-                                        <option key={g} value={g}>
-                                            {g}
-                                        </option>
-                                    ))}
-                                </select>
+                                </div>
+
+                                <div className="filter-item">
+                                    <div className="filter-link">
+                                        <input
+                                            id="qYear_Max"
+                                            className="filter-input"
+                                            type="number"
+                                            placeholder="MAX"
+                                            value={params.year_max}
+                                            onChange={handleChange}
+                                            onKeyDown={(e) => e.key === "Enter" && doSearch()}
+                                        />
+                                    </div>
+                                </div>
                             </div>
+                        </li>
+
+                        {/* RATING RANGE */}
+                        <li className="rating-range" key="RatingRange">
+                            <div className="rating-label">RATING (0–10)</div>
+
+                            <div className="rating-bubbles">
+                                <div className="filter-item">
+                                    <div className="filter-link">
+                                        <input
+                                            id="qRating_Min"
+                                            className="filter-input"
+                                            type="number"
+                                            inputMode="decimal"
+                                            step="0.1"
+                                            min="0"
+                                            max="10"
+                                            placeholder="MIN"
+                                            value={params.rating_min}
+                                            onChange={handleChange}
+                                            onKeyDown={(e) => e.key === "Enter" && doSearch()}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="filter-item">
+                                    <div className="filter-link">
+                                        <input
+                                            id="qRating_Max"
+                                            className="filter-input"
+                                            type="number"
+                                            inputMode="decimal"
+                                            step="0.1"
+                                            min="0"
+                                            max="10"
+                                            placeholder="MAX"
+                                            value={params.rating_max}
+                                            onChange={handleChange}
+                                            onKeyDown={(e) => e.key === "Enter" && doSearch()}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+
+                        {/* Genre dropdown */}
+                        <li className="filter-item genre-dropdown" key="Genre">
+                            <div
+                                className="filter-link genre-header"
+                                onClick={toggleDropdown}
+                            >
+                                <span className="genre-label">{getGenreLabel()}</span>
+                                <span className={getDropdownArrowClass()}>▼</span>
+                            </div>
+                            {genreDropdownOpen && (
+                                <div className="genre-checkbox-list">
+                                    {GENRES.map((genre) => (
+                                        <label key={genre} className="genre-checkbox-item">
+                                            <input
+                                                type="checkbox"
+                                                checked={isGenreChecked(genre)}
+                                                onChange={() => handleGenreToggle(genre)}
+                                            />
+                                            <span>{genre}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </li>
+
+                        {/* Age rating dropdown */}
+                        <li className="filter-item genre-dropdown" key="AgeRating">
+                            <div
+                                className="filter-link genre-header"
+                                onClick={toggleAgeRatingDropdown}
+                            >
+                                <span className="genre-label">{getAgeRatingLabel()}</span>
+                                <span className={getAgeDropdownArrowClass()}>▼</span>
+                            </div>
+                            {ageRatingDropdownOpen && (
+                                <div className="genre-checkbox-list">
+                                    {AGE_RATINGS_DATA.map((rating) => (
+                                        <label key={rating.id} className="genre-checkbox-item">
+                                            <input
+                                                type="checkbox"
+                                                checked={isAgeRatingChecked(rating.id)}
+                                                onChange={() => handleAgeRatingToggle(rating.id)}
+                                            />
+                                            <span>{rating.name}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
                         </li>
                     </ul>
 
