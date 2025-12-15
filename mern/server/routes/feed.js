@@ -413,20 +413,15 @@ router.post("/", async (req, res) => {
             }
 
             score -= penalty;
-
             return score;
         }
 
-        let scored = candidates
+        const scored = candidates
             .map((doc) => ({ doc, score: scoreCandidate(doc) }))
             .filter((x) => Number.isFinite(x.score) && x.score > 0)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, limit)
-            .map(({ doc }) => formatMovieForFeed(doc));
+            .sort((a, b) => b.score - a.score);
 
         if (scored.length) {
-            scored.sort((a, b) => b.score - a.score);
-
             const POOL_SIZE = Math.min(scored.length, limit * 3);
             const pool = scored.slice(0, POOL_SIZE);
 
@@ -435,8 +430,8 @@ router.post("/", async (req, res) => {
                 [pool[i], pool[j]] = [pool[j], pool[i]];
             }
 
-            const selected = pool.slice(0, limit);
-            return res.json({ items: selected.map(({ doc }) => formatMovieForFeed(doc)) });
+            const selected = pool.slice(0, limit).map(({ doc }) => formatMovieForFeed(doc));
+            return res.json({ items: selected });
         }
 
         const docs = await col
@@ -445,6 +440,7 @@ router.post("/", async (req, res) => {
             .limit(limit)
             .toArray();
         return res.json({ items: docs.map(formatMovieForFeed) });
+
     } catch (err) {
         console.error("POST /feed error:", err);
         res.status(500).json({ error: "Server error" });
