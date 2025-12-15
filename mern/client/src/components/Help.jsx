@@ -116,7 +116,7 @@ export default function Help() {
                         <button
                             className="menu-button menu-button-red"
                             onClick={() => {
-                                console.log("Login");
+                                //console.log("Login");
                                 setUserMenuOpen(false);
                             }}
                         >
@@ -126,7 +126,7 @@ export default function Help() {
                         <button
                             className="menu-button menu-button-red"
                             onClick={() => {
-                                console.log("Register");
+                                //console.log("Register");
                                 setUserMenuOpen(false);
                             }}
                         >
@@ -136,7 +136,7 @@ export default function Help() {
                         <button
                             className="menu-button menu-button-red"
                             onClick={() => {
-                                console.log("Personalization");
+                                //console.log("Personalization");
                                 setUserMenuOpen(false);
                             }}
                         >

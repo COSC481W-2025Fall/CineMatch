@@ -143,7 +143,7 @@ export default function RecommendationFeed() {
                     ? Number(rawTmdbId)
                     : null;
 
-            console.log("[TMDB FEED] Using ID:", tmdbId);
+            //console.log("[TMDB FEED] Using ID:", tmdbId);
 
             let patch = {}; // empty
 
@@ -307,14 +307,14 @@ export default function RecommendationFeed() {
                         }
                     }
 
-                    console.log(
+                    /*console.log(
                         "[TMDB FEED TEST] topCast:",
                         topCast,
                         "runtime:",
                         runtime,
                         "providers:",
                         watchProviders.length
-                    );
+                    );*/
                 }
             }
 
@@ -380,7 +380,7 @@ export default function RecommendationFeed() {
                 dislikedTmdbIds: freshDisliked,
                 limit: Math.max(1, Number(limit) || DEFAULT_LIMIT),
             };
-            console.log("[FEED] request body:", body);
+            //console.log("[FEED] request body:", body);
             const resp = await fetch(`${API_BASE}/feed`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
