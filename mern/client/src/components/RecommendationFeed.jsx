@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Navigation from "./Navigation.jsx";
 import "../App.css";
 import MovieDetails from "./MovieDetails";
-import { API_BASE, authedFetch, refresh } from "../auth/api.js";
+import { API_BASE, authedFetch, refresh, fetchReactions  } from "../auth/api.js";
 import { useAuth } from "../auth/AuthContext.jsx";
 
 const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
@@ -99,7 +99,7 @@ export default function RecommendationFeed() {
 
         await loadLists();
     }
-    
+
     // Rewrote openDetails in feed because old one is excruciatingly slow...
     async function openDetails(rec) {
         try {
@@ -361,11 +361,10 @@ export default function RecommendationFeed() {
     }
 
     async function buildRecommendations() {
-        const freshLiked = loadArrayFromStorage("likedTmdbIds");
-        const freshDisliked = loadArrayFromStorage("dislikedTmdbIds");
+        const { likedTmdbIds, dislikedTmdbIds } = await fetchReactions();
 
-        setLikedTmdbIds(freshLiked);
-        setDislikedTmdbIds(freshDisliked);
+        setLikedTmdbIds(likedTmdbIds);
+        setDislikedTmdbIds(dislikedTmdbIds);
 
         if (watchedIds.size === 0) { // Check if the user has watched any movies yet
             setStatus("Your watched movies list is empty, mark some as watched to get recommendations!.");
@@ -376,8 +375,8 @@ export default function RecommendationFeed() {
         try {
             const body = {// Prepare the request body with watched IDs and the desired limit
                 watchedIds: Array.from(watchedIds),
-                likedTmdbIds: freshLiked,
-                dislikedTmdbIds: freshDisliked,
+                likedTmdbIds: likedTmdbIds,
+                dislikedTmdbIds: dislikedTmdbIds,
                 limit: Math.max(1, Number(limit) || DEFAULT_LIMIT),
             };
             //console.log("[FEED] request body:", body);
@@ -424,7 +423,7 @@ export default function RecommendationFeed() {
                 if (item.tmdbId == null) return true;
                 const idNum = Number(item.tmdbId);
                 if (!Number.isFinite(idNum)) return true;
-                return !freshDisliked.includes(idNum);
+                return !dislikedTmdbIds.includes(idNum);
             });
 
             setRecs(filtered);
